@@ -1,0 +1,115 @@
+import 'dart:convert';
+
+class Hallazgo {
+  final int? id;
+  final int fechaMs;
+  final double latitud;
+  final double longitud;
+  final double? precision;
+  final String especie;
+  final String edad;
+  final String formacion;
+  final String notas;
+  final List<String> rutasFotos;
+  final String? contextoGeologicoCrudoJson;
+  final double? strikeGrados;
+  final double? dipGrados;
+  final String tipo; // 'fosil' o 'mineral'
+
+  Hallazgo({
+    this.id,
+    required this.fechaMs,
+    required this.latitud,
+    required this.longitud,
+    this.precision,
+    this.especie = '',
+    this.edad = '',
+    this.formacion = '',
+    this.notas = '',
+    this.rutasFotos = const [],
+    this.contextoGeologicoCrudoJson,
+    this.strikeGrados,
+    this.dipGrados,
+    this.tipo = 'fosil',
+  });
+
+  bool get esMineral => tipo == 'mineral';
+
+  String? get rutaFoto => rutasFotos.isEmpty ? null : rutasFotos.first;
+
+  Map<String, Object?> toMap() => {
+        'id': id,
+        'fecha_ms': fechaMs,
+        'latitud': latitud,
+        'longitud': longitud,
+        'precision': precision,
+        'especie': especie,
+        'edad': edad,
+        'formacion': formacion,
+        'notas': notas,
+        'ruta_foto': rutasFotos.isEmpty ? null : rutasFotos.first,
+        'rutas_fotos_json': rutasFotos.isEmpty ? null : jsonEncode(rutasFotos),
+        'contexto_geologico_crudo_json': contextoGeologicoCrudoJson,
+        'strike_grados': strikeGrados,
+        'dip_grados': dipGrados,
+        'tipo': tipo,
+      };
+
+  factory Hallazgo.fromMap(Map<String, Object?> mapa) {
+    final rutasJson = mapa['rutas_fotos_json'] as String?;
+    List<String> rutas = const [];
+    if (rutasJson != null && rutasJson.isNotEmpty) {
+      try {
+        rutas = (jsonDecode(rutasJson) as List).cast<String>();
+      } catch (_) {
+        rutas = const [];
+      }
+    } else {
+      final unica = mapa['ruta_foto'] as String?;
+      if (unica != null && unica.isNotEmpty) rutas = [unica];
+    }
+    return Hallazgo(
+      id: mapa['id'] as int?,
+      fechaMs: mapa['fecha_ms'] as int,
+      latitud: (mapa['latitud'] as num).toDouble(),
+      longitud: (mapa['longitud'] as num).toDouble(),
+      precision: (mapa['precision'] as num?)?.toDouble(),
+      especie: (mapa['especie'] as String?) ?? '',
+      edad: (mapa['edad'] as String?) ?? '',
+      formacion: (mapa['formacion'] as String?) ?? '',
+      notas: (mapa['notas'] as String?) ?? '',
+      rutasFotos: rutas,
+      contextoGeologicoCrudoJson: mapa['contexto_geologico_crudo_json'] as String?,
+      strikeGrados: (mapa['strike_grados'] as num?)?.toDouble(),
+      dipGrados: (mapa['dip_grados'] as num?)?.toDouble(),
+      tipo: (mapa['tipo'] as String?) ?? 'fosil',
+    );
+  }
+
+  Hallazgo copyWith({
+    String? especie,
+    String? edad,
+    String? formacion,
+    String? notas,
+    List<String>? rutasFotos,
+    double? strikeGrados,
+    double? dipGrados,
+    String? tipo,
+  }) =>
+      Hallazgo(
+        id: id,
+        fechaMs: fechaMs,
+        latitud: latitud,
+        longitud: longitud,
+        precision: precision,
+        especie: especie ?? this.especie,
+        edad: edad ?? this.edad,
+        formacion: formacion ?? this.formacion,
+        notas: notas ?? this.notas,
+        rutasFotos: rutasFotos ?? this.rutasFotos,
+        contextoGeologicoCrudoJson: contextoGeologicoCrudoJson,
+        strikeGrados: strikeGrados ?? this.strikeGrados,
+        dipGrados: dipGrados ?? this.dipGrados,
+        tipo: tipo ?? this.tipo,
+      );
+}
