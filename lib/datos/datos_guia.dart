@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../servicios/servicio_wikipedia.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl, LaunchMode;
@@ -265,7 +266,10 @@ const List<FosilGuia> fosilesGuia = [
     descripcionCorta: 'Rudista enrollado del Urgoniano, sustituyó a los corales en arrecifes someros.',
     distintivos: ['Concha enrollada espiralada', 'Pared gruesa', '5–15 cm'],
     dondeEncontrar: 'Caliza urgoniana de Bizkaia: Ereño, Atxarte, Jata.',
-    tituloWikipedia: 'Hippuritoida',
+    // Toucasia carece de artículo propio en Wikipedia; usamos su
+    // familia (Caprinidae) que sí tiene foto del grupo en EN. Distinto
+    // de Requienia para que las miniaturas no se compartan.
+    tituloWikipedia: 'Caprinidae',
   ),
   FosilGuia(
     id: 'requienia',
@@ -275,7 +279,9 @@ const List<FosilGuia> fosilesGuia = [
     descripcionCorta: 'Rudista característico del Aptiense-Albiense urgoniano.',
     distintivos: ['Forma de cuerno enrollado', 'Asimétrica', 'Rugosa'],
     dondeEncontrar: 'Calizas urgonianas de Bizkaia y Iparralde.',
-    tituloWikipedia: 'Hippuritoida',
+    // Requienia tiene artículo en Wikipedia pero sin foto; Diceras
+    // (rudista emparentado del Diceratidae) sí trae miniatura en EN.
+    tituloWikipedia: 'Diceras',
   ),
   FosilGuia(
     id: 'orbitolina',
@@ -375,7 +381,7 @@ const List<FosilGuia> fosilesGuia = [
     descripcionCorta: 'Resina endurecida del Cretácico Inferior; el ámbar de Peñacerrada (Álava) es uno de los mejores yacimientos del mundo con inclusiones de insectos.',
     distintivos: ['Resina amarilla-ambarina semitransparente', 'A veces con burbujas, fragmentos vegetales o insectos', 'Fluorescente bajo UV'],
     dondeEncontrar: 'Cretácico Inferior de Peñacerrada (Álava), Moraza (Burgos) y otras cuencas albienses.',
-    tituloWikipedia: 'Ámbar',
+    tituloWikipedia: 'Amber',
   ),
   FosilGuia(
     id: 'ginkgo',
@@ -701,7 +707,10 @@ const List<FosilGuia> fosilesGuia = [
     descripcionCorta: 'Pariente extinto de los elefantes, con molares de cúspides cónicas.',
     distintivos: ['Molares con cúspides redondeadas en pares', 'Defensas largas y curvadas', 'Tamaño elefantino'],
     dondeEncontrar: 'Yacimientos del Mioceno medio-superior del Ebro y Bardenas.',
-    tituloWikipedia: 'Mastodon',
+    // El título 'Mastodon' en es.wikipedia es la banda de metal —
+    // el género taxonómico se redacta como 'Mammut'. La galería
+    // estaba sacando fotos del grupo de música.
+    tituloWikipedia: 'Mammut',
   ),
   FosilGuia(
     id: 'aequipecten-opercularis',
@@ -906,9 +915,18 @@ FosilGuia? buscarFosilPorId(String id) {
   return null;
 }
 
-void abrirDetalleFosilGuia(BuildContext context, String idFosil) {
+void abrirDetalleFosilGuia(BuildContext context, String idFosil,
+    {List<FosilGuia>? lista, int? indiceInicial}) {
+  if (lista != null && lista.isNotEmpty && indiceInicial != null) {
+    _abrirFichaFosilNavegable(context, lista, indiceInicial);
+    return;
+  }
   final fosil = buscarFosilPorId(idFosil);
   if (fosil == null) return;
+  _mostrarFichaFosil(context, fosil);
+}
+
+void _mostrarFichaFosil(BuildContext context, FosilGuia fosil) {
   final periodo = buscarPeriodo(fosil.periodoId);
   showModalBottomSheet<void>(
     context: context,
@@ -922,64 +940,111 @@ void abrirDetalleFosilGuia(BuildContext context, String idFosil) {
       builder: (_, scrollController) => SingleChildScrollView(
         controller: scrollController,
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: _contenidoFosil(context, fosil, periodo),
+      ),
+    ),
+  );
+}
+
+void _abrirFichaFosilNavegable(BuildContext context, List<FosilGuia> lista, int indiceInicial) {
+  final controladorPagina = PageController(initialPage: indiceInicial);
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (_, setStateLocal) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        minChildSize: 0.4,
+        builder: (_, scrollController) => Column(
           children: [
-            _GaleriaFosilWikipedia(tituloWikipedia: fosil.tituloWikipedia),
-            const SizedBox(height: 12),
-            Text(fosil.nombre, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 4),
-            Wrap(
-              spacing: 8,
-              children: [
-                Text(fosil.grupo, style: Theme.of(context).textTheme.bodySmall),
-                if (periodo != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(color: periodo.color, borderRadius: BorderRadius.circular(4)),
-                    child: Text(periodo.nombre, style: const TextStyle(color: Color(0xFF2D3A2E), fontSize: 12)),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(fosil.descripcionCorta),
-            const SizedBox(height: 16),
-            Text('Distintivos para reconocerlo', style: Theme.of(context).textTheme.titleSmall),
-            ...fosil.distintivos.map((d) => Padding(padding: const EdgeInsets.only(left: 8, top: 2), child: Text('• $d'))),
-            const SizedBox(height: 16),
-            Text('Dónde encontrarlo', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 4),
-            Text(fosil.dondeEncontrar),
-            const SizedBox(height: 16),
-            FutureBuilder<ResumenWikipedia?>(
-              future: obtenerResumenWikipedia(fosil.tituloWikipedia),
-              builder: (context, snapshot) {
-                final extracto = snapshot.data?.extracto;
-                final enlace = snapshot.data?.enlacePagina;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (extracto != null)
-                      Text(extracto, style: const TextStyle(fontSize: 13, color: Colors.black54)),
-                    if (enlace != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Center(
-                          child: OutlinedButton.icon(
-                            onPressed: () => launchUrl(Uri.parse(enlace), mode: LaunchMode.externalApplication),
-                            icon: const Icon(Icons.open_in_new),
-                            label: const Text('Leer más en Wikipedia'),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
+            if (lista.length > 1)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text('${indiceInicial + 1} / ${lista.length}',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black54)),
+              ),
+            Expanded(
+              child: PageView.builder(
+                controller: controladorPagina,
+                itemCount: lista.length,
+                onPageChanged: (i) => setStateLocal(() => indiceInicial = i),
+                itemBuilder: (_, i) {
+                  final f = lista[i];
+                  final p = buscarPeriodo(f.periodoId);
+                  return SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(16),
+                    child: _contenidoFosil(context, f, p),
+                  );
+                },
+              ),
             ),
           ],
         ),
       ),
     ),
+  );
+}
+
+Widget _contenidoFosil(BuildContext context, FosilGuia fosil, PeriodoGeologico? periodo) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _GaleriaFosilWikipedia(tituloWikipedia: fosil.tituloWikipedia),
+      const SizedBox(height: 12),
+      Text(fosil.nombre, style: Theme.of(context).textTheme.headlineSmall),
+      const SizedBox(height: 4),
+      Wrap(
+        spacing: 8,
+        children: [
+          Text(fosil.grupo, style: Theme.of(context).textTheme.bodySmall),
+          if (periodo != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(color: periodo.color, borderRadius: BorderRadius.circular(4)),
+              child: Text(periodo.nombre, style: const TextStyle(color: Color(0xFF2D3A2E), fontSize: 12)),
+            ),
+        ],
+      ),
+      const SizedBox(height: 12),
+      Text(fosil.descripcionCorta),
+      const SizedBox(height: 16),
+      Text('Distintivos para reconocerlo', style: Theme.of(context).textTheme.titleSmall),
+      ...fosil.distintivos.map((d) => Padding(padding: const EdgeInsets.only(left: 8, top: 2), child: Text('• $d'))),
+      const SizedBox(height: 16),
+      Text('Dónde encontrarlo', style: Theme.of(context).textTheme.titleSmall),
+      const SizedBox(height: 4),
+      Text(fosil.dondeEncontrar),
+      const SizedBox(height: 16),
+      FutureBuilder<ResumenWikipedia?>(
+        future: obtenerResumenWikipedia(fosil.tituloWikipedia),
+        builder: (context, snapshot) {
+          final extracto = snapshot.data?.extracto;
+          final enlace = snapshot.data?.enlacePagina;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (extracto != null)
+                Text(extracto, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+              if (enlace != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Center(
+                    child: OutlinedButton.icon(
+                      onPressed: () => launchUrl(Uri.parse(enlace), mode: LaunchMode.externalApplication),
+                      icon: const Icon(Icons.open_in_new),
+                      label: const Text('Leer más en Wikipedia'),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    ],
   );
 }
 
@@ -992,7 +1057,19 @@ class _GaleriaFosilWikipedia extends StatefulWidget {
 
 class _GaleriaFosilWikipediaState extends State<_GaleriaFosilWikipedia> {
   late final PageController _controlador = PageController();
+  late Future<List<String>> _futuroGaleria;
   int _indiceActual = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Resolver el future UNA SOLA VEZ en initState. Antes vivía dentro
+    // del build del FutureBuilder, así que cada setState (cambio de
+    // página) volvía a pedir las URLs y el FutureBuilder podía pasar
+    // por ConnectionState.waiting → spinner: el slider parpadeaba al
+    // deslizar.
+    _futuroGaleria = obtenerGaleriaWikipedia(widget.tituloWikipedia);
+  }
 
   @override
   void dispose() {
@@ -1003,7 +1080,7 @@ class _GaleriaFosilWikipediaState extends State<_GaleriaFosilWikipedia> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<String>>(
-      future: obtenerGaleriaWikipedia(widget.tituloWikipedia),
+      future: _futuroGaleria,
       builder: (context, snapshot) {
         final urls = snapshot.data ?? const <String>[];
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -1019,7 +1096,20 @@ class _GaleriaFosilWikipediaState extends State<_GaleriaFosilWikipedia> {
             height: 200,
             alignment: Alignment.center,
             color: Colors.black12,
-            child: const Text('🦴', style: TextStyle(fontSize: 64)),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('🦴', style: TextStyle(fontSize: 56)),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => setState(() {
+                    _futuroGaleria = obtenerGaleriaWikipedia(widget.tituloWikipedia);
+                  }),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Reintentar'),
+                ),
+              ],
+            ),
           );
         }
         return Column(
@@ -1035,20 +1125,18 @@ class _GaleriaFosilWikipediaState extends State<_GaleriaFosilWikipedia> {
                       controller: _controlador,
                       itemCount: urls.length,
                       onPageChanged: (i) => setState(() => _indiceActual = i),
-                      itemBuilder: (_, i) => Image.network(
-                        urls[i],
+                      itemBuilder: (_, i) => CachedNetworkImage(
+                        imageUrl: urls[i],
                         fit: BoxFit.cover,
-                        headers: cabecerasImagenWiki,
-                        cacheWidth: 1200,
-                        loadingBuilder: (_, child, progreso) {
-                          if (progreso == null) return child;
-                          return Container(
-                            color: Colors.black12,
-                            alignment: Alignment.center,
-                            child: const CircularProgressIndicator(),
-                          );
-                        },
-                        errorBuilder: (_, __, ___) => Container(
+                        httpHeaders: cabecerasImagenWiki,
+                        memCacheWidth: 1200,
+                        fadeInDuration: const Duration(milliseconds: 150),
+                        placeholder: (_, __) => Container(
+                          color: Colors.black12,
+                          alignment: Alignment.center,
+                          child: const CircularProgressIndicator(),
+                        ),
+                        errorWidget: (_, __, ___) => Container(
                           color: Colors.black12,
                           alignment: Alignment.center,
                           child: const Icon(Icons.broken_image, size: 48, color: Colors.white70),

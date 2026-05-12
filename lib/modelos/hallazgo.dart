@@ -1,5 +1,41 @@
 import 'dart:convert';
 
+class EventoTrazabilidad {
+  final int fechaMs;
+  final String tipo; // 'deposito_museo', 'estudio', 'publicacion', 'otro'
+  final String descripcion;
+  final String autor;
+
+  EventoTrazabilidad({
+    required this.fechaMs,
+    required this.tipo,
+    required this.descripcion,
+    required this.autor,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'f': fechaMs,
+        't': tipo,
+        'd': descripcion,
+        'a': autor,
+      };
+
+  factory EventoTrazabilidad.fromJson(Map<String, dynamic> json) => EventoTrazabilidad(
+        fechaMs: json['f'] as int,
+        tipo: json['t'] as String,
+        descripcion: json['d'] as String,
+        autor: json['a'] as String,
+      );
+
+  static const tiposDisponibles = [
+    ('deposito_museo', 'Depositado en museo / colección'),
+    ('estudio', 'Estudiado por'),
+    ('publicacion', 'Citado en publicación'),
+    ('prestamo', 'Préstamo / consulta'),
+    ('otro', 'Otro evento'),
+  ];
+}
+
 class Hallazgo {
   final int? id;
   final int fechaMs;
@@ -15,6 +51,7 @@ class Hallazgo {
   final double? strikeGrados;
   final double? dipGrados;
   final String tipo; // 'fosil' o 'mineral'
+  final List<EventoTrazabilidad> historialTrazabilidad;
 
   Hallazgo({
     this.id,
@@ -31,6 +68,7 @@ class Hallazgo {
     this.strikeGrados,
     this.dipGrados,
     this.tipo = 'fosil',
+    this.historialTrazabilidad = const [],
   });
 
   bool get esMineral => tipo == 'mineral';
@@ -53,6 +91,9 @@ class Hallazgo {
         'strike_grados': strikeGrados,
         'dip_grados': dipGrados,
         'tipo': tipo,
+        'trazabilidad_json': historialTrazabilidad.isEmpty
+            ? null
+            : jsonEncode(historialTrazabilidad.map((e) => e.toJson()).toList()),
       };
 
   factory Hallazgo.fromMap(Map<String, Object?> mapa) {
@@ -83,7 +124,20 @@ class Hallazgo {
       strikeGrados: (mapa['strike_grados'] as num?)?.toDouble(),
       dipGrados: (mapa['dip_grados'] as num?)?.toDouble(),
       tipo: (mapa['tipo'] as String?) ?? 'fosil',
+      historialTrazabilidad: _parsearTrazabilidad(mapa['trazabilidad_json'] as String?),
     );
+  }
+
+  static List<EventoTrazabilidad> _parsearTrazabilidad(String? json) {
+    if (json == null || json.isEmpty) return const [];
+    try {
+      final lista = jsonDecode(json) as List;
+      return lista
+          .map((e) => EventoTrazabilidad.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
   }
 
   Hallazgo copyWith({
@@ -95,6 +149,7 @@ class Hallazgo {
     double? strikeGrados,
     double? dipGrados,
     String? tipo,
+    List<EventoTrazabilidad>? historialTrazabilidad,
   }) =>
       Hallazgo(
         id: id,
@@ -111,5 +166,6 @@ class Hallazgo {
         strikeGrados: strikeGrados ?? this.strikeGrados,
         dipGrados: dipGrados ?? this.dipGrados,
         tipo: tipo ?? this.tipo,
+        historialTrazabilidad: historialTrazabilidad ?? this.historialTrazabilidad,
       );
 }

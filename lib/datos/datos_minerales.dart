@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl, LaunchMode;
 import '../servicios/servicio_wikipedia.dart';
@@ -64,7 +65,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Azufre puro, asociado a yacimientos volcánicos y de evaporitas.',
     distintivos: ['Color amarillo intenso', 'Olor a azufre al frotarlo', 'Quebradizo, baja dureza'],
     dondeEncontrar: 'Diapiros y rocas evaporíticas (Salinas de Añana). Volcánicos.',
-    tituloWikipedia: 'Azufre',
+    tituloWikipedia: 'Sulfur',
   ),
   MineralGuia(
     id: 'grafito',
@@ -78,7 +79,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Carbono cristalizado, blando y untuoso al tacto.',
     distintivos: ['Mancha los dedos al tocarlo', 'Hojas exfoliables', 'Conduce electricidad'],
     dondeEncontrar: 'Esquistos y mármoles metamórficos.',
-    tituloWikipedia: 'Grafito',
+    tituloWikipedia: 'Graphite',
   ),
   MineralGuia(
     id: 'cobre-nativo',
@@ -92,7 +93,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Cobre en estado puro, raro pero llamativo.',
     distintivos: ['Color rojo cobre brillante recién partido', 'Maleable', 'Pesado'],
     dondeEncontrar: 'Vetas hidrotermales y zonas oxidadas de yacimientos de cobre.',
-    tituloWikipedia: 'Cobre',
+    tituloWikipedia: 'Copper',
   ),
   MineralGuia(
     id: 'oro-nativo',
@@ -106,7 +107,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Oro elemental; pepitas en placeres aluviales y filones.',
     distintivos: ['Color y brillo inconfundible', 'Muy denso (19,3 g/cm³)', 'Maleable, no se oxida'],
     dondeEncontrar: 'Placeres aluviales (ríos), filones de cuarzo aurífero.',
-    tituloWikipedia: 'Oro',
+    tituloWikipedia: 'Gold',
   ),
   MineralGuia(
     id: 'plata-nativa',
@@ -120,7 +121,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Plata pura; en filones hidrotermales.',
     distintivos: ['Forma a menudo dendrítica', 'Maleable', 'Densidad alta'],
     dondeEncontrar: 'Filones hidrotermales asociados a galena/argentita.',
-    tituloWikipedia: 'Plata',
+    tituloWikipedia: 'Silver',
   ),
 
   // ─── SULFUROS ─────────────────────────────────────────────
@@ -238,7 +239,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'El mineral más abundante en filones. Cristales hexagonales bipiramidados.',
     distintivos: ['Cristales hexagonales con punta piramidal', 'No se exfolia, fractura concoidea', 'Raya el vidrio'],
     dondeEncontrar: 'Filones en cualquier roca; geodas.',
-    tituloWikipedia: 'Cuarzo',
+    tituloWikipedia: 'Quartz',
   ),
   MineralGuia(
     id: 'amatista',
@@ -266,7 +267,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Variedad amarilla del cuarzo, natural o tratado térmicamente.',
     distintivos: ['Amarillo transparente', 'Cristales hexagonales', 'Frecuentemente confundido con topacio'],
     dondeEncontrar: 'Asociado a amatista, geodas.',
-    tituloWikipedia: 'Citrino',
+    tituloWikipedia: 'Citrine_(quartz)',
   ),
   MineralGuia(
     id: 'calcedonia',
@@ -280,7 +281,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Cuarzo microcristalino. Sílex de los nódulos en calizas urgonianas.',
     distintivos: ['Fractura concoidea (filo cortante)', 'Sin cristales visibles a ojo', 'Suena con metal al golpear'],
     dondeEncontrar: 'Nódulos en calizas urgonianas y eocenas.',
-    tituloWikipedia: 'Calcedonia',
+    tituloWikipedia: 'Chalcedony',
   ),
   MineralGuia(
     id: 'agata',
@@ -294,7 +295,10 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Calcedonia bandeada con franjas concéntricas, frecuente en geodas.',
     distintivos: ['Bandas concéntricas claras y oscuras', 'Pulido brillante', 'Geodas en basaltos'],
     dondeEncontrar: 'Geodas en rocas volcánicas y filones.',
-    tituloWikipedia: 'Ágata',
+    // 'Ágata' en es.wikipedia tiene poca foto del mineral; cuando
+    // el fallback busca en Commons por "Ágata" trae a Santa Águeda.
+    // El título inglés es inequívoco y la página tiene galería rica.
+    tituloWikipedia: 'Agate',
   ),
   MineralGuia(
     id: 'jaspe',
@@ -308,7 +312,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Calcedonia opaca con tinte por óxidos de hierro.',
     distintivos: ['Opaco', 'Color uniforme o moteado', 'Fractura concoidea'],
     dondeEncontrar: 'Filones, jaspes ferruginosos en zonas mineralizadas.',
-    tituloWikipedia: 'Jaspe',
+    tituloWikipedia: 'Jasper',
   ),
   MineralGuia(
     id: 'opalo',
@@ -336,7 +340,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Mena principal del hierro. La "vena de hierro" histórica de Bizkaia.',
     distintivos: ['Raya rojo sangre inconfundible', 'Densidad alta', 'A veces forma de "riñones"'],
     dondeEncontrar: 'Antiguas minas de Bizkaia (Triano, Somorrostro), Cantabria.',
-    tituloWikipedia: 'Hematites',
+    tituloWikipedia: 'Hematite',
   ),
   MineralGuia(
     id: 'goethita',
@@ -480,7 +484,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Sulfato de calcio hidratado. Variedades: selenita (cristales), fibroso, alabastro.',
     distintivos: ['Se raya con la uña', 'Selenita transparente como vidrio', 'Cristales tabulares o lenticulares'],
     dondeEncontrar: 'Diapiros del Keuper (Rioja Alavesa, Maeztu, Estella).',
-    tituloWikipedia: 'Yeso',
+    tituloWikipedia: 'Gypsum',
   ),
   MineralGuia(
     id: 'selenita',
@@ -494,7 +498,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Variedad cristalina del yeso, en placas o lentes transparentes.',
     distintivos: ['Cristales tabulares grandes', 'Se exfolia en láminas finas', 'Muy blando, se raya con uña'],
     dondeEncontrar: 'Margas yesíferas del Keuper.',
-    tituloWikipedia: 'Yeso',
+    tituloWikipedia: 'Gypsum',
   ),
   MineralGuia(
     id: 'baritina',
@@ -522,7 +526,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Sulfato de estroncio. Geodas con cristales azules en margas yesíferas.',
     distintivos: ['Color azul cielo característico', 'Tabular o prismática', 'Llama roja'],
     dondeEncontrar: 'Margas yesíferas miocenas y triásicas.',
-    tituloWikipedia: 'Celestina',
+    tituloWikipedia: 'Celestine_(mineral)',
   ),
   MineralGuia(
     id: 'anhidrita',
@@ -624,7 +628,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Mica clara, exfoliable en láminas finísimas casi transparentes.',
     distintivos: ['Exfoliación basal perfecta', 'Láminas elásticas', 'Brillo plateado'],
     dondeEncontrar: 'Esquistos, gneis, pegmatitas.',
-    tituloWikipedia: 'Moscovita',
+    tituloWikipedia: 'Muscovite',
   ),
   MineralGuia(
     id: 'biotita',
@@ -680,7 +684,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'El mineral más blando. Untuoso al tacto.',
     distintivos: ['Se raya con la uña fácilmente', 'Tacto jabonoso', 'Color verdoso pálido'],
     dondeEncontrar: 'Rocas ultramáficas alteradas.',
-    tituloWikipedia: 'Talco',
+    tituloWikipedia: 'Talc',
   ),
   MineralGuia(
     id: 'caolinita',
@@ -736,7 +740,7 @@ const List<MineralGuia> mineralesGuia = [
     descripcionCorta: 'Gema clásica. Cristales prismáticos terminados en pirámide.',
     distintivos: ['Cristales prismáticos rómbicos', 'Exfoliación basal perfecta', 'Dureza 8'],
     dondeEncontrar: 'Pegmatitas y vetas hidrotermales.',
-    tituloWikipedia: 'Topacio',
+    tituloWikipedia: 'Topaz',
   ),
 ];
 
@@ -834,9 +838,18 @@ MineralGuia? buscarMineralPorId(String id) {
   return null;
 }
 
-void abrirDetalleMineral(BuildContext context, String idMineral) {
+void abrirDetalleMineral(BuildContext context, String idMineral,
+    {List<MineralGuia>? lista, int? indiceInicial}) {
+  if (lista != null && lista.isNotEmpty && indiceInicial != null) {
+    _abrirFichaMineralNavegable(context, lista, indiceInicial);
+    return;
+  }
   final mineral = buscarMineralPorId(idMineral);
   if (mineral == null) return;
+  _mostrarFichaMineral(context, mineral);
+}
+
+void _mostrarFichaMineral(BuildContext context, MineralGuia mineral) {
   final clase = buscarClaseMineral(mineral.claseStrunzId);
   showModalBottomSheet<void>(
     context: context,
@@ -850,65 +863,112 @@ void abrirDetalleMineral(BuildContext context, String idMineral) {
       builder: (_, scrollController) => SingleChildScrollView(
         controller: scrollController,
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: _contenidoMineral(context, mineral, clase),
+      ),
+    ),
+  );
+}
+
+void _abrirFichaMineralNavegable(BuildContext context, List<MineralGuia> lista, int indiceInicial) {
+  final controladorPagina = PageController(initialPage: indiceInicial);
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    showDragHandle: true,
+    builder: (sheetContext) => StatefulBuilder(
+      builder: (_, setStateLocal) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        maxChildSize: 0.95,
+        minChildSize: 0.4,
+        builder: (_, scrollController) => Column(
           children: [
-            _GaleriaMineralWikipedia(tituloWikipedia: mineral.tituloWikipedia),
-            const SizedBox(height: 12),
-            Text(mineral.nombre, style: Theme.of(context).textTheme.headlineSmall),
-            const SizedBox(height: 4),
-            Wrap(spacing: 8, children: [
-              Text(mineral.formulaQuimica, style: const TextStyle(fontFamily: 'monospace', fontSize: 13, fontWeight: FontWeight.bold)),
-              if (clase != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: clase.color, borderRadius: BorderRadius.circular(4)),
-                  child: Text(clase.nombre, style: const TextStyle(color: Color(0xFF2D3A2E), fontSize: 12)),
-                ),
-            ]),
-            const SizedBox(height: 12),
-            _filaPropiedad(context, 'Dureza Mohs', mineral.durezaMohs),
-            _filaPropiedad(context, 'Raya', mineral.raya),
-            _filaPropiedad(context, 'Brillo', mineral.brillo),
-            _filaPropiedad(context, 'Color típico', mineral.colorTipico),
-            const SizedBox(height: 12),
-            Text(mineral.descripcionCorta),
-            const SizedBox(height: 16),
-            Text('Distintivos para reconocerlo', style: Theme.of(context).textTheme.titleSmall),
-            ...mineral.distintivos.map((d) => Padding(padding: const EdgeInsets.only(left: 8, top: 2), child: Text('• $d'))),
-            const SizedBox(height: 16),
-            Text('Dónde encontrarlo', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 4),
-            Text(mineral.dondeEncontrar),
-            const SizedBox(height: 16),
-            FutureBuilder<ResumenWikipedia?>(
-              future: obtenerResumenWikipedia(mineral.tituloWikipedia),
-              builder: (context, snapshot) {
-                final extracto = snapshot.data?.extracto;
-                final enlace = snapshot.data?.enlacePagina;
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (extracto != null) Text(extracto, style: const TextStyle(fontSize: 13)),
-                    if (enlace != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Center(
-                          child: OutlinedButton.icon(
-                            onPressed: () => launchUrl(Uri.parse(enlace), mode: LaunchMode.externalApplication),
-                            icon: const Icon(Icons.open_in_new),
-                            label: const Text('Leer más en Wikipedia'),
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              },
+            if (lista.length > 1)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text('${indiceInicial + 1} / ${lista.length}',
+                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black54)),
+              ),
+            Expanded(
+              child: PageView.builder(
+                controller: controladorPagina,
+                itemCount: lista.length,
+                onPageChanged: (i) => setStateLocal(() => indiceInicial = i),
+                itemBuilder: (_, i) {
+                  final m = lista[i];
+                  final c = buscarClaseMineral(m.claseStrunzId);
+                  return SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(16),
+                    child: _contenidoMineral(context, m, c),
+                  );
+                },
+              ),
             ),
           ],
         ),
       ),
     ),
+  );
+}
+
+Widget _contenidoMineral(BuildContext context, MineralGuia mineral, ClaseMineralStrunz? clase) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _GaleriaMineralWikipedia(tituloWikipedia: mineral.tituloWikipedia),
+      const SizedBox(height: 12),
+      Text(mineral.nombre, style: Theme.of(context).textTheme.headlineSmall),
+      const SizedBox(height: 4),
+      Wrap(spacing: 8, children: [
+        Text(mineral.formulaQuimica, style: const TextStyle(fontFamily: 'monospace', fontSize: 13, fontWeight: FontWeight.bold)),
+        if (clase != null)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(color: clase.color, borderRadius: BorderRadius.circular(4)),
+            child: Text(clase.nombre, style: const TextStyle(color: Color(0xFF2D3A2E), fontSize: 12)),
+          ),
+      ]),
+      const SizedBox(height: 12),
+      _filaPropiedad(context, 'Dureza Mohs', mineral.durezaMohs),
+      _filaPropiedad(context, 'Raya', mineral.raya),
+      _filaPropiedad(context, 'Brillo', mineral.brillo),
+      _filaPropiedad(context, 'Color típico', mineral.colorTipico),
+      const SizedBox(height: 12),
+      Text(mineral.descripcionCorta),
+      const SizedBox(height: 16),
+      Text('Distintivos para reconocerlo', style: Theme.of(context).textTheme.titleSmall),
+      ...mineral.distintivos.map((d) => Padding(padding: const EdgeInsets.only(left: 8, top: 2), child: Text('• $d'))),
+      const SizedBox(height: 16),
+      Text('Dónde encontrarlo', style: Theme.of(context).textTheme.titleSmall),
+      const SizedBox(height: 4),
+      Text(mineral.dondeEncontrar),
+      const SizedBox(height: 16),
+      FutureBuilder<ResumenWikipedia?>(
+        future: obtenerResumenWikipedia(mineral.tituloWikipedia),
+        builder: (context, snapshot) {
+          final extracto = snapshot.data?.extracto;
+          final enlace = snapshot.data?.enlacePagina;
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (extracto != null) Text(extracto, style: const TextStyle(fontSize: 13)),
+              if (enlace != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Center(
+                    child: OutlinedButton.icon(
+                      onPressed: () => launchUrl(Uri.parse(enlace), mode: LaunchMode.externalApplication),
+                      icon: const Icon(Icons.open_in_new),
+                      label: const Text('Leer más en Wikipedia'),
+                    ),
+                  ),
+                ),
+            ],
+          );
+        },
+      ),
+    ],
   );
 }
 
@@ -932,7 +992,17 @@ class _GaleriaMineralWikipedia extends StatefulWidget {
 
 class _GaleriaMineralWikipediaState extends State<_GaleriaMineralWikipedia> {
   late final PageController _controlador = PageController();
+  late Future<List<String>> _futuroGaleria;
   int _indiceActual = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Memoriza el future en initState para que setState (cambio de
+    // página) no vuelva a pedir las URLs y dispare un waiting → spinner
+    // que hace parpadear el slider al deslizar.
+    _futuroGaleria = obtenerGaleriaWikipedia(widget.tituloWikipedia);
+  }
 
   @override
   void dispose() {
@@ -943,14 +1013,32 @@ class _GaleriaMineralWikipediaState extends State<_GaleriaMineralWikipedia> {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<String>>(
-      future: obtenerGaleriaWikipedia(widget.tituloWikipedia),
+      future: _futuroGaleria,
       builder: (context, snapshot) {
         final urls = snapshot.data ?? const <String>[];
         if (snapshot.connectionState == ConnectionState.waiting) {
           return Container(height: 240, alignment: Alignment.center, color: Colors.black12, child: const CircularProgressIndicator());
         }
         if (urls.isEmpty) {
-          return Container(height: 200, alignment: Alignment.center, color: Colors.black12, child: const Text('💎', style: TextStyle(fontSize: 64)));
+          return Container(
+            height: 200,
+            alignment: Alignment.center,
+            color: Colors.black12,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('💎', style: TextStyle(fontSize: 56)),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => setState(() {
+                    _futuroGaleria = obtenerGaleriaWikipedia(widget.tituloWikipedia);
+                  }),
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Reintentar'),
+                ),
+              ],
+            ),
+          );
         }
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -965,13 +1053,14 @@ class _GaleriaMineralWikipediaState extends State<_GaleriaMineralWikipedia> {
                       controller: _controlador,
                       itemCount: urls.length,
                       onPageChanged: (i) => setState(() => _indiceActual = i),
-                      itemBuilder: (_, i) => Image.network(
-                        urls[i],
+                      itemBuilder: (_, i) => CachedNetworkImage(
+                        imageUrl: urls[i],
                         fit: BoxFit.cover,
-                        headers: cabecerasImagenWiki,
-                        cacheWidth: 1200,
-                        loadingBuilder: (_, child, p) => p == null ? child : Container(color: Colors.black12, alignment: Alignment.center, child: const CircularProgressIndicator()),
-                        errorBuilder: (_, __, ___) => Container(color: Colors.black12, alignment: Alignment.center, child: const Icon(Icons.broken_image, size: 48, color: Colors.white70)),
+                        httpHeaders: cabecerasImagenWiki,
+                        memCacheWidth: 1200,
+                        fadeInDuration: const Duration(milliseconds: 150),
+                        placeholder: (_, __) => Container(color: Colors.black12, alignment: Alignment.center, child: const CircularProgressIndicator()),
+                        errorWidget: (_, __, ___) => Container(color: Colors.black12, alignment: Alignment.center, child: const Icon(Icons.broken_image, size: 48, color: Colors.white70)),
                       ),
                     ),
                     if (urls.length > 1)

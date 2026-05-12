@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/datos_guia.dart';
 import '../servicios/servicio_wikipedia.dart';
 
@@ -69,7 +71,9 @@ class PantallaLineaTiempo extends StatelessWidget {
                   final f = fosiles[i];
                   final esquema = Theme.of(context).colorScheme;
                   return GestureDetector(
-                    onTap: () => abrirDetalleFosilGuia(context, f.id),
+                    onTap: () => abrirDetalleFosilGuia(context, f.id,
+                        lista: fosiles,
+                        indiceInicial: fosiles.indexOf(f)),
                     child: Container(
                       width: 100,
                       margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -125,12 +129,12 @@ class _MiniFotoFosil extends StatelessWidget {
             child: const Text('🦴', style: TextStyle(fontSize: 32)),
           );
         }
-        return Image.network(
-          url,
+        return CachedNetworkImage(
+          imageUrl: url,
           fit: BoxFit.cover,
-          headers: cabecerasImagenWiki,
-          cacheWidth: 200,
-          errorBuilder: (_, __, ___) => Container(
+          httpHeaders: cabecerasImagenWiki,
+          memCacheWidth: 200,
+          errorWidget: (_, __, ___) => Container(
             color: Colors.black12,
             alignment: Alignment.center,
             child: const Text('🦴', style: TextStyle(fontSize: 32)),

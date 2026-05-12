@@ -1,5 +1,8 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:path/path.dart' as path_lib;
+import 'package:path_provider/path_provider.dart';
 
 const urlWmsIgmeGeode =
     'https://mapas.igme.es/gis/services/Cartografia_Geologica/IGME_Geode_50/MapServer/WMSServer';
@@ -47,11 +50,58 @@ class ContextoGeologico {
       };
 }
 
+String _claveGeologia(double latitud, double longitud) =>
+    '${latitud.toStringAsFixed(3)},${longitud.toStringAsFixed(3)}';
+
+Future<ContextoGeologico?> _leerCacheGeologia(String clave) async {
+  try {
+    final dir = await getApplicationDocumentsDirectory();
+    final fichero = File(path_lib.join(dir.path, 'geologia_cache', '$clave.json'));
+    if (await fichero.exists()) {
+      final json = jsonDecode(await fichero.readAsString()) as Map<String, dynamic>;
+      return ContextoGeologico(
+        edad: json['e'] as String?,
+        formacion: json['f'] as String?,
+        litologia: json['l'] as String?,
+        zona: json['z'] as String?,
+        crudo: (json['c'] as Map<String, dynamic>?) ?? {},
+      );
+    }
+  } catch (_) {}
+  return null;
+}
+
+Future<void> _escribirCacheGeologia(String clave, ContextoGeologico ctx) async {
+  try {
+    final dir = await getApplicationDocumentsDirectory();
+    final subdir = Directory(path_lib.join(dir.path, 'geologia_cache'));
+    if (!await subdir.exists()) await subdir.create(recursive: true);
+    final fichero = File(path_lib.join(subdir.path, '$clave.json'));
+    await fichero.writeAsString(jsonEncode({
+      'e': ctx.edad,
+      'f': ctx.formacion,
+      'l': ctx.litologia,
+      'z': ctx.zona,
+      'c': ctx.crudo,
+    }));
+  } catch (_) {}
+}
+
 Future<ContextoGeologico?> consultarContextoGeologico(double latitud, double longitud) async {
+  final clave = _claveGeologia(latitud, longitud);
+  // 1. Caché en disco
+  final cache = await _leerCacheGeologia(clave);
+  if (cache != null) return cache;
+  // 2. Red con reintentos
   const intentos = 3;
   for (var i = 0; i < intentos; i++) {
     final resultado = await _intentarConsultarGeode(latitud, longitud);
-    if (resultado.exitoEfectivo) return resultado.contexto;
+    if (resultado.exitoEfectivo) {
+      if (resultado.contexto != null) {
+        await _escribirCacheGeologia(clave, resultado.contexto!);
+      }
+      return resultado.contexto;
+    }
     if (i < intentos - 1) {
       await Future.delayed(Duration(seconds: 1 << i));
     }

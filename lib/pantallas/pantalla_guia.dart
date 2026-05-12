@@ -1,4 +1,6 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/datos_guia.dart';
 import '../datos/datos_minerales.dart';
 import '../servicios/servicio_wikipedia.dart';
@@ -139,12 +141,12 @@ class _PantallaGuiaState extends State<PantallaGuia> {
                     }
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: Image.network(
-                        url,
+                      child: CachedNetworkImage(
+                        imageUrl: url,
                         fit: BoxFit.cover,
-                        headers: cabecerasImagenWiki,
-                        cacheWidth: 200,
-                        errorBuilder: (_, __, ___) => Container(color: Colors.black12, alignment: Alignment.center, child: const Text('💎', style: TextStyle(fontSize: 24))),
+                        httpHeaders: cabecerasImagenWiki,
+                        memCacheWidth: 200,
+                        errorWidget: (_, __, ___) => Container(color: Colors.black12, alignment: Alignment.center, child: const Text('💎', style: TextStyle(fontSize: 24))),
                       ),
                     );
                   },
@@ -152,7 +154,9 @@ class _PantallaGuiaState extends State<PantallaGuia> {
               ),
               title: Text(m.nombre),
               subtitle: Text('${m.formulaQuimica}  ·  Mohs ${m.durezaMohs}', style: const TextStyle(fontSize: 11)),
-              onTap: () => abrirDetalleMineral(context, m.id),
+              onTap: () => abrirDetalleMineral(context, m.id,
+                  lista: mineralesClase,
+                  indiceInicial: mineralesClase.indexOf(m)),
             ),
           )),
     ];
@@ -195,12 +199,12 @@ class _PantallaGuiaState extends State<PantallaGuia> {
                     }
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(4),
-                      child: Image.network(
-                        url,
+                      child: CachedNetworkImage(
+                        imageUrl: url,
                         fit: BoxFit.cover,
-                        headers: cabecerasImagenWiki,
-                        cacheWidth: 200,
-                        errorBuilder: (_, __, ___) => Container(
+                        httpHeaders: cabecerasImagenWiki,
+                        memCacheWidth: 200,
+                        errorWidget: (_, __, ___) => Container(
                           color: Colors.black12,
                           alignment: Alignment.center,
                           child: const Text('🦴', style: TextStyle(fontSize: 24)),
@@ -212,7 +216,9 @@ class _PantallaGuiaState extends State<PantallaGuia> {
               ),
               title: Text(f.nombre),
               subtitle: Text(f.descripcionCorta, maxLines: 2, overflow: TextOverflow.ellipsis),
-              onTap: () => abrirDetalleFosilGuia(context, f.id),
+              onTap: () => abrirDetalleFosilGuia(context, f.id,
+                  lista: fosilesDelPeriodo,
+                  indiceInicial: fosilesDelPeriodo.indexOf(f)),
             ),
           )),
     ];

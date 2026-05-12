@@ -1,16 +1,23 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:intl/intl.dart';
+import 'package:path/path.dart' as path_lib;
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../datos/base_datos.dart';
 import '../modelos/hallazgo.dart';
+import '../datos/configuracion.dart';
+import '../servicios/certificado_hallazgo.dart';
 import '../servicios/exportar_zip.dart';
 import '../servicios/tarjeta_imagen.dart';
+import '../widgets/dialogo_trazabilidad.dart';
 import 'pantalla_estadisticas.dart';
 import 'pantalla_nuevo.dart';
 
 class PantallaLista extends StatefulWidget {
-  const PantallaLista({super.key});
+  PantallaLista({super.key});
 
   @override
   State<PantallaLista> createState() => _PantallaListaState();
@@ -82,7 +89,7 @@ class _PantallaListaState extends State<PantallaLista> {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                 decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
-                                child: Text('${i + 1} / ${hallazgo.rutasFotos.length}', style: const TextStyle(color: Colors.white, fontSize: 11)),
+                                child: Text('${i + 1} / ${hallazgo.rutasFotos.length}', style: TextStyle(color: Colors.white, fontSize: 11)),
                               ),
                             ),
                         ],
@@ -90,7 +97,7 @@ class _PantallaListaState extends State<PantallaLista> {
                     ),
                   ),
                 ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _filaDetalle('Especie', hallazgo.especie.isEmpty ? '—' : hallazgo.especie),
               _filaDetalle('Edad', hallazgo.edad.isEmpty ? '—' : hallazgo.edad),
               _filaDetalle('Formación', hallazgo.formacion.isEmpty ? '—' : hallazgo.formacion),
@@ -99,12 +106,12 @@ class _PantallaListaState extends State<PantallaLista> {
               if (hallazgo.strikeGrados != null && hallazgo.dipGrados != null)
                 _filaDetalle('Estrato', '${hallazgo.strikeGrados!.toStringAsFixed(0)}° / ${hallazgo.dipGrados!.toStringAsFixed(0)}°'),
               _filaDetalle('Notas', hallazgo.notas.isEmpty ? '—' : hallazgo.notas),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      icon: const Icon(Icons.edit_outlined),
+                      icon: Icon(Icons.edit_outlined),
                       onPressed: () async {
                         Navigator.of(sheetContext).pop();
                         final actualizado = await Navigator.of(context).push<bool>(
@@ -112,13 +119,13 @@ class _PantallaListaState extends State<PantallaLista> {
                         );
                         if (actualizado == true) _cargar();
                       },
-                      label: const Text('Editar'),
+                      label: Text(SoleraL10n.t('editar')),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      icon: Icon(Icons.delete_outline, color: Colors.red),
                       onPressed: () async {
                         final confirmar = await _confirmar(context, '¿Borrar este hallazgo?');
                         if (confirmar != true) return;
@@ -127,30 +134,70 @@ class _PantallaListaState extends State<PantallaLista> {
                         Navigator.of(sheetContext).pop();
                         _cargar();
                       },
-                      label: const Text('Borrar', style: TextStyle(color: Colors.red)),
+                      label: Text('Borrar', style: TextStyle(color: Colors.red)),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      icon: const Icon(Icons.share),
+                      icon: Icon(Icons.share),
                       onPressed: () => _compartir(hallazgo),
-                      label: const Text('Compartir texto'),
+                      label: Text('Compartir texto'),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: FilledButton.icon(
-                      icon: const Icon(Icons.image),
+                      icon: Icon(Icons.image),
                       onPressed: () => _compartirComoTarjeta(hallazgo),
-                      label: const Text('Tarjeta'),
+                      label: Text('Tarjeta'),
                     ),
                   ),
                 ],
+              ),
+              SizedBox(height: 8),
+              OutlinedButton.icon(
+                icon: Icon(Icons.verified_user),
+                onPressed: () => _compartirCertificado(hallazgo),
+                label: Text('Certificado verificable'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 40),
+                ),
+              ),
+              SizedBox(height: 16),
+              if (hallazgo.historialTrazabilidad.isNotEmpty) ...[
+                Text('Historial de trazabilidad',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                SizedBox(height: 6),
+                ...hallazgo.historialTrazabilidad.map(tarjetaEventoTrazabilidad),
+                SizedBox(height: 8),
+              ],
+              OutlinedButton.icon(
+                icon: Icon(Icons.add),
+                onPressed: () async {
+                  final nombre = await Configuracion.obtenerNombreDescubridor();
+                  if (!mounted) return;
+                  final anadido = await mostrarDialogoAnadirTrazabilidad(
+                      context, hallazgo, nombre);
+                  if (anadido) {
+                    _cargar();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Evento añadido al historial.')),
+                      );
+                    }
+                  }
+                },
+                label: Text(hallazgo.historialTrazabilidad.isEmpty
+                    ? 'Añadir trazabilidad'
+                    : 'Añadir evento'),
+                style: OutlinedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 40),
+                ),
               ),
             ],
           ),
@@ -163,7 +210,7 @@ class _PantallaListaState extends State<PantallaLista> {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => Center(child: CircularProgressIndicator()),
     );
     try {
       final fichero = await generarZipHallazgos(_hallazgos);
@@ -178,7 +225,7 @@ class _PantallaListaState extends State<PantallaLista> {
   }
 
   Future<void> _compartirComoTarjeta(Hallazgo hallazgo) async {
-    showDialog<void>(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    showDialog<void>(context: context, barrierDismissible: false, builder: (_) => Center(child: CircularProgressIndicator()));
     try {
       final fichero = await generarTarjetaHallazgo(hallazgo);
       if (!mounted) return;
@@ -189,6 +236,37 @@ class _PantallaListaState extends State<PantallaLista> {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error generando tarjeta: $e')));
     }
+  }
+
+  Future<void> _compartirCertificado(Hallazgo hallazgo) async {
+    final nombre = await Configuracion.obtenerNombreDescubridor();
+    if (nombre.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Configura primero tu nombre en Ajustes → Perfil del descubridor.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+    final email = await Configuracion.obtenerEmailDescubridor();
+    final org = await Configuracion.obtenerOrganizacionDescubridor();
+    final certificado = generarCertificadoJson(hallazgo, nombre,
+        emailDescubridor: email, organizacionDescubridor: org);
+    final jsonStr = const JsonEncoder.withIndent('  ').convert(certificado);
+    final dir = await getTemporaryDirectory();
+    final nombreFichero =
+        'certificado_${hallazgo.especie.isNotEmpty ? hallazgo.especie.replaceAll(RegExp(r'\s+'), '_') : 'hallazgo'}_${hallazgo.fechaMs}.json';
+    final fichero = File(path_lib.join(dir.path, nombreFichero));
+    await fichero.writeAsString(jsonStr);
+    if (!mounted) return;
+    await Share.shareXFiles([XFile(fichero.path)],
+        subject: 'Certificado de hallazgo: ${hallazgo.especie}',
+        text: 'Certificado verificable de hallazgo fósil. '
+            'Hash: ${certificado['hash']}\n'
+            'Especie: ${hallazgo.especie}\n'
+            'Descubridor: $nombre');
   }
 
   Future<void> _compartir(Hallazgo hallazgo) async {
@@ -216,7 +294,7 @@ class _PantallaListaState extends State<PantallaLista> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: 100, child: Text(clave, style: const TextStyle(fontWeight: FontWeight.bold))),
+            SizedBox(width: 100, child: Text(clave, style: TextStyle(fontWeight: FontWeight.bold))),
             Expanded(child: Text(valor)),
           ],
         ),
@@ -227,8 +305,8 @@ class _PantallaListaState extends State<PantallaLista> {
         builder: (_) => AlertDialog(
           content: Text(texto),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Borrar', style: TextStyle(color: Colors.red))),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Borrar', style: TextStyle(color: Colors.red))),
           ],
         ),
       );
@@ -237,15 +315,15 @@ class _PantallaListaState extends State<PantallaLista> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hallazgos'),
+        title: Text('Hallazgos'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.bar_chart),
+            icon: Icon(Icons.bar_chart),
             tooltip: 'Estadísticas',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PantallaEstadisticas())),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaEstadisticas())),
           ),
           IconButton(
-            icon: const Icon(Icons.archive_outlined),
+            icon: Icon(Icons.archive_outlined),
             tooltip: 'Exportar ZIP',
             onPressed: _hallazgos.isEmpty ? null : _exportar,
           ),
@@ -257,7 +335,7 @@ class _PantallaListaState extends State<PantallaLista> {
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
             child: TextField(
               controller: _controladorBusqueda,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Buscar por nombre, edad, notas…',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
@@ -268,7 +346,7 @@ class _PantallaListaState extends State<PantallaLista> {
             padding: const EdgeInsets.all(8),
             child: SegmentedButton<String>(
               segments: const [
-                ButtonSegment(value: 'todos', label: Text('Todos'), icon: Icon(Icons.apps)),
+                ButtonSegment(value: 'todos', label: Text(SoleraL10n.t('todos')), icon: Icon(Icons.apps)),
                 ButtonSegment(value: 'fosil', label: Text('Fósiles'), icon: Icon(Icons.bug_report)),
                 ButtonSegment(value: 'mineral', label: Text('Minerales'), icon: Icon(Icons.diamond)),
               ],
@@ -286,7 +364,7 @@ class _PantallaListaState extends State<PantallaLista> {
                         ? 'Aún no hay hallazgos.\nToca el + para registrar el primero.'
                         : 'Ningún hallazgo coincide con la búsqueda.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Colors.grey),
                   ),
                 ),
               ),
@@ -306,7 +384,7 @@ class _PantallaListaState extends State<PantallaLista> {
                               borderRadius: BorderRadius.circular(6),
                               child: Image.file(File(h.rutaFoto!), width: 48, height: 48, fit: BoxFit.cover),
                             )
-                          : const CircleAvatar(child: Icon(Icons.image_not_supported)),
+                          : CircleAvatar(child: Icon(Icons.image_not_supported)),
                       title: Text(h.especie.isEmpty ? 'Sin nombre' : h.especie),
                       subtitle: Text('${h.edad.isEmpty ? "—" : h.edad}\n$fecha · ${h.latitud.toStringAsFixed(4)}, ${h.longitud.toStringAsFixed(4)}'),
                       isThreeLine: true,

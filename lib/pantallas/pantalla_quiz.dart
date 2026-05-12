@@ -1,5 +1,7 @@
 import 'dart:math';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/datos_guia.dart';
 import '../datos/datos_minerales.dart';
 import '../servicios/servicio_wikipedia.dart';
@@ -42,7 +44,7 @@ List<_ItemQuiz> _itemsMinerales() => mineralesGuia.map((m) {
     }).toList();
 
 class PantallaQuiz extends StatefulWidget {
-  const PantallaQuiz({super.key});
+  PantallaQuiz({super.key});
 
   @override
   State<PantallaQuiz> createState() => _PantallaQuizState();
@@ -110,12 +112,12 @@ class _PantallaQuizState extends State<PantallaQuiz> {
     final emojiPlaceholder = _correcto.tipo == 'mineral' ? '💎' : '🦴';
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quiz de identificación'),
+        title: Text('Quiz de identificación'),
         actions: [
           Center(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Text('$_aciertos / $_total', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              child: Text('$_aciertos / $_total', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             ),
           ),
         ],
@@ -148,18 +150,18 @@ class _PantallaQuizState extends State<PantallaQuiz> {
                       return Container(
                         color: Colors.black12,
                         alignment: Alignment.center,
-                        child: Text(emojiPlaceholder, style: const TextStyle(fontSize: 80)),
+                        child: Text(emojiPlaceholder, style: TextStyle(fontSize: 80)),
                       );
                     }
-                    return Image.network(
-                      url,
+                    return CachedNetworkImage(
+                      imageUrl: url,
                       fit: BoxFit.cover,
-                      headers: cabecerasImagenWiki,
-                      cacheWidth: 1200,
-                      errorBuilder: (_, __, ___) => Container(
+                      httpHeaders: cabecerasImagenWiki,
+                      memCacheWidth: 1200,
+                      errorWidget: (_, __, ___) => Container(
                         color: Colors.black12,
                         alignment: Alignment.center,
-                        child: Text(emojiPlaceholder, style: const TextStyle(fontSize: 80)),
+                        child: Text(emojiPlaceholder, style: TextStyle(fontSize: 80)),
                       ),
                     );
                   },
@@ -171,9 +173,9 @@ class _PantallaQuizState extends State<PantallaQuiz> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(color: _correcto.colorEtiqueta ?? Colors.grey, borderRadius: BorderRadius.circular(20)),
-              child: Text(_correcto.subtituloEdad!, style: const TextStyle(color: Color(0xFF2D3A2E), fontWeight: FontWeight.bold)),
+              child: Text(_correcto.subtituloEdad!, style: TextStyle(color: Color(0xFF2D3A2E), fontWeight: FontWeight.bold)),
             ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -194,11 +196,11 @@ class _PantallaQuizState extends State<PantallaQuiz> {
                   color: colorFondo,
                   child: ListTile(
                     title: Text(item.nombre),
-                    subtitle: Text(item.grupo, style: const TextStyle(fontSize: 12)),
+                    subtitle: Text(item.grupo, style: TextStyle(fontSize: 12)),
                     trailing: yaElegido
                         ? Icon(esCorrecta ? Icons.check_circle : (_eleccion == i ? Icons.cancel : null),
                             color: esCorrecta ? Colors.green : Colors.red)
-                        : const Icon(Icons.touch_app, color: Colors.black26),
+                        : Icon(Icons.touch_app, color: Colors.black26),
                     onTap: () => _elegir(i),
                   ),
                 );
@@ -219,16 +221,16 @@ class _PantallaQuizState extends State<PantallaQuiz> {
                           abrirDetalleFosilGuia(context, _correcto.id);
                         }
                       },
-                      icon: const Icon(Icons.info_outline),
-                      label: const Text('Ver ficha'),
+                      icon: Icon(Icons.info_outline),
+                      label: Text('Ver ficha'),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: FilledButton.icon(
                       onPressed: _siguiente,
-                      icon: const Icon(Icons.skip_next),
-                      label: const Text('Siguiente'),
+                      icon: Icon(Icons.skip_next),
+                      label: Text(SoleraL10n.t('siguiente')),
                     ),
                   ),
                 ],

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path_lib;
@@ -11,6 +12,8 @@ import '../datos/datos_guia.dart';
 import '../modelos/hallazgo.dart';
 import '../servicios/identificador_claude.dart';
 import '../servicios/servicio_geologia.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../servicios/servicio_wikipedia.dart';
 import '../utiles/permisos_gps.dart';
 import 'modal_orientacion_estrato.dart';
 import 'pantalla_anotar_foto.dart';
@@ -91,14 +94,17 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         setState(() => _estadoGps = 'Permiso de ubicación denegado.');
       } else {
         try {
-          posicion = await Geolocator.getCurrentPosition(
+          final pos = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.high,
           );
+          posicion = pos;
+          if (!mounted) return;
           setState(() {
-            _ubicacion = posicion;
-            _estadoGps = '${posicion!.latitude.toStringAsFixed(5)}, ${posicion.longitude.toStringAsFixed(5)} (±${posicion.accuracy.round()} m)';
+            _ubicacion = pos;
+            _estadoGps = '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)} (±${pos.accuracy.round()} m)';
           });
         } catch (e) {
+          if (!mounted) return;
           setState(() => _estadoGps = 'Error GPS: $e');
         }
       }
@@ -314,7 +320,13 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       rutasFinales.add(destino.path);
     }
     if (widget.esEdicion) {
-      await BaseDatosFosiles.instancia.actualizarHallazgo(h!.id!, {
+      final idHallazgo = h?.id;
+      if (idHallazgo == null) {
+        _mostrarSnack('Error: el hallazgo no tiene ID.');
+        setState(() => _guardando = false);
+        return;
+      }
+      await BaseDatosFosiles.instancia.actualizarHallazgo(idHallazgo, {
         'especie': _controladorEspecie.text.trim(),
         'edad': _controladorEdad.text.trim(),
         'formacion': _controladorFormacion.text.trim(),
@@ -656,18 +668,61 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     width: 110,
-                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.black.withOpacity(0.05),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        const Text('🦴', style: TextStyle(fontSize: 24)),
-                        const SizedBox(height: 4),
-                        Text(fosil.nombre, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        Text(fosil.grupo, style: const TextStyle(fontSize: 10), maxLines: 2, overflow: TextOverflow.ellipsis),
+                        ClipRRect(
+                          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                          child: FutureBuilder<ResumenWikipedia?>(
+                            future: obtenerResumenWikipedia(fosil.tituloWikipedia),
+                            builder: (_, snapshot) {
+                              final url = snapshot.data?.thumbnailUrl;
+                              if (url != null) {
+                                return CachedNetworkImage(
+                                  imageUrl: url,
+                                  height: 65,
+                                  width: 110,
+                                  fit: BoxFit.cover,
+                                  httpHeaders: cabecerasImagenWiki,
+                                  memCacheWidth: 200,
+                                  errorWidget: (_, __, ___) => Container(
+                                    height: 65,
+                                    color: Colors.black12,
+                                    alignment: Alignment.center,
+                                    child: const Text('🦴', style: TextStyle(fontSize: 28)),
+                                  ),
+                                );
+                              }
+                              if (snapshot.connectionState == ConnectionState.waiting) {
+                                return const SizedBox(
+                                  height: 65,
+                                  child: Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))),
+                                );
+                              }
+                              return Container(
+                                height: 65,
+                                color: Colors.black12,
+                                alignment: Alignment.center,
+                                child: const Text('🦴', style: TextStyle(fontSize: 28)),
+                              );
+                            },
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(6, 4, 6, 6),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(fosil.nombre, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 1),
+                              Text(fosil.grupo, style: const TextStyle(fontSize: 10), maxLines: 2, overflow: TextOverflow.ellipsis),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   ),

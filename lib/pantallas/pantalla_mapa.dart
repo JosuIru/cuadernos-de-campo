@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl, LaunchMode;
 import '../servicios/servicio_geologia.dart';
@@ -12,6 +15,7 @@ import '../servicios/cache_teselas.dart';
 import '../servicios/grabador_track.dart';
 import '../servicios/servicio_wikipedia.dart';
 import '../servicios/geofencing.dart';
+import '../servicios/estado_conexion.dart';
 import '../servicios/servicio_mareas.dart';
 import 'pantalla_tracks.dart';
 import '../datos/datos_guia.dart';
@@ -20,6 +24,15 @@ import '../datos/cronoestratigrafia.dart';
 import '../datos/base_datos.dart';
 import '../datos/yacimientos_curados.dart';
 import '../modelos/hallazgo.dart';
+import 'package:intl/intl.dart';
+import 'package:path/path.dart' as path_lib;
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+import '../servicios/tarjeta_imagen.dart';
+import '../servicios/certificado_hallazgo.dart';
+import '../datos/configuracion.dart';
+import '../widgets/dialogo_trazabilidad.dart';
+import 'pantalla_nuevo.dart';
 import '../utiles/permisos_gps.dart' show asegurarPermisoUbicacion, asegurarPermisoNotificaciones;
 
 typedef CallbackPedirNuevoHallazgo = void Function({double? latitud, double? longitud});
@@ -65,7 +78,7 @@ const String urlPlantillaHillshade =
 class PantallaMapa extends StatefulWidget {
   final CallbackPedirNuevoHallazgo alPedirNuevoHallazgo;
   final CallbackSeleccionarFosilGuia alSeleccionarFosilGuia;
-  const PantallaMapa({super.key, required this.alPedirNuevoHallazgo, required this.alSeleccionarFosilGuia});
+  PantallaMapa({super.key, required this.alPedirNuevoHallazgo, required this.alSeleccionarFosilGuia});
 
   @override
   State<PantallaMapa> createState() => _PantallaMapaState();
@@ -99,6 +112,12 @@ class _PantallaMapaState extends State<PantallaMapa> {
   final Set<String> _idsMonumentosYaPintados = {};
 
   StreamSubscription<void>? _subTrack;
+  StreamSubscription<Position>? _subUbicacion;
+  StreamSubscription<MapEvent>? _subEventosMapa;
+  StreamSubscription<bool>? _subConexion;
+  bool _conectado = true;
+  bool _modoAgregar = false;
+  LatLng? _ultimoCentroMapa;
 
   @override
   void initState() {
@@ -108,10 +127,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
     _subTrack = GrabadorTrack.instancia.cambios.listen((_) {
       if (mounted) setState(() {});
     });
-    _controladorMapa.mapEventStream.listen((evento) {
+    _conectado = EstadoConexion.instancia.conectado;
+    _subConexion = EstadoConexion.instancia.cambios.listen((online) {
+      if (mounted) setState(() => _conectado = online);
+    });
+    _subEventosMapa = _controladorMapa.mapEventStream.listen((evento) {
       if (evento is MapEventMoveEnd) {
         _debounceMovimiento?.cancel();
-        _debounceMovimiento = Timer(const Duration(milliseconds: 1500), () {
+        _debounceMovimiento = Timer(Duration(milliseconds: 1500), () {
           if (!mounted) return;
           if (_mostrarCuevas && !_cargandoCuevas) _cargarCuevasVistaActual();
           if (_mostrarMonumentos && !_cargandoMonumentos) _cargarMonumentosVistaActual();
@@ -124,6 +147,9 @@ class _PantallaMapaState extends State<PantallaMapa> {
   @override
   void dispose() {
     _subTrack?.cancel();
+    _subUbicacion?.cancel();
+    _subEventosMapa?.cancel();
+    _subConexion?.cancel();
     _debounceMovimiento?.cancel();
     _controladorMapa.dispose();
     super.dispose();
@@ -139,8 +165,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
     final permitido = await asegurarPermisoUbicacion();
     if (!permitido) return;
     var primeraPosicionRecibida = false;
-    Geolocator.getPositionStream(
-      locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 5),
+    _subUbicacion = Geolocator.getPositionStream(
+      locationSettings: LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 5),
     ).listen((pos) {
       if (!mounted) return;
       setState(() => _ubicacionActual = pos);
@@ -153,7 +179,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${yacimiento.emoji} Estás en ${yacimiento.nombre}. Toca para ver qué buscar.'),
-            duration: const Duration(seconds: 8),
+            duration: Duration(seconds: 8),
             action: SnackBarAction(
               label: 'Ver ficha',
               onPressed: () => _mostrarFichaYacimiento(yacimiento),
@@ -175,7 +201,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
 
   void _mostrarDistanciaYRumbo(LatLng destino) {
     if (_ubicacionActual == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Esperando GPS para calcular distancia.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Esperando GPS para calcular distancia.')));
       return;
     }
     final origen = LatLng(_ubicacionActual!.latitude, _ubicacionActual!.longitude);
@@ -193,22 +219,22 @@ class _PantallaMapaState extends State<PantallaMapa> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Distancia y rumbo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 12),
+            Text('Distancia y rumbo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            SizedBox(height: 12),
             Row(children: [
-              const Icon(Icons.straighten, size: 32),
-              const SizedBox(width: 12),
-              Text(distanciaTexto, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+              Icon(Icons.straighten, size: 32),
+              SizedBox(width: 12),
+              Text(distanciaTexto, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
             ]),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(children: [
-              const Icon(Icons.explore, size: 32),
-              const SizedBox(width: 12),
-              Text('${rumbo.toStringAsFixed(0)}° ($cardinal)', style: const TextStyle(fontSize: 22)),
+              Icon(Icons.explore, size: 32),
+              SizedBox(width: 12),
+              Text('${rumbo.toStringAsFixed(0)}° ($cardinal)', style: TextStyle(fontSize: 22)),
             ]),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text('Desde tu posición a ${destino.latitude.toStringAsFixed(5)}, ${destino.longitude.toStringAsFixed(5)}',
-                style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                style: TextStyle(fontSize: 12, color: Colors.grey)),
           ],
         ),
       ),
@@ -249,23 +275,30 @@ class _PantallaMapaState extends State<PantallaMapa> {
       final guardar = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('Detener track'),
+          title: Text('Detener track'),
           content: TextField(
             controller: controlador,
-            decoration: const InputDecoration(labelText: 'Nombre (opcional)'),
+            decoration: InputDecoration(labelText: 'Nombre (opcional)'),
             autofocus: true,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Descartar')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Guardar')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Descartar')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(SoleraL10n.t('guardar'))),
           ],
         ),
       );
       if (guardar == true) {
+        final inicioMs = grabador.inicioMs;
         final r = grabador.detener(nombre: controlador.text.trim());
         if (r != null) {
           await BaseDatosFosiles.instancia.guardarTrack(r.track, r.puntos);
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Track guardado')));
+          // Buffer consolidado correctamente: limpiamos los puntos
+          // huérfanos que la grabación dejó en disco (red de seguridad
+          // ante crash). Idempotente.
+          if (inicioMs != null) {
+            await grabador.descartarBufferDeSesion(inicioMs);
+          }
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Track guardado')));
         }
       } else {
         grabador.cancelar();
@@ -277,7 +310,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
       grabador.iniciar();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('🔴 Grabando track. Puedes bloquear la pantalla; el track sigue corriendo.')),
+          SnackBar(content: Text('🔴 Grabando track. Puedes bloquear la pantalla; el track sigue corriendo.')),
         );
       }
     }
@@ -352,7 +385,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
     final camara = _controladorMapa.camera;
     if (camara.zoom < 9) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🗿 Acércate más (zoom ≥ 9) para cargar monumentos.'), duration: Duration(seconds: 4)),
+        SnackBar(content: Text('🗿 Acércate más (zoom ≥ 9) para cargar monumentos.'), duration: Duration(seconds: 4)),
       );
       return;
     }
@@ -380,12 +413,12 @@ class _PantallaMapaState extends State<PantallaMapa> {
         final mensaje = monumentos.isEmpty
             ? '🗿 Sin monumentos OSM en esta vista. Prueba a desplazar el mapa.'
             : '🗿 ${monumentos.length} monumentos cargados.';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje), duration: const Duration(seconds: 3)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje), duration: Duration(seconds: 3)));
       }
     } catch (e) {
       debugPrint('[fosiles] error monumentos: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error monumentos: $e'), duration: const Duration(seconds: 6)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error monumentos: $e'), duration: Duration(seconds: 6)));
     } finally {
       if (mounted) setState(() => _cargandoMonumentos = false);
     }
@@ -407,44 +440,44 @@ class _PantallaMapaState extends State<PantallaMapa> {
           padding: const EdgeInsets.all(16),
           children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(y.emoji, style: const TextStyle(fontSize: 32)),
-              const SizedBox(width: 8),
+              Text(y.emoji, style: TextStyle(fontSize: 32)),
+              SizedBox(width: 8),
               Expanded(child: Text(y.nombre, style: Theme.of(context).textTheme.titleLarge)),
             ]),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             if (periodo != null)
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: periodo.color, borderRadius: BorderRadius.circular(4)),
-                child: Text(y.tituloEdad, style: const TextStyle(color: Color(0xFF2D3A2E), fontSize: 12, fontWeight: FontWeight.bold)),
+                child: Text(y.tituloEdad, style: TextStyle(color: Color(0xFF2D3A2E), fontSize: 12, fontWeight: FontWeight.bold)),
               ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Text(y.descripcionCorta),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             _BloqueMareas(latitud: y.latitud, longitud: y.longitud),
-            const SizedBox(height: 16),
-            const Text('Qué buscar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 4),
+            SizedBox(height: 16),
+            Text('Qué buscar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            SizedBox(height: 4),
             ...y.queBuscar.map((q) => Padding(padding: const EdgeInsets.only(left: 8, top: 2), child: Text('• $q'))),
-            const SizedBox(height: 16),
-            const Text('Cómo llegar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-            const SizedBox(height: 4),
+            SizedBox(height: 16),
+            Text('Cómo llegar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            SizedBox(height: 4),
             Text(y.comoLlegar),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  icon: const Icon(Icons.add_location),
+                  icon: Icon(Icons.add_location),
                   onPressed: () {
                     Navigator.of(sheetCtx).pop();
                     widget.alPedirNuevoHallazgo(latitud: y.latitud, longitud: y.longitud);
                   },
-                  label: const Text('Marcar hallazgo aquí'),
+                  label: Text('Marcar hallazgo aquí'),
                 ),
               ),
             ]),
             if (y.referencias.isNotEmpty) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text('Fuente: ${y.referencias.join(", ")}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
             ],
           ],
@@ -464,21 +497,21 @@ class _PantallaMapaState extends State<PantallaMapa> {
           children: [
             Row(
               children: [
-                Text(m.emoji, style: const TextStyle(fontSize: 28)),
-                const SizedBox(width: 8),
+                Text(m.emoji, style: TextStyle(fontSize: 28)),
+                SizedBox(width: 8),
                 Expanded(child: Text(m.nombre, style: Theme.of(context).textTheme.titleLarge)),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(m.tipoLegible, style: const TextStyle(fontStyle: FontStyle.italic)),
-            const SizedBox(height: 12),
+            SizedBox(height: 8),
+            Text(m.tipoLegible, style: TextStyle(fontStyle: FontStyle.italic)),
+            SizedBox(height: 12),
             if (m.descripcion != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(m.descripcion!)),
             if (m.historico != null) Text('Cronología: ${m.historico}'),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             OutlinedButton.icon(
-              icon: const Icon(Icons.open_in_new),
+              icon: Icon(Icons.open_in_new),
               onPressed: () => launchUrl(Uri.parse(m.enlaceOSM), mode: LaunchMode.externalApplication),
-              label: const Text('Ver en OpenStreetMap'),
+              label: Text('Ver en OpenStreetMap'),
             ),
           ],
         ),
@@ -491,7 +524,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
     final camara = _controladorMapa.camera;
     if (camara.zoom < 10) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('🦇 Acércate más (zoom ≥ 10) para cargar cuevas.'), duration: Duration(seconds: 4)),
+        SnackBar(content: Text('🦇 Acércate más (zoom ≥ 10) para cargar cuevas.'), duration: Duration(seconds: 4)),
       );
       return;
     }
@@ -519,15 +552,301 @@ class _PantallaMapaState extends State<PantallaMapa> {
         final mensaje = cuevas.isEmpty
             ? '🦇 Sin cuevas OSM en esta vista. Prueba a desplazar el mapa.'
             : '🦇 ${cuevas.length} cuevas cargadas.';
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje), duration: const Duration(seconds: 3)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje), duration: Duration(seconds: 3)));
       }
     } catch (e) {
       debugPrint('[fosiles] error cuevas: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error cuevas: $e'), duration: const Duration(seconds: 6)));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error cuevas: $e'), duration: Duration(seconds: 6)));
     } finally {
       if (mounted) setState(() => _cargandoCuevas = false);
     }
+  }
+
+  void _mostrarFichaHallazgo(List<Hallazgo> lista, int indiceInicial) {
+    final controladorPagina = PageController(initialPage: indiceInicial);
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (_, setStateLocal) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.85,
+          maxChildSize: 0.95,
+          minChildSize: 0.4,
+          builder: (_, scrollController) => Column(
+            children: [
+              if (lista.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    '${indiceInicial + 1} / ${lista.length}',
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black54),
+                  ),
+                ),
+              Expanded(
+                child: PageView.builder(
+                  controller: controladorPagina,
+                  itemCount: lista.length,
+                  onPageChanged: (i) => setStateLocal(() => indiceInicial = i),
+                  itemBuilder: (_, i) {
+                    final h = lista[i];
+                  return SingleChildScrollView(
+                    controller: scrollController,
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (h.rutasFotos.isNotEmpty)
+                          SizedBox(
+                            height: 240,
+                            child: PageView.builder(
+                              itemCount: h.rutasFotos.length,
+                              itemBuilder: (_, fi) => Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 4),
+                                child: Stack(
+                                  children: [
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(8),
+                                      child: Image.file(File(h.rutasFotos[fi]),
+                                          height: 240, width: double.infinity, fit: BoxFit.cover),
+                                    ),
+                                    if (h.rutasFotos.length > 1)
+                                      Positioned(
+                                        right: 8,
+                                        bottom: 8,
+                                        child: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                              color: Colors.black54, borderRadius: BorderRadius.circular(12)),
+                                          child: Text('${fi + 1} / ${h.rutasFotos.length}',
+                                              style: TextStyle(color: Colors.white, fontSize: 11)),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        SizedBox(height: 12),
+                        _filaHallazgo('Especie', h.especie.isEmpty ? '—' : h.especie),
+                        _filaHallazgo('Edad', h.edad.isEmpty ? '—' : h.edad),
+                        _filaHallazgo('Formación', h.formacion.isEmpty ? '—' : h.formacion),
+                        _filaHallazgo(
+                          'Fecha',
+                          DateFormat('dd MMM yyyy HH:mm', 'es_ES')
+                              .format(DateTime.fromMillisecondsSinceEpoch(h.fechaMs)),
+                        ),
+                        _filaHallazgo(
+                          'Coordenadas',
+                          '${h.latitud.toStringAsFixed(5)}, ${h.longitud.toStringAsFixed(5)}${h.precision != null ? " (±${h.precision!.round()} m)" : ""}',
+                        ),
+                        if (h.strikeGrados != null && h.dipGrados != null)
+                          _filaHallazgo('Estrato',
+                              '${h.strikeGrados!.toStringAsFixed(0)}° / ${h.dipGrados!.toStringAsFixed(0)}°'),
+                        _filaHallazgo('Notas', h.notas.isEmpty ? '—' : h.notas),
+                        SizedBox(height: 16),
+                        Row(children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: Icon(Icons.edit_outlined),
+                              onPressed: () async {
+                                Navigator.of(sheetContext).pop();
+                                final actualizado = await Navigator.of(context).push<bool>(
+                                  MaterialPageRoute(
+                                      builder: (_) => PantallaNuevoHallazgo(hallazgoExistente: h)),
+                                );
+                                if (actualizado == true) _cargarHallazgos();
+                              },
+                              label: Text(SoleraL10n.t('editar')),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: Icon(Icons.delete_outline, color: Colors.red),
+                              onPressed: () async {
+                                final ok = await showDialog<bool>(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    content: Text('¿Borrar este hallazgo?'),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () => Navigator.pop(context, false),
+                                          child: Text(SoleraL10n.t('cancelar'))),
+                                      TextButton(
+                                          onPressed: () => Navigator.pop(context, true),
+                                          child: Text('Borrar',
+                                              style: TextStyle(color: Colors.red))),
+                                    ],
+                                  ),
+                                );
+                                if (ok != true) return;
+                                await BaseDatosFosiles.instancia.borrarHallazgo(h.id!);
+                                if (!mounted) return;
+                                Navigator.of(sheetContext).pop();
+                                _cargarHallazgos();
+                              },
+                              label: Text('Borrar', style: TextStyle(color: Colors.red)),
+                            ),
+                          ),
+                        ]),
+                        SizedBox(height: 8),
+                        Row(children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: Icon(Icons.share),
+                              onPressed: () => _compartirHallazgo(h),
+                              label: Text('Compartir texto'),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: FilledButton.icon(
+                              icon: Icon(Icons.image),
+                              onPressed: () => _compartirComoTarjeta(h),
+                              label: Text('Tarjeta'),
+                            ),
+                          ),
+                        ]),
+                        SizedBox(height: 8),
+                        OutlinedButton.icon(
+                          icon: Icon(Icons.verified_user),
+                          onPressed: () => _compartirCertificado(h),
+                          label: Text('Certificado verificable'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: Size(double.infinity, 40),
+                          ),
+                        ),
+                        SizedBox(height: 16),
+                        if (h.historialTrazabilidad.isNotEmpty) ...[
+                          Text('Historial de trazabilidad',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          SizedBox(height: 6),
+                          ...h.historialTrazabilidad.map(tarjetaEventoTrazabilidad),
+                          SizedBox(height: 8),
+                        ],
+                        OutlinedButton.icon(
+                          icon: Icon(Icons.add),
+                          onPressed: () async {
+                            final nombre = await Configuracion.obtenerNombreDescubridor();
+                            if (!mounted) return;
+                            final anadido = await mostrarDialogoAnadirTrazabilidad(context, h, nombre);
+                            if (anadido) {
+                              _cargarHallazgos();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Evento añadido al historial.')),
+                                );
+                              }
+                            }
+                          },
+                          label: Text(h.historialTrazabilidad.isEmpty
+                              ? 'Añadir trazabilidad'
+                              : 'Añadir evento'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: Size(double.infinity, 40),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+
+  Widget _filaHallazgo(String clave, String valor) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: 100, child: Text(clave, style: TextStyle(fontWeight: FontWeight.bold))),
+            Expanded(child: Text(valor)),
+          ],
+        ),
+      );
+
+  Future<void> _compartirHallazgo(Hallazgo hallazgo) async {
+    final fecha = DateFormat('dd MMM yyyy', 'es_ES')
+        .format(DateTime.fromMillisecondsSinceEpoch(hallazgo.fechaMs));
+    final texto = StringBuffer()
+      ..writeln('Hallazgo de fósil')
+      ..writeln('Especie: ${hallazgo.especie.isEmpty ? "?" : hallazgo.especie}')
+      ..writeln('Edad: ${hallazgo.edad.isEmpty ? "?" : hallazgo.edad}')
+      ..writeln('Formación: ${hallazgo.formacion.isEmpty ? "?" : hallazgo.formacion}')
+      ..writeln(
+          'Coordenadas: ${hallazgo.latitud.toStringAsFixed(5)}, ${hallazgo.longitud.toStringAsFixed(5)}')
+      ..writeln('Fecha: $fecha')
+      ..writeln(
+          'Mapa: https://www.openstreetmap.org/?mlat=${hallazgo.latitud}&mlon=${hallazgo.longitud}#map=16/${hallazgo.latitud}/${hallazgo.longitud}');
+    if (hallazgo.notas.isNotEmpty) {
+      texto
+        ..writeln()
+        ..writeln(hallazgo.notas);
+    }
+    if (hallazgo.rutaFoto != null) {
+      await Share.shareXFiles([XFile(hallazgo.rutaFoto!)],
+          text: texto.toString(), subject: 'Hallazgo: ${hallazgo.especie}');
+    } else {
+      await Share.share(texto.toString(), subject: 'Hallazgo: ${hallazgo.especie}');
+    }
+  }
+
+  Future<void> _compartirComoTarjeta(Hallazgo hallazgo) async {
+    showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => Center(child: CircularProgressIndicator()));
+    try {
+      final fichero = await generarTarjetaHallazgo(hallazgo);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      await Share.shareXFiles([XFile(fichero.path)],
+          subject: 'Hallazgo: ${hallazgo.especie}');
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Error generando tarjeta: $e')));
+    }
+  }
+
+  Future<void> _compartirCertificado(Hallazgo hallazgo) async {
+    final nombre = await Configuracion.obtenerNombreDescubridor();
+    if (nombre.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Configura primero tu nombre en Ajustes → Perfil del descubridor.'),
+          duration: Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+    final email = await Configuracion.obtenerEmailDescubridor();
+    final org = await Configuracion.obtenerOrganizacionDescubridor();
+    final certificado = generarCertificadoJson(hallazgo, nombre,
+        emailDescubridor: email, organizacionDescubridor: org);
+    final jsonStr = const JsonEncoder.withIndent('  ').convert(certificado);
+    final dir = await getTemporaryDirectory();
+    final nombreFichero =
+        'certificado_${hallazgo.especie.isNotEmpty ? hallazgo.especie.replaceAll(RegExp(r'\s+'), '_') : 'hallazgo'}_${hallazgo.fechaMs}.json';
+    final fichero = File(path_lib.join(dir.path, nombreFichero));
+    await fichero.writeAsString(jsonStr);
+    if (!mounted) return;
+    await Share.shareXFiles([XFile(fichero.path)],
+        subject: 'Certificado de hallazgo: ${hallazgo.especie}',
+        text: 'Certificado verificable de hallazgo fósil. '
+            'Hash: ${certificado['hash']}\n'
+            'Especie: ${hallazgo.especie}\n'
+            'Descubridor: $nombre');
   }
 
   void _mostrarPopupCueva(CuevaOSM cueva) {
@@ -541,20 +860,20 @@ class _PantallaMapaState extends State<PantallaMapa> {
           children: [
             Row(
               children: [
-                const Text('🦇', style: TextStyle(fontSize: 28)),
-                const SizedBox(width: 8),
+                Text('🦇', style: TextStyle(fontSize: 28)),
+                SizedBox(width: 8),
                 Expanded(child: Text(cueva.nombre, style: Theme.of(context).textTheme.titleLarge)),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (cueva.profundidadMetros != null) Text('Profundidad: ${cueva.profundidadMetros} m'),
             if (cueva.longitudMetros != null) Text('Longitud: ${cueva.longitudMetros} m'),
             if (cueva.tipo != null) Text('Tipo: ${cueva.tipo}'),
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             OutlinedButton.icon(
-              icon: const Icon(Icons.open_in_new),
+              icon: Icon(Icons.open_in_new),
               onPressed: () => launchUrl(Uri.parse(cueva.enlaceOSM), mode: LaunchMode.externalApplication),
-              label: const Text('Ver en OpenStreetMap'),
+              label: Text('Ver en OpenStreetMap'),
             ),
           ],
         ),
@@ -579,6 +898,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
   }
 
   Future<void> _mostrarFichaGeologia(LatLng punto) async {
+    final futuro = _consultarPunto(punto);
+    if (!mounted) return;
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -590,10 +911,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
           maxChildSize: 0.9,
           minChildSize: 0.3,
           builder: (_, scrollController) => FutureBuilder<({ContextoGeologico? geo, List<LugarInteresGeologico> ligs})>(
-            future: _consultarPunto(punto),
+            future: futuro,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
+                return Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
               }
               final contexto = snapshot.data?.geo;
               final ligs = snapshot.data?.ligs ?? const <LugarInteresGeologico>[];
@@ -621,7 +942,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 padding: const EdgeInsets.all(16),
                 children: [
                   Text('Geología en este punto', style: Theme.of(context).textTheme.titleLarge),
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   if (contexto?.edad != null) ...[
                     _filaGeo('Edad', contexto!.edad!),
                     if (rangoMaDeEdad(contexto.edad) != null)
@@ -632,72 +953,72 @@ class _PantallaMapaState extends State<PantallaMapa> {
                   if (contexto?.formacion != null) _filaGeo('Formación', contexto!.formacion!),
                   if (contexto?.litologia != null) _filaGeo('Litología', contexto!.litologia!),
                   if (ligs.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    const Text('Lugares de Interés Geológico cerca', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    const SizedBox(height: 6),
+                    SizedBox(height: 16),
+                    Text('Lugares de Interés Geológico cerca', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    SizedBox(height: 6),
                     ...ligs.take(8).map((lig) => Card(
                           margin: const EdgeInsets.only(bottom: 6),
                           child: ListTile(
-                            leading: const CircleAvatar(child: Text('⭐')),
-                            title: Text(lig.nombre, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                            leading: CircleAvatar(child: Text('⭐')),
+                            title: Text(lig.nombre, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
                             subtitle: Text(
                               [lig.interesPrincipal, lig.edad].where((s) => s != null && s.isNotEmpty).join(' · '),
-                              style: const TextStyle(fontSize: 11),
+                              style: TextStyle(fontSize: 11),
                             ),
                             onTap: () => _mostrarFichaLig(lig),
                           ),
                         )),
                   ],
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   if (fosiles.isNotEmpty) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: periodo?.color, borderRadius: BorderRadius.circular(4)),
                       child: Text(
                         'Fósiles probables aquí · ${periodo?.nombre ?? ''}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D3A2E), fontSize: 13),
+                        style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D3A2E), fontSize: 13),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     ...fosiles.map((f) => ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: _MiniaturaFosilWikipedia(tituloWikipedia: f.tituloWikipedia),
                           title: Text(f.nombre),
-                          subtitle: Text(f.grupo, style: const TextStyle(fontSize: 11)),
+                          subtitle: Text(f.grupo, style: TextStyle(fontSize: 11)),
                           onTap: () {
                             Navigator.of(sheetContext).pop();
                             widget.alSeleccionarFosilGuia(f.id);
                           },
                         )),
                   ] else if (contexto?.edad != null) ...[
-                    const Padding(
+                    Padding(
                       padding: EdgeInsets.only(top: 8),
                       child: Text('No hay fósiles asociados en la guía para esta edad.', style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
                     ),
                   ],
                   if (minerales.isNotEmpty) ...[
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: Colors.blueGrey.shade200, borderRadius: BorderRadius.circular(4)),
-                      child: const Text(
+                      child: Text(
                         '💎 Minerales probables aquí',
                         style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D3A2E), fontSize: 13),
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     ...minerales.map((m) => ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: _MiniaturaFosilWikipedia(tituloWikipedia: m.tituloWikipedia),
                           title: Text(m.nombre),
-                          subtitle: Text('${m.formulaQuimica}  ·  Mohs ${m.durezaMohs}', style: const TextStyle(fontSize: 11)),
+                          subtitle: Text('${m.formulaQuimica}  ·  Mohs ${m.durezaMohs}', style: TextStyle(fontSize: 11)),
                           onTap: () {
                             Navigator.of(sheetContext).pop();
                             abrirDetalleMineral(context, m.id);
                           },
                         )),
                   ],
-                  const SizedBox(height: 12),
+                  SizedBox(height: 12),
                   Text('Fuente: IGME GEODE 50', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                 ],
               );
@@ -723,20 +1044,20 @@ class _PantallaMapaState extends State<PantallaMapa> {
           padding: const EdgeInsets.all(16),
           children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('⭐', style: TextStyle(fontSize: 28)),
-              const SizedBox(width: 8),
+              Text('⭐', style: TextStyle(fontSize: 28)),
+              SizedBox(width: 8),
               Expanded(child: Text(lig.nombre, style: Theme.of(context).textTheme.titleLarge)),
             ]),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             if (lig.interesPrincipal != null) _filaGeo('Interés principal', lig.interesPrincipal!),
             if (lig.edad != null) _filaGeo('Edad', lig.edad!),
             if (lig.descripcion != null) ...[
-              const SizedBox(height: 12),
-              const Text('Descripción', style: TextStyle(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
+              SizedBox(height: 12),
+              Text('Descripción', style: TextStyle(fontWeight: FontWeight.bold)),
+              SizedBox(height: 4),
               Text(lig.descripcion!),
             ],
-            const SizedBox(height: 16),
+            SizedBox(height: 16),
             Text('Fuente: IGME · Inventario Español de LIG', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
           ],
         ),
@@ -750,7 +1071,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
           text: TextSpan(
             style: DefaultTextStyle.of(context).style,
             children: [
-              TextSpan(text: '$clave: ', style: const TextStyle(fontWeight: FontWeight.bold)),
+              TextSpan(text: '$clave: ', style: TextStyle(fontWeight: FontWeight.bold)),
               TextSpan(text: valor),
             ],
           ),
@@ -767,27 +1088,37 @@ class _PantallaMapaState extends State<PantallaMapa> {
     final hallazgosVisibles = _hallazgosFiltrados;
     final marcadoresHallazgos = _modoHeatmap
         ? <Marker>[]
-        : hallazgosVisibles.map((h) {
+        : List.generate(hallazgosVisibles.length, (i) {
+            final h = hallazgosVisibles[i];
             final periodoId = inferirPeriodoDesdeEdad(h.edad);
             final color = periodoId != null ? buscarPeriodo(periodoId)?.color : null;
             final esMineral = h.esMineral;
+            final icono = esMineral ? Icons.diamond : Icons.location_on;
+            final colorIcono = color ?? (esMineral ? Color(0xFF2E5C8A) : Color(0xFFB54A2A));
             return Marker(
               point: LatLng(h.latitud, h.longitud),
-              width: 36,
-              height: 36,
-              child: Icon(
-                esMineral ? Icons.diamond : Icons.location_on,
-                color: color ?? (esMineral ? const Color(0xFF2E5C8A) : const Color(0xFFB54A2A)),
-                size: esMineral ? 30 : 36,
+              width: 44,
+              height: 44,
+              child: GestureDetector(
+                onTap: () => _mostrarFichaHallazgo(hallazgosVisibles, i),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                    boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 3)],
+                  ),
+                  child: Icon(icono, color: colorIcono, size: esMineral ? 24 : 28),
+                ),
               ),
             );
-          }).toList();
+          });
     final circulosCalor = _modoHeatmap
         ? hallazgosVisibles.map((h) => CircleMarker(
               point: LatLng(h.latitud, h.longitud),
               radius: 24,
               useRadiusInMeter: false,
-              color: const Color(0xFFB54A2A).withValues(alpha: 0.35),
+              color: Color(0xFFB54A2A).withValues(alpha: 0.35),
               borderStrokeWidth: 0,
             )).toList()
         : <CircleMarker>[];
@@ -800,12 +1131,12 @@ class _PantallaMapaState extends State<PantallaMapa> {
             onTap: () => _mostrarPopupCueva(c),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF7A4A9A),
+                color: Color(0xFF7A4A9A),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
               ),
               alignment: Alignment.center,
-              child: const Text('🦇', style: TextStyle(fontSize: 14)),
+              child: Text('🦇', style: TextStyle(fontSize: 14)),
             ),
           ),
         )).toList();
@@ -819,12 +1150,12 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 onTap: () => _mostrarFichaYacimiento(y),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: const Color(0xFF8B0000),
+                    color: Color(0xFF8B0000),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
                   alignment: Alignment.center,
-                  child: Text(y.emoji, style: const TextStyle(fontSize: 16)),
+                  child: Text(y.emoji, style: TextStyle(fontSize: 16)),
                 ),
               ),
             )).toList()
@@ -838,22 +1169,22 @@ class _PantallaMapaState extends State<PantallaMapa> {
             onTap: () => _mostrarPopupMonumento(m),
             child: Container(
               decoration: BoxDecoration(
-                color: const Color(0xFF806040),
+                color: Color(0xFF806040),
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
               ),
               alignment: Alignment.center,
-              child: Text(m.emoji, style: const TextStyle(fontSize: 14)),
+              child: Text(m.emoji, style: TextStyle(fontSize: 14)),
             ),
           ),
         )).toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mapa'),
+        title: Text(SoleraL10n.t('mapa')),
         actions: [
           PopupMenuButton<CapaBase>(
-            icon: const Icon(Icons.layers),
+            icon: Icon(Icons.layers),
             tooltip: 'Capa base',
             onSelected: (capa) => setState(() => _capaBaseActual = capa),
             itemBuilder: (_) => capasBaseDisponibles
@@ -872,7 +1203,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
             }),
             itemBuilder: (_) => [
               PopupMenuItem(value: '__off__', child: Text('Sin geología' + (_capaGeologicaActual == null ? ' ✓' : ''))),
-              const PopupMenuDivider(),
+              PopupMenuDivider(),
               ...capasGeologicasWms.map((c) => PopupMenuItem(
                     value: c.nombre,
                     child: Text(c.nombre + (c.nombre == _capaGeologicaActual?.nombre ? ' ✓' : '')),
@@ -906,14 +1237,39 @@ class _PantallaMapaState extends State<PantallaMapa> {
             onPressed: _alternarTrack,
           ),
           IconButton(
-            icon: const Icon(Icons.timeline),
+            icon: Icon(Icons.timeline),
             tooltip: 'Tracks guardados',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PantallaTracks())),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaTracks())),
           ),
         ],
       ),
       body: Stack(
         children: [
+          if (!_conectado)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Material(
+                elevation: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  color: Colors.orange.shade800,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.cloud_off, color: Colors.white, size: 16),
+                        SizedBox(width: 6),
+                        Text('Sin conexión — usando datos en caché',
+                            style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           FlutterMap(
             mapController: _controladorMapa,
             options: MapOptions(
@@ -951,7 +1307,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 Opacity(
                   opacity: 0.85,
                   child: TileLayer(
-                    key: const ValueKey('lig'),
+                    key: ValueKey('lig'),
                     wmsOptions: WMSTileLayerOptions(
                       baseUrl: '$urlWmsIgmeLig?',
                       layers: const ['0'],
@@ -1002,7 +1358,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     height: 24,
                     child: Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFF5E7D3A),
+                        color: Color(0xFF5E7D3A),
                         shape: BoxShape.circle,
                         border: Border.all(color: Colors.white, width: 3),
                         boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
@@ -1025,7 +1381,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     _modo == _ModoMapa.marcarPunto
                         ? '👆 Toca el mapa para marcar el hallazgo'
                         : '👆 Toca el mapa para ver la geología',
-                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                    style: TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ),
               ),
@@ -1060,11 +1416,11 @@ class _PantallaMapaState extends State<PantallaMapa> {
             child: FloatingActionButton(
               heroTag: 'fab_ubicacion',
               onPressed: _centrarEnMiUbicacion,
-              child: const Icon(Icons.my_location),
+              child: Icon(Icons.my_location),
             ),
           ),
           if (_mostrarAsistente)
-            const Center(
+            Center(
               child: IgnorePointer(
                 child: _MarcadorCentroAsistente(),
               ),
@@ -1104,7 +1460,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
           children: [
             Row(children: [
               Icon(Icons.assistant, size: 18, color: esquema.primary),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Expanded(
                 child: Text(
                   _cargandoAsistente
@@ -1115,11 +1471,11 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.close, size: 18),
+                icon: Icon(Icons.close, size: 18),
                 onPressed: _alternarAsistente,
                 visualDensity: VisualDensity.compact,
                 padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                constraints: BoxConstraints(),
               ),
             ]),
             if (periodo != null)
@@ -1129,7 +1485,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(color: periodo.color, borderRadius: BorderRadius.circular(4)),
                   child: Text('${periodo.nombre} · ${periodo.edadMa}',
-                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2D3A2E))),
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2D3A2E))),
                 ),
               ),
             if (fosiles.isNotEmpty || minerales.isNotEmpty)
@@ -1142,8 +1498,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
                       Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: ActionChip(
-                          avatar: const Text('🦴'),
-                          label: Text(f.nombre, style: const TextStyle(fontSize: 11)),
+                          avatar: Text('🦴'),
+                          label: Text(f.nombre, style: TextStyle(fontSize: 11)),
                           onPressed: () => widget.alSeleccionarFosilGuia(f.id),
                         ),
                       ),
@@ -1151,8 +1507,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
                       Padding(
                         padding: const EdgeInsets.only(right: 6),
                         child: ActionChip(
-                          avatar: const Text('💎'),
-                          label: Text(m.nombre, style: const TextStyle(fontSize: 11)),
+                          avatar: Text('💎'),
+                          label: Text(m.nombre, style: TextStyle(fontSize: 11)),
                           onPressed: () => abrirDetalleMineral(context, m.id),
                         ),
                       ),
@@ -1227,10 +1583,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     right: -6,
                     child: Container(
                       padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-                      constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                      decoration: BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+                      constraints: BoxConstraints(minWidth: 18, minHeight: 18),
                       child: Text('$activos',
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                           textAlign: TextAlign.center),
                     ),
                   ),
@@ -1250,14 +1606,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
           activo: _modo == _ModoMapa.marcarPunto,
           onTap: () => setState(() => _modo = _modo == _ModoMapa.marcarPunto ? _ModoMapa.ver : _ModoMapa.marcarPunto),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         _botonModo(
           icono: Icons.info,
           etiqueta: 'Explorar geología',
           activo: _modo == _ModoMapa.explorarGeologia,
           onTap: () => setState(() => _modo = _modo == _ModoMapa.explorarGeologia ? _ModoMapa.ver : _ModoMapa.explorarGeologia),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         _botonModo(
           icono: _cargandoCuevas ? Icons.hourglass_top : Icons.bedroom_baby,
           etiqueta: _cargandoCuevas
@@ -1266,7 +1622,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
           activo: _mostrarCuevas,
           onTap: _alternarCuevas,
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         _botonModo(
           icono: _cargandoMonumentos ? Icons.hourglass_top : Icons.account_balance,
           etiqueta: _cargandoMonumentos
@@ -1275,14 +1631,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
           activo: _mostrarMonumentos,
           onTap: _alternarMonumentos,
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         _botonModo(
           icono: _cargandoAsistente ? Icons.hourglass_top : Icons.assistant,
           etiqueta: _mostrarAsistente ? 'Asistente activo' : 'Asistente',
           activo: _mostrarAsistente,
           onTap: _alternarAsistente,
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: 6),
         _botonModo(
           icono: Icons.close,
           etiqueta: 'Cerrar',
@@ -1310,7 +1666,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icono, size: 18, color: colorTexto),
-              const SizedBox(width: 6),
+              SizedBox(width: 6),
               Text(etiqueta, style: TextStyle(fontSize: 13, color: colorTexto)),
             ],
           ),
@@ -1322,7 +1678,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
 
 class _MiniaturaFosilWikipedia extends StatelessWidget {
   final String tituloWikipedia;
-  const _MiniaturaFosilWikipedia({required this.tituloWikipedia});
+  _MiniaturaFosilWikipedia({required this.tituloWikipedia});
 
   @override
   Widget build(BuildContext context) {
@@ -1331,7 +1687,7 @@ class _MiniaturaFosilWikipedia extends StatelessWidget {
       builder: (_, snapshot) {
         final url = snapshot.data?.thumbnailUrl;
         if (url == null) {
-          return const CircleAvatar(child: Text('🦴'));
+          return CircleAvatar(child: Text('🦴'));
         }
         return CircleAvatar(
           backgroundColor: Colors.grey[200],
@@ -1346,7 +1702,7 @@ class _MiniaturaFosilWikipedia extends StatelessWidget {
 class _BloqueMareas extends StatelessWidget {
   final double latitud;
   final double longitud;
-  const _BloqueMareas({required this.latitud, required this.longitud});
+  _BloqueMareas({required this.latitud, required this.longitud});
 
   @override
   Widget build(BuildContext context) {
@@ -1357,10 +1713,10 @@ class _BloqueMareas extends StatelessWidget {
       future: obtenerMareas(latitud, longitud).catchError((_) => <EventoMarea>[]),
       builder: (_, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const SizedBox(height: 18, child: LinearProgressIndicator());
+          return SizedBox(height: 18, child: LinearProgressIndicator());
         }
         final eventos = (snapshot.data ?? const <EventoMarea>[])
-            .where((e) => e.fecha.isAfter(DateTime.now().subtract(const Duration(hours: 1))))
+            .where((e) => e.fecha.isAfter(DateTime.now().subtract(Duration(hours: 1))))
             .take(6)
             .toList();
         if (eventos.isEmpty) return const SizedBox.shrink();
@@ -1377,23 +1733,23 @@ class _BloqueMareas extends StatelessWidget {
             children: [
               Row(children: [
                 Icon(Icons.waves, size: 18, color: esquema.primary),
-                const SizedBox(width: 6),
+                SizedBox(width: 6),
                 Text('Mareas', style: Theme.of(context).textTheme.titleSmall),
-                const Spacer(),
+                Spacer(),
                 if (bajamarSiguiente.esBajamar)
                   Text('Bajamar: ${_formatearHora(bajamarSiguiente.fecha)}',
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: esquema.primary)),
               ]),
-              const SizedBox(height: 6),
+              SizedBox(height: 6),
               ...eventos.map((e) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 1),
                     child: Row(children: [
                       Icon(e.esBajamar ? Icons.arrow_downward : Icons.arrow_upward,
                           size: 14, color: e.esBajamar ? colorBajar : colorSubir),
-                      const SizedBox(width: 6),
+                      SizedBox(width: 6),
                       Text(e.esBajamar ? 'Bajamar' : 'Pleamar',
                           style: TextStyle(fontSize: 12, color: esquema.onSurface)),
-                      const Spacer(),
+                      Spacer(),
                       Text('${_formatearDiaHora(e.fecha)}  ·  ${e.alturaM.toStringAsFixed(2)} m',
                           style: TextStyle(fontSize: 12, color: esquema.onSurface)),
                     ]),
@@ -1411,7 +1767,7 @@ class _BloqueMareas extends StatelessWidget {
   static String _formatearDiaHora(DateTime f) {
     final hoy = DateTime.now();
     final esHoy = f.year == hoy.year && f.month == hoy.month && f.day == hoy.day;
-    final manana = hoy.add(const Duration(days: 1));
+    final manana = hoy.add(Duration(days: 1));
     final esManana = f.year == manana.year && f.month == manana.month && f.day == manana.day;
     final etiqueta = esHoy ? 'hoy' : (esManana ? 'mañana' : '${f.day}/${f.month}');
     return '$etiqueta ${_formatearHora(f)}';
@@ -1419,7 +1775,7 @@ class _BloqueMareas extends StatelessWidget {
 }
 
 class _MarcadorCentroAsistente extends StatelessWidget {
-  const _MarcadorCentroAsistente();
+  _MarcadorCentroAsistente();
 
   @override
   Widget build(BuildContext context) {
@@ -1437,7 +1793,7 @@ class _MarcadorCentroAsistente extends StatelessWidget {
               border: Border.all(color: Colors.black87, width: 2),
             ),
           ),
-          Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.black87, shape: BoxShape.circle)),
+          Container(width: 6, height: 6, decoration: BoxDecoration(color: Colors.black87, shape: BoxShape.circle)),
           Positioned(top: 0, child: Container(width: 2, height: 8, color: Colors.black87)),
           Positioned(bottom: 0, child: Container(width: 2, height: 8, color: Colors.black87)),
           Positioned(left: 0, child: Container(width: 8, height: 2, color: Colors.black87)),

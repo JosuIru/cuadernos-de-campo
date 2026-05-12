@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:intl/intl.dart';
 import 'package:latlong2/latlong.dart';
@@ -15,7 +16,7 @@ import '../servicios/grabador_track.dart';
 import '../servicios/generador_pdf.dart';
 
 class PantallaTracks extends StatefulWidget {
-  const PantallaTracks({super.key});
+  PantallaTracks({super.key});
 
   @override
   State<PantallaTracks> createState() => _PantallaTracksState();
@@ -32,17 +33,36 @@ class _PantallaTracksState extends State<PantallaTracks> {
   }
 
   Future<void> _cargar() async {
-    final lista = await BaseDatosFosiles.instancia.listarTracks();
-    if (!mounted) return;
-    setState(() {
-      _tracks = lista;
-      _cargando = false;
-    });
+    try {
+      final lista = await BaseDatosFosiles.instancia.listarTracks();
+      if (!mounted) return;
+      setState(() {
+        _tracks = lista;
+        _cargando = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _cargando = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error cargando tracks: $e')));
+    }
   }
 
   Future<void> _verTrack(Track track) async {
-    final puntos = await BaseDatosFosiles.instancia.obtenerPuntosTrack(track.id!);
-    if (!mounted || puntos.isEmpty) return;
+    final List<TrackPunto> puntos;
+    try {
+      puntos = await BaseDatosFosiles.instancia.obtenerPuntosTrack(track.id!);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error abriendo track: $e')));
+      return;
+    }
+    if (!mounted) return;
+    if (puntos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Este track no tiene puntos guardados (la grabación se detuvo antes del primer fix GPS).')),
+      );
+      return;
+    }
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -54,28 +74,41 @@ class _PantallaTracksState extends State<PantallaTracks> {
         minChildSize: 0.4,
         builder: (_, scrollController) {
           final puntosLatLng = puntos.map((p) => LatLng(p.latitud, p.longitud)).toList();
-          final bounds = LatLngBounds.fromPoints(puntosLatLng);
+          // Con un solo punto, LatLngBounds.fromPoints crea un rectángulo
+          // degenerado y CameraFit.bounds dispara zoom infinito; usamos
+          // initialCenter + initialZoom como fallback.
+          final MapOptions opcionesMapa = puntosLatLng.length >= 2
+              ? MapOptions(
+                  initialCameraFit: CameraFit.bounds(
+                    bounds: LatLngBounds.fromPoints(puntosLatLng),
+                    padding: const EdgeInsets.all(40),
+                  ),
+                )
+              : MapOptions(
+                  initialCenter: puntosLatLng.first,
+                  initialZoom: 16,
+                );
           return ListView(
             controller: scrollController,
             children: [
               SizedBox(
                 height: 320,
                 child: FlutterMap(
-                  options: MapOptions(
-                    initialCameraFit: CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(40)),
-                  ),
+                  options: opcionesMapa,
                   children: [
                     TileLayer(
                       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.josu.fosiles',
                       maxZoom: 19,
                     ),
-                    PolylineLayer(polylines: [
-                      Polyline(points: puntosLatLng, color: const Color(0xFFB54A2A), strokeWidth: 4),
-                    ]),
+                    if (puntosLatLng.length >= 2)
+                      PolylineLayer(polylines: [
+                        Polyline(points: puntosLatLng, color: Color(0xFFB54A2A), strokeWidth: 4),
+                      ]),
                     MarkerLayer(markers: [
-                      Marker(point: puntosLatLng.first, child: const Icon(Icons.flag, color: Colors.green)),
-                      Marker(point: puntosLatLng.last, child: const Icon(Icons.flag, color: Colors.red)),
+                      Marker(point: puntosLatLng.first, child: Icon(Icons.flag, color: Colors.green)),
+                      if (puntosLatLng.length >= 2)
+                        Marker(point: puntosLatLng.last, child: Icon(Icons.flag, color: Colors.red)),
                     ]),
                   ],
                 ),
@@ -86,42 +119,42 @@ class _PantallaTracksState extends State<PantallaTracks> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(track.nombre.isEmpty ? 'Track' : track.nombre, style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 8),
+                    SizedBox(height: 8),
                     Text(_resumen(track, puntos.length)),
-                    const SizedBox(height: 16),
+                    SizedBox(height: 16),
                     Row(
                       children: [
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: const Icon(Icons.download),
+                            icon: Icon(Icons.download),
                             onPressed: () async {
                               final fichero = await _exportarGpx(track, puntos);
                               if (!context.mounted) return;
                               await Share.shareXFiles([XFile(fichero.path)], subject: 'Track GPX');
                             },
-                            label: const Text('GPX'),
+                            label: Text('GPX'),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: const Icon(Icons.picture_as_pdf),
+                            icon: Icon(Icons.picture_as_pdf),
                             onPressed: () => _generarYCompartirPdf(track, puntos),
-                            label: const Text('Informe PDF'),
+                            label: Text('Informe PDF'),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton.icon(
-                            icon: const Icon(Icons.delete_outline, color: Colors.red),
+                            icon: Icon(Icons.delete_outline, color: Colors.red),
                             onPressed: () async {
                               final ok = await showDialog<bool>(
                                 context: context,
                                 builder: (_) => AlertDialog(
-                                  content: const Text('¿Borrar este track?'),
+                                  content: Text('¿Borrar este track?'),
                                   actions: [
-                                    TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-                                    TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Borrar', style: TextStyle(color: Colors.red))),
+                                    TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
+                                    TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Borrar', style: TextStyle(color: Colors.red))),
                                   ],
                                 ),
                               );
@@ -131,7 +164,7 @@ class _PantallaTracksState extends State<PantallaTracks> {
                               Navigator.of(sheetCtx).pop();
                               _cargar();
                             },
-                            label: const Text('Borrar', style: TextStyle(color: Colors.red)),
+                            label: Text('Borrar', style: TextStyle(color: Colors.red)),
                           ),
                         ),
                       ],
@@ -198,7 +231,7 @@ class _PantallaTracksState extends State<PantallaTracks> {
       final importado = parsearGpx(contenido, nombrePorDefecto: path_lib.basenameWithoutExtension(ruta));
       if (importado.puntos.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('El GPX no contiene puntos de track.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('El GPX no contiene puntos de track.')));
         return;
       }
       double dist = 0;
@@ -225,19 +258,19 @@ class _PantallaTracksState extends State<PantallaTracks> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tracks'),
+        title: Text('Tracks'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.upload_file),
+            icon: Icon(Icons.upload_file),
             tooltip: 'Importar GPX',
             onPressed: _importarGpx,
           ),
         ],
       ),
       body: _cargando
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: CircularProgressIndicator())
           : _tracks.isEmpty
-              ? const Center(
+              ? Center(
                   child: Padding(
                     padding: EdgeInsets.all(24),
                     child: Text('Aún no has grabado ningún track.\nUsa el botón ⏺ del mapa para empezar.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
@@ -250,7 +283,7 @@ class _PantallaTracksState extends State<PantallaTracks> {
                     final fecha = DateFormat('dd MMM yyyy HH:mm', 'es_ES').format(DateTime.fromMillisecondsSinceEpoch(t.fechaMs));
                     final km = t.distanciaMetros != null ? (t.distanciaMetros! / 1000).toStringAsFixed(2) : '–';
                     return ListTile(
-                      leading: const Icon(Icons.timeline, color: Color(0xFFB54A2A)),
+                      leading: Icon(Icons.timeline, color: Color(0xFFB54A2A)),
                       title: Text(t.nombre.isEmpty ? 'Track del $fecha' : t.nombre),
                       subtitle: Text('$km km · $fecha'),
                       onTap: () => _verTrack(t),

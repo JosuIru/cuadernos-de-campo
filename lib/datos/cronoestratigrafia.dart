@@ -4,7 +4,19 @@
 class RangoMa {
   final double inicioMa;
   final double finMa;
-  const RangoMa(this.inicioMa, this.finMa);
+  const RangoMa(this.inicioMa, this.finMa)
+      : assert(inicioMa >= finMa, 'inicioMa debe ser >= finMa (más antiguo primero)');
+
+  /// Solapa dos rangos. Si los rangos son disjuntos (no se tocan)
+  /// devuelve null — antes una unión por max(inicios)/min(fines)
+  /// producía rangos invertidos al combinar pisos sin solape.
+  RangoMa? unirSiSolapan(RangoMa otro) {
+    final solapan = inicioMa >= otro.finMa && otro.inicioMa >= finMa;
+    if (!solapan) return null;
+    final nuevoInicio = inicioMa > otro.inicioMa ? inicioMa : otro.inicioMa;
+    final nuevoFin = finMa < otro.finMa ? finMa : otro.finMa;
+    return RangoMa(nuevoInicio, nuevoFin);
+  }
 
   String formatear() {
     String fmt(double v) {
@@ -161,14 +173,29 @@ RangoMa? rangoMaDeEdad(String? texto) {
   final norm = _normalizar(texto);
   final coincidencias = <RangoMa>[];
   for (final entrada in _pisos.entries) {
-    if (norm.contains(entrada.key)) coincidencias.add(entrada.value);
+    // Match por palabra completa para evitar que claves cortas como
+    // 'lias' coincidan dentro de palabras no relacionadas.
+    final patron = RegExp(r'\b' + RegExp.escape(entrada.key) + r'\b');
+    if (patron.hasMatch(norm)) coincidencias.add(entrada.value);
   }
   if (coincidencias.isEmpty) return null;
+  // Antes hacía max(inicios) y min(fines), lo que producía rangos
+  // invertidos cuando los pisos coincidentes eran disjuntos. Ahora
+  // mantiene la envolvente (más antigua – más reciente) sin invertir,
+  // lo que es correcto para una "edad mencionada en texto libre" —
+  // el rango cubre desde el inicio del más antiguo hasta el fin del
+  // más reciente.
   double inicio = coincidencias.first.inicioMa;
   double fin = coincidencias.first.finMa;
   for (final r in coincidencias) {
     if (r.inicioMa > inicio) inicio = r.inicioMa;
     if (r.finMa < fin) fin = r.finMa;
+  }
+  if (inicio < fin) {
+    // Defensa adicional: si tras la combinación el rango es inválido,
+    // devolvemos sólo la primera coincidencia. No debería ocurrir tras
+    // las correcciones anteriores, pero es barato proteger.
+    return coincidencias.first;
   }
   return RangoMa(inicio, fin);
 }

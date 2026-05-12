@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 const String _claveApiKey = 'anthropic_api_key';
+const String _claveApiKeyDeepseek = 'deepseek_api_key';
 const String _claveModelo = 'modelo_claude';
 const String modeloPorDefecto = 'claude-opus-4-7';
 
@@ -42,5 +43,52 @@ class Configuracion {
   static Future<bool> tieneApiKey() async {
     final apiKey = await obtenerApiKey();
     return apiKey.trim().isNotEmpty;
+  }
+
+  static Future<String> obtenerApiKeyDeepseek() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_claveApiKeyDeepseek) ?? '';
+  }
+
+  static Future<void> guardarApiKeyDeepseek(String apiKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_claveApiKeyDeepseek, apiKey.trim());
+  }
+
+  // ─── Perfil del descubridor ─────────────────────────────
+
+  static Future<String> obtenerNombreDescubridor() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('descubridor_nombre') ?? '';
+  }
+
+  static Future<String> obtenerEmailDescubridor() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('descubridor_email') ?? '';
+  }
+
+  static Future<String> obtenerOrganizacionDescubridor() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString('descubridor_org') ?? '';
+  }
+
+  static Future<void> guardarNombreDescubridor(String nombre) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('descubridor_nombre', nombre.trim());
+  }
+
+  static Future<void> guardarEmailDescubridor(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('descubridor_email', email.trim());
+  }
+
+  static Future<void> guardarOrganizacionDescubridor(String org) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('descubridor_org', org.trim());
+  }
+
+  static Future<bool> perfilDescubridorCompleto() async {
+    final nombre = await obtenerNombreDescubridor();
+    return nombre.isNotEmpty;
   }
 }
