@@ -150,7 +150,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       PantallaLista(key: ValueKey(contadorRefrescoLista)),
       const SizedBox.shrink(),
       const PantallaGuia(),
-      const PantallaAjustes(),
+      PantallaAjustes(),
     ];
 
     return Scaffold(

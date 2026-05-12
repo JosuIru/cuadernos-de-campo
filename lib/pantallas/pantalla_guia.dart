@@ -59,7 +59,7 @@ class _PantallaGuiaState extends State<PantallaGuia> {
               icon: const Icon(Icons.quiz),
               tooltip: 'Quiz',
               onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PantallaQuiz()),
+                MaterialPageRoute(builder: (_) => PantallaQuiz()),
               ),
             ),
           ],

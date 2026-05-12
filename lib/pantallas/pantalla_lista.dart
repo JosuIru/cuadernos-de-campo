@@ -345,10 +345,10 @@ class _PantallaListaState extends State<PantallaLista> {
           Padding(
             padding: const EdgeInsets.all(8),
             child: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'todos', label: Text(SoleraL10n.t('todos')), icon: Icon(Icons.apps)),
-                ButtonSegment(value: 'fosil', label: Text('Fósiles'), icon: Icon(Icons.bug_report)),
-                ButtonSegment(value: 'mineral', label: Text('Minerales'), icon: Icon(Icons.diamond)),
+              segments: [
+                ButtonSegment(value: 'todos', label: Text(SoleraL10n.t('todos')), icon: const Icon(Icons.apps)),
+                const ButtonSegment(value: 'fosil', label: Text('Fósiles'), icon: Icon(Icons.bug_report)),
+                const ButtonSegment(value: 'mineral', label: Text('Minerales'), icon: Icon(Icons.diamond)),
               ],
               selected: {_filtroTipo},
               onSelectionChanged: (s) => setState(() => _filtroTipo = s.first),
