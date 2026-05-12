@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'pantalla_chat.dart';
 import 'pantalla_meteo.dart';
 
@@ -11,8 +10,6 @@ class PantallaInicio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final esquema = Theme.of(context).colorScheme;
-
     return Scaffold(
       appBar: AppBar(title: const Text('Naturaleza')),
       body: ListView(

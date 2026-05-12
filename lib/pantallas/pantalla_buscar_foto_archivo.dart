@@ -2,7 +2,6 @@ import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:intl/intl.dart';
 import '../datos/base_datos.dart';
 import '../datos/datos_guia.dart';

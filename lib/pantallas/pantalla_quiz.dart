@@ -6,7 +6,7 @@ import '../datos/datos_guia.dart';
 enum _ModoQuiz { comunACientifico, cientificoAComun, distintivos }
 
 class PantallaQuiz extends StatefulWidget {
-  PantallaQuiz({super.key});
+  const PantallaQuiz({super.key});
 
   @override
   State<PantallaQuiz> createState() => _PantallaQuizState();

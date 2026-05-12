@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
 import '../servicios/servicio_meteo.dart';
@@ -27,6 +26,7 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
   bool _obteniendoUbicacion = false;
   PrevisonMeteo? _prevision;
   bool _cargandoPrevision = false;
+  // ignore: unused_field
   LugarMeteo? _lugarSeleccionado;
 
   @override

@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
-import 'package:sqflite/sqflite.dart';
 import '../modelos/hallazgo.dart';
 import '../modelos/track.dart';
 

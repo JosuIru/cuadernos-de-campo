@@ -10,7 +10,7 @@ import 'pantalla_mapas_offline.dart';
 import 'sheet_donaciones.dart';
 
 class PantallaAjustes extends StatefulWidget {
-  PantallaAjustes({super.key});
+  const PantallaAjustes({super.key});
 
   @override
   State<PantallaAjustes> createState() => _PantallaAjustesState();
