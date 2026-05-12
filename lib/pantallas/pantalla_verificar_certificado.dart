@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../servicios/certificado_hallazgo.dart';
 
 class PantallaVerificarCertificado extends StatefulWidget {

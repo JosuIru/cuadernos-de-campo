@@ -11,7 +11,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../datos/base_datos.dart';
 import '../modelos/track.dart';
-import '../modelos/hallazgo.dart';
 import '../servicios/grabador_track.dart';
 import '../servicios/generador_pdf.dart';
 

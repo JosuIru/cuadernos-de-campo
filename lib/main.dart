@@ -8,7 +8,6 @@ import 'pantallas/pantalla_lista.dart';
 import 'pantallas/pantalla_nuevo.dart';
 import 'pantallas/pantalla_guia.dart';
 import 'pantallas/pantalla_ajustes.dart';
-import 'pantallas/pantalla_meteo.dart';
 import 'servicios/grabador_track.dart';
 import 'servicios/estado_conexion.dart';
 import 'servicios/auto_backup.dart';

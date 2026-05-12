@@ -116,8 +116,6 @@ class _PantallaMapaState extends State<PantallaMapa> {
   StreamSubscription<MapEvent>? _subEventosMapa;
   StreamSubscription<bool>? _subConexion;
   bool _conectado = true;
-  bool _modoAgregar = false;
-  LatLng? _ultimoCentroMapa;
 
   @override
   void initState() {
