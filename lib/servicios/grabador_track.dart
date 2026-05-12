@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
+import '../datos/base_datos.dart';
 import '../modelos/track.dart';
 
 class GrabadorTrack {
@@ -35,13 +36,26 @@ class GrabadorTrack {
           )
         : const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 5);
     _suscripcion = Geolocator.getPositionStream(locationSettings: settings).listen((pos) {
-      _puntos.add(TrackPunto(
+      final punto = TrackPunto(
         fechaMs: DateTime.now().millisecondsSinceEpoch,
         latitud: pos.latitude,
         longitud: pos.longitude,
         altitud: pos.altitude,
         precision: pos.accuracy,
-      ));
+      );
+      _puntos.add(punto);
+      // Persistencia incremental: si la app muere por crash o kill OS
+      // mientras grabamos, los puntos del buffer sobreviven y se
+      // pueden recuperar en el próximo arranque vía
+      // BaseDatosNaturaleza.recuperarBufferTrack(). Fallos de I/O
+      // se ignoran — el punto sigue en memoria y se reintentará en
+      // el próximo bufferarPuntoTrack del siguiente fix.
+      final inicio = _inicioMs;
+      if (inicio != null) {
+        BaseDatosNaturaleza.instancia
+            .bufferarPuntoTrack(inicioMs: inicio, punto: punto)
+            .catchError((_) {});
+      }
       _streamCambios.add(null);
     });
     _streamCambios.add(null);
@@ -51,29 +65,99 @@ class GrabadorTrack {
     if (!grabando) return null;
     _suscripcion?.cancel();
     _suscripcion = null;
+    final inicio = _inicioMs;
     if (_puntos.isEmpty) {
+      // Limpiamos el buffer aunque no haya puntos (sesión vacía sin
+      // valor que recuperar).
+      if (inicio != null) {
+        BaseDatosNaturaleza.instancia
+            .vaciarBufferTrack(inicioMs: inicio)
+            .catchError((_) {});
+      }
       _streamCambios.add(null);
       return null;
     }
     final ahora = DateTime.now().millisecondsSinceEpoch;
     final track = Track(
-      fechaMs: _inicioMs ?? ahora,
+      fechaMs: inicio ?? ahora,
       nombre: nombre,
-      duracionMs: ahora - (_inicioMs ?? ahora),
+      duracionMs: ahora - (inicio ?? ahora),
       distanciaMetros: _calcularDistancia(_puntos),
     );
     final puntos = List<TrackPunto>.from(_puntos);
     _puntos.clear();
     _inicioMs = null;
     _streamCambios.add(null);
+    // El caller persistirá el track con guardarTrack(). Cuando lo haga
+    // llamará a `descartarBufferTrasGuardar(inicio)` para cerrar el
+    // ciclo. Hasta entonces, el buffer queda como red de seguridad
+    // adicional.
     return (track: track, puntos: puntos);
+  }
+
+  /// Recupera tracks que quedaron grabándose cuando la app murió por
+  /// crash o kill OS. Cada sesión pendiente con al menos 2 puntos se
+  /// consolida como un Track con nombre auto-generado "Track
+  /// recuperado <DD/MM HH:mm>" y se guarda en la BD definitiva.
+  /// Sesiones con menos de 2 puntos (false positives) se descartan
+  /// directamente. Devuelve el número de tracks recuperados.
+  Future<int> consolidarSesionesPendientes() async {
+    final db = BaseDatosNaturaleza.instancia;
+    int recuperados = 0;
+    try {
+      final inicios = await db.sesionesPendientesEnBuffer();
+      for (final inicioMs in inicios) {
+        final puntos = await db.recuperarBufferTrack(inicioMs: inicioMs);
+        if (puntos.length < 2) {
+          await db.vaciarBufferTrack(inicioMs: inicioMs);
+          continue;
+        }
+        final ultimo = puntos.last.fechaMs;
+        final inicio = DateTime.fromMillisecondsSinceEpoch(inicioMs);
+        final nombreAuto =
+            'Track recuperado ${inicio.day.toString().padLeft(2, '0')}/${inicio.month.toString().padLeft(2, '0')} '
+            '${inicio.hour.toString().padLeft(2, '0')}:${inicio.minute.toString().padLeft(2, '0')}';
+        final track = Track(
+          fechaMs: inicioMs,
+          nombre: nombreAuto,
+          duracionMs: ultimo - inicioMs,
+          distanciaMetros: _calcularDistancia(puntos),
+        );
+        await db.guardarTrack(track, puntos);
+        await db.vaciarBufferTrack(inicioMs: inicioMs);
+        recuperados++;
+      }
+    } catch (_) {
+      // Recuperación best-effort: si falla algo, dejamos el buffer
+      // como está para reintentar en el próximo arranque.
+    }
+    return recuperados;
+  }
+
+  /// Vacía el buffer de la sesión [inicioMs]. Llamar tras
+  /// `guardarTrack` exitoso o tras `cancelar`. Idempotente.
+  Future<void> descartarBufferDeSesion(int inicioMs) async {
+    try {
+      await BaseDatosNaturaleza.instancia.vaciarBufferTrack(inicioMs: inicioMs);
+    } catch (_) {
+      // No bloqueamos al usuario por un fallo de limpieza del buffer.
+      // El punto se quedará huérfano en el buffer hasta el próximo
+      // arranque, donde la pantalla de recuperación lo verá y podrá
+      // ofrecer descartarlo.
+    }
   }
 
   void cancelar() {
     _suscripcion?.cancel();
     _suscripcion = null;
+    final inicio = _inicioMs;
     _puntos.clear();
     _inicioMs = null;
+    if (inicio != null) {
+      BaseDatosNaturaleza.instancia
+          .vaciarBufferTrack(inicioMs: inicio)
+          .catchError((_) {});
+    }
     _streamCambios.add(null);
   }
 }

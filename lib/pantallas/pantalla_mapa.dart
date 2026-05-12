@@ -1,16 +1,20 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/base_datos.dart';
 import '../datos/datos_guia.dart';
 import '../modelos/hallazgo.dart';
 import '../servicios/cache_teselas.dart';
 import '../servicios/grabador_track.dart';
+import '../servicios/estado_conexion.dart';
 import '../servicios/servicio_gbif.dart';
 import '../servicios/servicio_overpass.dart';
+import 'pantalla_nuevo.dart';
 import '../utiles/permisos_gps.dart' show asegurarPermisoUbicacion, asegurarPermisoNotificaciones;
 import 'pantalla_mapas_offline.dart';
 import 'pantalla_tracks.dart';
@@ -58,7 +62,7 @@ final List<CapaBase> capasBaseDisponibles = [
 class PantallaMapa extends StatefulWidget {
   final CallbackPedirNuevoHallazgo alPedirNuevoHallazgo;
   final CallbackSeleccionarEspecieGuia alSeleccionarEspecieGuia;
-  const PantallaMapa({
+  PantallaMapa({
     super.key,
     required this.alPedirNuevoHallazgo,
     required this.alSeleccionarEspecieGuia,
@@ -80,6 +84,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
   List<LugarInteres> _lugaresInteres = [];
   bool _cargandoLugares = false;
   StreamSubscription<void>? _suscripcionTrack;
+  StreamSubscription<bool>? _subConexion;
+  bool _conectado = true;
+  bool _modoAgregar = false;
+  LatLng? _ultimoCentroMapa;
 
   @override
   void initState() {
@@ -88,11 +96,16 @@ class _PantallaMapaState extends State<PantallaMapa> {
     _suscripcionTrack = GrabadorTrack.instancia.cambios.listen((_) {
       if (mounted) setState(() {});
     });
+    _conectado = EstadoConexion.instancia.conectado;
+    _subConexion = EstadoConexion.instancia.cambios.listen((online) {
+      if (mounted) setState(() => _conectado = online);
+    });
   }
 
   @override
   void dispose() {
     _suscripcionTrack?.cancel();
+    _subConexion?.cancel();
     super.dispose();
   }
 
@@ -111,7 +124,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
     final permitido = await asegurarPermisoUbicacion();
     if (!permitido) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Falta permiso de ubicación.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Falta permiso de ubicación.')));
       }
       return;
     }
@@ -159,7 +172,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
       setState(() => _lugaresInteres = lugares);
       if (lugares.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sin lugares de interés en esta zona.')),
+          SnackBar(content: Text('Sin lugares de interés en esta zona.')),
         );
       }
     } catch (e) {
@@ -182,36 +195,36 @@ class _PantallaMapaState extends State<PantallaMapa> {
             Row(
               children: [
                 Icon(_iconoTipoLugar(lugar.tipo), color: _colorTipoLugar(lugar.tipo)),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Text(
                   lugar.tipo.etiqueta,
                   style: TextStyle(fontSize: 13, color: _colorTipoLugar(lugar.tipo), fontWeight: FontWeight.bold),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               lugar.tituloMostrado,
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               '${lugar.latitud.toStringAsFixed(5)}, ${lugar.longitud.toStringAsFixed(5)}',
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
+              style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             if (lugar.tags['description'] != null) ...[
-              const SizedBox(height: 8),
-              Text(lugar.tags['description']!, style: const TextStyle(fontSize: 13)),
+              SizedBox(height: 8),
+              Text(lugar.tags['description']!, style: TextStyle(fontSize: 13)),
             ],
             if (lugar.tags['operator'] != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Gestor: ${lugar.tags['operator']}', style: const TextStyle(fontSize: 12)),
+                child: Text('Gestor: ${lugar.tags['operator']}', style: TextStyle(fontSize: 12)),
               ),
             if (lugar.tags['website'] != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(lugar.tags['website']!, style: const TextStyle(fontSize: 12, color: Colors.blue)),
+                child: Text(lugar.tags['website']!, style: TextStyle(fontSize: 12, color: Colors.blue)),
               ),
           ],
         ),
@@ -259,7 +272,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
       setState(() => _ocurrenciasGbif = ocurrencias);
       if (ocurrencias.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sin observaciones GBIF en esta zona.')),
+          SnackBar(content: Text('Sin observaciones GBIF en esta zona.')),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -280,9 +293,16 @@ class _PantallaMapaState extends State<PantallaMapa> {
   Future<void> _alternarGrabacionTrack() async {
     final grabador = GrabadorTrack.instancia;
     if (grabador.grabando) {
+      final inicioMs = grabador.inicioMs;
       final resultado = grabador.detener();
       if (resultado != null) {
         await BaseDatosNaturaleza.instancia.guardarTrack(resultado.track, resultado.puntos);
+        // Buffer consolidado correctamente: limpiamos los puntos
+        // huérfanos que la grabación dejó en disco (red de seguridad
+        // ante crash). Idempotente.
+        if (inicioMs != null) {
+          await grabador.descartarBufferDeSesion(inicioMs);
+        }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Track guardado (${resultado.puntos.length} puntos).')),
@@ -293,7 +313,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
       final permisoUbicacion = await asegurarPermisoUbicacion();
       if (!permisoUbicacion) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Falta permiso de ubicación.')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Falta permiso de ubicación.')));
         }
         return;
       }
@@ -314,9 +334,9 @@ class _PantallaMapaState extends State<PantallaMapa> {
           children: [
             Row(
               children: [
-                const Icon(Icons.public, color: Colors.deepOrange),
-                const SizedBox(width: 8),
-                const Expanded(
+                Icon(Icons.public, color: Colors.deepOrange),
+                SizedBox(width: 8),
+                Expanded(
                   child: Text(
                     'Observación GBIF',
                     style: TextStyle(fontSize: 14, color: Colors.deepOrange, fontWeight: FontWeight.bold),
@@ -324,30 +344,30 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Text(
               ocurrencia.nombreCientifico ?? '(sin nombre)',
-              style: const TextStyle(fontSize: 18, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold),
             ),
             if (ocurrencia.familia != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Familia: ${ocurrencia.familia}', style: const TextStyle(fontSize: 13)),
+                child: Text('Familia: ${ocurrencia.familia}', style: TextStyle(fontSize: 13)),
               ),
             if (ocurrencia.fechaEvento != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Fecha: ${ocurrencia.fechaEvento}', style: const TextStyle(fontSize: 13)),
+                child: Text('Fecha: ${ocurrencia.fechaEvento}', style: TextStyle(fontSize: 13)),
               ),
             if (ocurrencia.localidad != null && ocurrencia.localidad!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Localidad: ${ocurrencia.localidad}', style: const TextStyle(fontSize: 13)),
+                child: Text('Localidad: ${ocurrencia.localidad}', style: TextStyle(fontSize: 13)),
               ),
             if (ocurrencia.baseRegistro != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Tipo: ${ocurrencia.baseRegistro}', style: const TextStyle(fontSize: 12, color: Colors.grey)),
+                child: Text('Tipo: ${ocurrencia.baseRegistro}', style: TextStyle(fontSize: 12, color: Colors.grey)),
               ),
           ],
         ),
@@ -355,43 +375,167 @@ class _PantallaMapaState extends State<PantallaMapa> {
     );
   }
 
-  void _abrirDetalleHallazgo(Hallazgo hallazgo) {
+  void _abrirDetalleHallazgo(List<Hallazgo> lista, int indiceInicial) {
+    final controladorPagina = PageController(initialPage: indiceInicial);
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              hallazgo.nombreComun.isNotEmpty
-                  ? hallazgo.nombreComun
-                  : (hallazgo.especie.isNotEmpty ? hallazgo.especie : 'Hallazgo'),
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            if (hallazgo.especie.isNotEmpty && hallazgo.especie != hallazgo.nombreComun)
-              Text(hallazgo.especie, style: const TextStyle(fontStyle: FontStyle.italic)),
-            const SizedBox(height: 8),
-            Text(
-              'Categoría: ${categoriaPorId(hallazgo.categoria)?.nombre ?? hallazgo.categoria}',
-              style: const TextStyle(fontSize: 13),
-            ),
-            if (hallazgo.habitat.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text('Hábitat: ${hallazgo.habitat}', style: const TextStyle(fontSize: 13)),
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (_, setStateLocal) => DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.75,
+          maxChildSize: 0.95,
+          minChildSize: 0.4,
+          builder: (_, scrollController) => Column(
+            children: [
+              if (lista.length > 1)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('${indiceInicial + 1} / ${lista.length}',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black54)),
+                ),
+              Expanded(
+                child: PageView.builder(
+                  controller: controladorPagina,
+                  itemCount: lista.length,
+                  onPageChanged: (i) => setStateLocal(() => indiceInicial = i),
+                  itemBuilder: (_, i) {
+                    final h = lista[i];
+                    final cat = categoriaPorId(h.categoria);
+                    return SingleChildScrollView(
+                      controller: scrollController,
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (h.rutasFotos.isNotEmpty)
+                            SizedBox(
+                              height: 200,
+                              child: PageView.builder(
+                                itemCount: h.rutasFotos.length,
+                                itemBuilder: (_, fi) => ClipRRect(
+                                  borderRadius: BorderRadius.circular(8),
+                                  child: Image.file(
+                                    File(h.rutasFotos[fi]),
+                                    height: 200,
+                                    width: double.infinity,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          SizedBox(height: 12),
+                          Row(children: [
+                            if (cat != null)
+                              CircleAvatar(
+                                backgroundColor: cat.color.withValues(alpha: 0.2),
+                                child: Icon(cat.icono, color: cat.color),
+                              ),
+                            SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    h.nombreComun.isNotEmpty
+                                        ? h.nombreComun
+                                        : (h.especie.isNotEmpty ? h.especie : 'Hallazgo'),
+                                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                                  ),
+                                  if (h.especie.isNotEmpty && h.especie != h.nombreComun)
+                                    Text(h.especie, style: TextStyle(fontStyle: FontStyle.italic)),
+                                ],
+                              ),
+                            ),
+                          ]),
+                          SizedBox(height: 12),
+                          _filaNaturaleza('Categoría', cat?.nombre ?? h.categoria),
+                          if (h.habitat.isNotEmpty) _filaNaturaleza('Hábitat', h.habitat),
+                          if (h.taxonomia.isNotEmpty) _filaNaturaleza('Taxonomía', h.taxonomia),
+                          _filaNaturaleza('Coordenadas',
+                              '${h.latitud.toStringAsFixed(5)}, ${h.longitud.toStringAsFixed(5)}'),
+                          if (h.notas.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Notas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  SizedBox(height: 4),
+                                  Text(h.notas),
+                                ],
+                              ),
+                            ),
+                          SizedBox(height: 16),
+                          Row(children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: Icon(Icons.edit_outlined),
+                                onPressed: () async {
+                                  Navigator.of(sheetContext).pop();
+                                  final actualizado = await Navigator.of(context).push<bool>(
+                                    MaterialPageRoute(
+                                        builder: (_) => PantallaNuevoHallazgo(hallazgoExistente: h)),
+                                  );
+                                  if (actualizado == true) _cargarHallazgos();
+                                },
+                                label: Text(SoleraL10n.t('editar')),
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                icon: Icon(Icons.delete_outline, color: Colors.red),
+                                onPressed: () async {
+                                  final ok = await showDialog<bool>(
+                                    context: context,
+                                    builder: (_) => AlertDialog(
+                                      content: Text('¿Borrar este hallazgo?'),
+                                      actions: [
+                                        TextButton(
+                                            onPressed: () => Navigator.pop(context, false),
+                                            child: Text(SoleraL10n.t('cancelar'))),
+                                        TextButton(
+                                            onPressed: () => Navigator.pop(context, true),
+                                            child: Text('Borrar',
+                                                style: TextStyle(color: Colors.red))),
+                                      ],
+                                    ),
+                                  );
+                                  if (ok != true) return;
+                                  await BaseDatosNaturaleza.instancia.borrarHallazgo(h.id!);
+                                  if (!mounted) return;
+                                  Navigator.of(sheetContext).pop();
+                                  _cargarHallazgos();
+                                },
+                                label: Text('Borrar', style: TextStyle(color: Colors.red)),
+                              ),
+                            ),
+                          ]),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
-            if (hallazgo.notas.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(hallazgo.notas),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
+
+  Widget _filaNaturaleza(String clave, String valor) => Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(width: 100, child: Text(clave, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+            Expanded(child: Text(valor, style: TextStyle(fontSize: 13))),
+          ],
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -401,6 +545,31 @@ class _PantallaMapaState extends State<PantallaMapa> {
     return Scaffold(
       body: Stack(
         children: [
+          if (!_conectado)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: Material(
+                elevation: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  color: Colors.orange.shade800,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.cloud_off, color: Colors.white, size: 16),
+                        SizedBox(width: 6),
+                        Text('Sin conexión — usando datos en caché',
+                            style: TextStyle(color: Colors.white, fontSize: 12)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           FlutterMap(
             mapController: _controladorMapa,
             options: MapOptions(
@@ -478,18 +647,18 @@ class _PantallaMapaState extends State<PantallaMapa> {
               MarkerClusterLayerWidget(
                 options: MarkerClusterLayerOptions(
                   maxClusterRadius: 60,
-                  size: const Size(40, 40),
+                  size: Size(40, 40),
                   alignment: Alignment.center,
                   padding: const EdgeInsets.all(50),
                   markers: [
-                    for (final hallazgo in _hallazgosFiltrados)
+                    for (var i = 0; i < _hallazgosFiltrados.length; i++)
                       Marker(
                         width: 36,
                         height: 36,
-                        point: LatLng(hallazgo.latitud, hallazgo.longitud),
+                        point: LatLng(_hallazgosFiltrados[i].latitud, _hallazgosFiltrados[i].longitud),
                         child: GestureDetector(
-                          onTap: () => _abrirDetalleHallazgo(hallazgo),
-                          child: _IconoHallazgo(hallazgo: hallazgo),
+                          onTap: () => _abrirDetalleHallazgo(_hallazgosFiltrados, i),
+                          child: _IconoHallazgo(hallazgo: _hallazgosFiltrados[i]),
                         ),
                       ),
                   ],
@@ -505,7 +674,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     alignment: Alignment.center,
                     child: Text(
                       '${marcadores.length}',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
@@ -529,10 +698,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
               onCambioCapa: (capa) => setState(() => _capaBaseActual = capa),
               onCentrar: _centrarEnMiUbicacion,
               onAbrirOffline: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PantallaMapasOffline()),
+                MaterialPageRoute(builder: (_) => PantallaMapasOffline()),
               ),
               onAbrirTracks: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PantallaTracks()),
+                MaterialPageRoute(builder: (_) => PantallaTracks()),
               ),
               estaGrabando: estaGrabando,
               onAlternarGrabacion: _alternarGrabacionTrack,
@@ -546,15 +715,41 @@ class _PantallaMapaState extends State<PantallaMapa> {
               onRefrescarLugares: _refrescarLugaresInteres,
             ),
           ),
+          if (_modoAgregar)
+            CruzCentroMapa(
+              latitud: _ultimoCentroMapa?.latitude,
+              longitud: _ultimoCentroMapa?.longitude,
+              onConfirmar: () {
+                final centro = _ultimoCentroMapa;
+                if (centro != null) {
+                  widget.alPedirNuevoHallazgo(
+                    latitud: centro.latitude,
+                    longitud: centro.longitude,
+                  );
+                }
+                setState(() => _modoAgregar = false);
+              },
+              onCancelar: () => setState(() => _modoAgregar = false),
+            ),
         ],
       ),
+      floatingActionButton: _modoAgregar
+          ? null
+          : FloatingActionButton(
+              heroTag: 'fab_add_point',
+              onPressed: () => setState(() {
+                    _modoAgregar = true;
+                    _ultimoCentroMapa = _centroInicial;
+                  }),
+              child: Icon(Icons.add_location),
+            ),
     );
   }
 }
 
 class _IconoHallazgo extends StatelessWidget {
   final Hallazgo hallazgo;
-  const _IconoHallazgo({required this.hallazgo});
+  _IconoHallazgo({required this.hallazgo});
 
   @override
   Widget build(BuildContext context) {
@@ -576,17 +771,18 @@ class _IconoHallazgo extends StatelessWidget {
 class _BarraFiltro extends StatelessWidget {
   final String filtroActual;
   final ValueChanged<String> onCambio;
-  const _BarraFiltro({required this.filtroActual, required this.onCambio});
+  _BarraFiltro({required this.filtroActual, required this.onCambio});
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         child: Row(
           children: [
             ChoiceChip(
-              label: const Text('Todos'),
+              label: Text(SoleraL10n.t('todos')),
               selected: filtroActual == 'todos',
               onSelected: (_) => onCambio('todos'),
             ),
@@ -624,7 +820,7 @@ class _BotonesAccion extends StatelessWidget {
   final VoidCallback onAbrirSelectorLugares;
   final VoidCallback onRefrescarLugares;
 
-  const _BotonesAccion({
+  _BotonesAccion({
     required this.capaActual,
     required this.onCambioCapa,
     required this.onCentrar,
@@ -658,15 +854,15 @@ class _BotonesAccion extends StatelessWidget {
             );
             if (seleccion != null) onCambioCapa(seleccion);
           },
-          child: const Icon(Icons.layers),
+          child: Icon(Icons.layers),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'gps',
           onPressed: onCentrar,
-          child: const Icon(Icons.my_location),
+          child: Icon(Icons.my_location),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'track',
           backgroundColor: estaGrabando ? Colors.red : null,
@@ -674,7 +870,7 @@ class _BotonesAccion extends StatelessWidget {
           onPressed: onAlternarGrabacion,
           child: Icon(estaGrabando ? Icons.stop : Icons.fiber_manual_record),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'lugares',
           backgroundColor: hayLugaresActivos ? Colors.green.shade700 : null,
@@ -682,19 +878,19 @@ class _BotonesAccion extends StatelessWidget {
           tooltip: 'Capas de lugares (miradores, reservas, charcas...)',
           onPressed: cargandoLugares ? null : onAbrirSelectorLugares,
           child: cargandoLugares
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : const Icon(Icons.place_outlined),
+              ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              : Icon(Icons.place_outlined),
         ),
         if (hayLugaresActivos) ...[
-          const SizedBox(height: 4),
+          SizedBox(height: 4),
           FloatingActionButton.small(
             heroTag: 'lugares-refresh',
             tooltip: 'Recargar lugares en la vista actual',
             onPressed: cargandoLugares ? null : onRefrescarLugares,
-            child: const Icon(Icons.refresh, size: 18),
+            child: Icon(Icons.refresh, size: 18),
           ),
         ],
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'gbif',
           backgroundColor: hayGbif ? Colors.deepOrange : null,
@@ -704,20 +900,20 @@ class _BotonesAccion extends StatelessWidget {
               ? null
               : (hayGbif ? onLimpiarGbif : onConsultarGbif),
           child: cargandoGbif
-              ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
               : Icon(hayGbif ? Icons.layers_clear : Icons.public),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'tracks',
           onPressed: onAbrirTracks,
-          child: const Icon(Icons.route),
+          child: Icon(Icons.route),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'offline',
           onPressed: onAbrirOffline,
-          child: const Icon(Icons.download_for_offline),
+          child: Icon(Icons.download_for_offline),
         ),
       ],
     );
@@ -726,7 +922,7 @@ class _BotonesAccion extends StatelessWidget {
 
 class _SelectorTiposLugares extends StatefulWidget {
   final Set<TipoLugarInteres> seleccionInicial;
-  const _SelectorTiposLugares({required this.seleccionInicial});
+  _SelectorTiposLugares({required this.seleccionInicial});
 
   @override
   State<_SelectorTiposLugares> createState() => _SelectorTiposLugaresState();
@@ -750,13 +946,13 @@ class _SelectorTiposLugaresState extends State<_SelectorTiposLugares> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Capas de lugares de interés', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            const Text(
+            Text('Capas de lugares de interés', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            SizedBox(height: 4),
+            Text(
               'Datos de OpenStreetMap. Las capas se cargan en la vista visible del mapa.',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             ...TipoLugarInteres.values.map(
               (tipo) => CheckboxListTile(
                 dense: true,
@@ -774,17 +970,17 @@ class _SelectorTiposLugaresState extends State<_SelectorTiposLugares> {
                 },
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Row(
               children: [
                 TextButton(
                   onPressed: () => setState(() => _seleccion = {}),
-                  child: const Text('Quitar todas'),
+                  child: Text('Quitar todas'),
                 ),
-                const Spacer(),
+                Spacer(),
                 FilledButton(
                   onPressed: () => Navigator.of(context).pop(_seleccion),
-                  child: const Text('Aplicar'),
+                  child: Text('Aplicar'),
                 ),
               ],
             ),

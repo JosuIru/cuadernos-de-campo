@@ -1,14 +1,16 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:share_plus/share_plus.dart';
 import '../datos/configuracion.dart';
 import '../servicios/cache_teselas.dart';
 import '../servicios/servicio_backup.dart';
 import 'pantalla_mapas_offline.dart';
+import 'sheet_donaciones.dart';
 
 class PantallaAjustes extends StatefulWidget {
-  const PantallaAjustes({super.key});
+  PantallaAjustes({super.key});
 
   @override
   State<PantallaAjustes> createState() => _PantallaAjustesState();
@@ -16,8 +18,11 @@ class PantallaAjustes extends StatefulWidget {
 
 class _PantallaAjustesState extends State<PantallaAjustes> {
   final _controladorApiKey = TextEditingController();
+  final _controladorApiKeyPlantNet = TextEditingController();
+  final _controladorDeepseekKey = TextEditingController();
   String _modeloSeleccionado = modeloPorDefecto;
   bool _ocultarApiKey = true;
+  bool _ocultarApiKeyPlantNet = true;
   String? _mensajeEstado;
   String _resumenCache = 'Calculando…';
 
@@ -31,15 +36,21 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
   @override
   void dispose() {
     _controladorApiKey.dispose();
+    _controladorApiKeyPlantNet.dispose();
+    _controladorDeepseekKey.dispose();
     super.dispose();
   }
 
   Future<void> _cargar() async {
     final apiKey = await Configuracion.obtenerApiKey();
+    final apiKeyPlantNet = await Configuracion.obtenerApiKeyPlantNet();
+    final apiKeyDeepseek = await Configuracion.obtenerApiKeyDeepseek();
     final modelo = await Configuracion.obtenerModelo();
     if (!mounted) return;
     setState(() {
       _controladorApiKey.text = apiKey;
+      _controladorApiKeyPlantNet.text = apiKeyPlantNet;
+      _controladorDeepseekKey.text = apiKeyDeepseek;
       _modeloSeleccionado = modelo;
     });
   }
@@ -55,6 +66,8 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
 
   Future<void> _guardar() async {
     await Configuracion.guardarApiKey(_controladorApiKey.text.trim());
+    await Configuracion.guardarApiKeyPlantNet(_controladorApiKeyPlantNet.text.trim());
+    await Configuracion.guardarApiKeyDeepseek(_controladorDeepseekKey.text.trim());
     await Configuracion.guardarModelo(_modeloSeleccionado);
     if (!mounted) return;
     setState(() => _mensajeEstado = 'Ajustes guardados');
@@ -64,7 +77,7 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => Center(child: CircularProgressIndicator()),
     );
     try {
       final fichero = await exportarBackup();
@@ -86,13 +99,13 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Restaurar copia de seguridad'),
-        content: const Text(
+        title: Text('Restaurar copia de seguridad'),
+        content: Text(
           'Esto reemplazará TODOS tus hallazgos, tracks y fotos actuales por los del fichero. ¿Continuar?',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Continuar')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(SoleraL10n.t('continuar'))),
         ],
       ),
     );
@@ -105,7 +118,7 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => Center(child: CircularProgressIndicator()),
     );
     try {
       final restauracion = await restaurarBackup(File(ruta));
@@ -122,7 +135,7 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error restaurando: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.t('error_restaurando:_$e'))));
     }
   }
 
@@ -130,14 +143,14 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        content: const Text(
+        content: Text(
           '¿Vaciar la caché de mapas offline? Tendrás que volver a descargar para usar sin conexión.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Vaciar', style: TextStyle(color: Colors.red)),
+            child: Text('Vaciar', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -150,25 +163,25 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Ajustes')),
+      appBar: AppBar(title: Text(SoleraL10n.t('ajustes'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text('Identificación con Claude', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: 8),
+          Text(
             'Para identificar especies automáticamente, introduce tu API key de Anthropic. '
             'Se guarda solo en tu teléfono y se envía únicamente a api.anthropic.com. '
             'Consigue una en console.anthropic.com.',
             style: TextStyle(fontSize: 13),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           TextField(
             controller: _controladorApiKey,
             obscureText: _ocultarApiKey,
             decoration: InputDecoration(
               labelText: 'API key de Anthropic',
-              border: const OutlineInputBorder(),
+              border: OutlineInputBorder(),
               hintText: 'sk-ant-…',
               suffixIcon: IconButton(
                 icon: Icon(_ocultarApiKey ? Icons.visibility : Icons.visibility_off),
@@ -176,9 +189,62 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          const Text('Modelo', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
+          SizedBox(height: 24),
+          Card(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Idioma / Language',
+                  style: Theme.of(context).textTheme.titleSmall
+                      ?.copyWith(fontWeight: FontWeight.bold)),
+              SizedBox(height: 8),
+              SelectorIdioma(),
+            ],
+          ),
+        ),
+      ),
+      Divider(),
+          SizedBox(height: 16),
+          Text('Identificación de plantas con Pl@ntNet (gratis)', style: Theme.of(context).textTheme.titleMedium),
+          SizedBox(height: 8),
+          Text(
+            'Pl@ntNet identifica plantas con una foto y devuelve un ranking de candidatas. '
+            'El plan gratuito da 500 identificaciones al día. '
+            'Regístrate en my.plantnet.org y pega aquí tu clave. '
+            'La foto se envía solo cuando pulses el botón "Identificar planta" en la ficha de un hallazgo.',
+            style: TextStyle(fontSize: 13),
+          ),
+          SizedBox(height: 12),
+          TextField(
+            controller: _controladorApiKeyPlantNet,
+            obscureText: _ocultarApiKeyPlantNet,
+            decoration: InputDecoration(
+              labelText: 'Clave API de Pl@ntNet',
+              border: OutlineInputBorder(),
+              hintText: '2bxxxxxxxxxxxxxxxxxxxxxxxxx',
+              suffixIcon: IconButton(
+                icon: Icon(_ocultarApiKeyPlantNet ? Icons.visibility : Icons.visibility_off),
+                onPressed: () => setState(() => _ocultarApiKeyPlantNet = !_ocultarApiKeyPlantNet),
+              ),
+            ),
+          ),
+          SizedBox(height: 12),
+          TextField(
+            controller: _controladorDeepseekKey,
+            obscureText: _ocultarApiKey,
+            decoration: InputDecoration(
+              labelText: 'API key de DeepSeek (para chat)',
+              border: OutlineInputBorder(),
+              hintText: 'sk-…',
+            ),
+          ),
+          SizedBox(height: 24),
+          
+          Text('Modelo de Claude', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 8),
           ...modelosDisponibles.map(
             (modelo) => RadioListTile<String>(
               value: modelo.id,
@@ -190,90 +256,103 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          FilledButton(onPressed: _guardar, child: const Text('Guardar ajustes')),
+          SizedBox(height: 16),
+          FilledButton(onPressed: _guardar, child: Text('Guardar ajustes')),
           if (_mensajeEstado != null) ...[
-            const SizedBox(height: 12),
+            SizedBox(height: 12),
             Center(
               child: Text(_mensajeEstado!, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
             ),
           ],
-          const SizedBox(height: 32),
-          const Divider(),
-          const SizedBox(height: 16),
+          SizedBox(height: 32),
+          
           Text('Mapas sin conexión', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: 8),
+          Text(
             'Las teselas que veas en el mapa se guardan automáticamente en caché. '
             'Para precachear una zona entera (vista actual del mapa), usa el botón de descarga.',
             style: TextStyle(fontSize: 13),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(6)),
             child: Text(_resumenCache),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: FilledButton.icon(
-                  icon: const Icon(Icons.download),
+                  icon: Icon(Icons.download),
                   onPressed: () async {
                     await Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const PantallaMapasOffline()),
+                      MaterialPageRoute(builder: (_) => PantallaMapasOffline()),
                     );
                     await _refrescarResumenCache();
                   },
-                  label: const Text('Descargar zona'),
+                  label: Text('Descargar zona'),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               OutlinedButton.icon(
-                icon: const Icon(Icons.delete_outline),
+                icon: Icon(Icons.delete_outline),
                 onPressed: _vaciarCache,
-                label: const Text('Vaciar'),
+                label: Text('Vaciar'),
               ),
             ],
           ),
-          const SizedBox(height: 32),
-          const Divider(),
-          const SizedBox(height: 16),
+          SizedBox(height: 32),
+          
           Text('Copia de seguridad', style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: 8),
+          Text(
             'Exporta toda tu base (hallazgos + tracks + fotos) en un fichero único .natbackup. '
             'Guárdalo en Drive/USB/correo. Para restaurar, selecciona el .natbackup; '
             'reemplazará los datos actuales.',
             style: TextStyle(fontSize: 13),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Row(
             children: [
               Expanded(
                 child: FilledButton.icon(
-                  icon: const Icon(Icons.backup),
+                  icon: Icon(Icons.backup),
                   onPressed: _hacerBackup,
-                  label: const Text('Hacer copia'),
+                  label: Text('Hacer copia'),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  icon: const Icon(Icons.restore),
+                  icon: Icon(Icons.restore),
                   onPressed: _restaurarBackup,
-                  label: const Text('Restaurar copia'),
+                  label: Text('Restaurar copia'),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 32),
-          const Divider(),
-          const SizedBox(height: 16),
-          const Text('Sobre la app', style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          const Text(
+          SizedBox(height: 32),
+          
+          Text('Apoyar el proyecto', style: Theme.of(context).textTheme.titleLarge),
+          SizedBox(height: 8),
+          Text(
+            'La app es y seguirá siendo gratuita y abierta para todos. '
+            'Si te ha sido útil y puedes permitírtelo, una pequeña aportación '
+            'voluntaria ayuda al mantenimiento, soporte y actualizaciones.',
+            style: TextStyle(fontSize: 13),
+          ),
+          SizedBox(height: 12),
+          FilledButton.tonalIcon(
+            icon: Icon(Icons.favorite_outline),
+            onPressed: () => mostrarSheetDonaciones(context),
+            label: Text('Ver formas de apoyar'),
+          ),
+          SizedBox(height: 32),
+          
+          Text('Sobre la app', style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 8),
+          Text(
             'Naturaleza — Cuaderno de campo (animales, insectos y plantas). Versión Flutter para Android.\n\n'
             'Mapa base: OpenStreetMap, ESRI, OpenTopoMap. '
             'Identificación: Claude (Anthropic). Taxonomía y referencias: iNaturalist y GBIF.',

@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'atribucion_foto.dart';
+
 class Hallazgo {
   final int? id;
   final int fechaMs;
@@ -13,6 +15,17 @@ class Hallazgo {
   final String habitat;
   final String notas;
   final List<String> rutasFotos;
+
+  /// Atribución por foto, paralela a [rutasFotos]: misma longitud,
+  /// `null` en la posición = foto del usuario (sin atribución), no-null
+  /// = foto de archivo descargada de Wikipedia/iNaturalist con su
+  /// licencia. Se persiste dentro de [atributos] bajo la clave
+  /// `atribuciones_fotos` — sin migración del esquema sqlite.
+  ///
+  /// Lista vacía o longitud distinta a `rutasFotos` se trata como
+  /// "ninguna foto tiene atribución" (todas del usuario).
+  final List<AtribucionFoto?> atribucionesFotos;
+
   final Map<String, dynamic> atributos;
 
   Hallazgo({
@@ -28,6 +41,7 @@ class Hallazgo {
     this.habitat = '',
     this.notas = '',
     this.rutasFotos = const [],
+    this.atribucionesFotos = const [],
     this.atributos = const {},
   });
 
@@ -37,21 +51,43 @@ class Hallazgo {
 
   String? get rutaFoto => rutasFotos.isEmpty ? null : rutasFotos.first;
 
-  Map<String, Object?> toMap() => {
-        'id': id,
-        'fecha_ms': fechaMs,
-        'latitud': latitud,
-        'longitud': longitud,
-        'precision': precision,
-        'categoria': categoria,
-        'especie': especie,
-        'nombre_comun': nombreComun,
-        'taxonomia': taxonomia,
-        'habitat': habitat,
-        'notas': notas,
-        'rutas_fotos_json': rutasFotos.isEmpty ? null : jsonEncode(rutasFotos),
-        'atributos_json': atributos.isEmpty ? null : jsonEncode(atributos),
-      };
+  /// Atribución de la foto en posición [indice], o `null` si:
+  /// - el índice está fuera de rango,
+  /// - la lista paralela no se rellenó (foto del usuario).
+  AtribucionFoto? atribucionEnPosicion(int indice) {
+    if (indice < 0 || indice >= atribucionesFotos.length) return null;
+    return atribucionesFotos[indice];
+  }
+
+  Map<String, Object?> toMap() {
+    final atributosCompleto = <String, dynamic>{...atributos};
+    // Sólo persistimos la lista paralela si alguna foto tiene
+    // atribución — evita ensuciar registros antiguos con un campo
+    // vacío que no aporta nada.
+    final hayAtribucion = atribucionesFotos.any((a) => a != null);
+    if (hayAtribucion) {
+      atributosCompleto['atribuciones_fotos'] = atribucionesFotos
+          .map((a) => a?.toJson())
+          .toList();
+    }
+    return {
+      'id': id,
+      'fecha_ms': fechaMs,
+      'latitud': latitud,
+      'longitud': longitud,
+      'precision': precision,
+      'categoria': categoria,
+      'especie': especie,
+      'nombre_comun': nombreComun,
+      'taxonomia': taxonomia,
+      'habitat': habitat,
+      'notas': notas,
+      'rutas_fotos_json':
+          rutasFotos.isEmpty ? null : jsonEncode(rutasFotos),
+      'atributos_json':
+          atributosCompleto.isEmpty ? null : jsonEncode(atributosCompleto),
+    };
+  }
 
   factory Hallazgo.fromMap(Map<String, Object?> mapa) {
     final rutasJson = mapa['rutas_fotos_json'] as String?;
@@ -67,10 +103,21 @@ class Hallazgo {
     Map<String, dynamic> atributos = const {};
     if (atributosJson != null && atributosJson.isNotEmpty) {
       try {
-        atributos = (jsonDecode(atributosJson) as Map).cast<String, dynamic>();
+        atributos =
+            (jsonDecode(atributosJson) as Map).cast<String, dynamic>();
       } catch (_) {
         atributos = const {};
       }
+    }
+    // Extraemos la lista paralela de atribuciones del Map atributos
+    // y la sacamos de allí para no duplicar cuando se vuelva a
+    // serializar — toMap la regenera desde el campo `atribucionesFotos`.
+    List<AtribucionFoto?> atribuciones = const [];
+    final atribsRaw = atributos['atribuciones_fotos'];
+    if (atribsRaw is List) {
+      atribuciones = atribsRaw.map(AtribucionFoto.fromJson).toList();
+      atributos = Map<String, dynamic>.from(atributos)
+        ..remove('atribuciones_fotos');
     }
     return Hallazgo(
       id: mapa['id'] as int?,
@@ -85,6 +132,7 @@ class Hallazgo {
       habitat: (mapa['habitat'] as String?) ?? '',
       notas: (mapa['notas'] as String?) ?? '',
       rutasFotos: rutas,
+      atribucionesFotos: atribuciones,
       atributos: atributos,
     );
   }
@@ -97,6 +145,7 @@ class Hallazgo {
     String? habitat,
     String? notas,
     List<String>? rutasFotos,
+    List<AtribucionFoto?>? atribucionesFotos,
     Map<String, dynamic>? atributos,
   }) =>
       Hallazgo(
@@ -112,6 +161,7 @@ class Hallazgo {
         habitat: habitat ?? this.habitat,
         notas: notas ?? this.notas,
         rutasFotos: rutasFotos ?? this.rutasFotos,
+        atribucionesFotos: atribucionesFotos ?? this.atribucionesFotos,
         atributos: atributos ?? this.atributos,
       );
 }

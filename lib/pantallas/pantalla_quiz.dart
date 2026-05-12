@@ -1,11 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/datos_guia.dart';
 
 enum _ModoQuiz { comunACientifico, cientificoAComun, distintivos }
 
 class PantallaQuiz extends StatefulWidget {
-  const PantallaQuiz({super.key});
+  PantallaQuiz({super.key});
 
   @override
   State<PantallaQuiz> createState() => _PantallaQuizState();
@@ -86,7 +87,7 @@ class _PantallaQuizState extends State<PantallaQuiz> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Quiz'),
+        title: Text('Quiz'),
         actions: [
           if (_intentos > 0)
             Padding(
@@ -94,37 +95,57 @@ class _PantallaQuizState extends State<PantallaQuiz> {
               child: Center(
                 child: Text(
                   '$_aciertos / $_intentos',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
             ),
         ],
       ),
       body: especiesGuia.length < 3
-          ? const _SinSuficientesEspecies()
+          ? _SinSuficientesEspecies()
           : Column(
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: SegmentedButton<String>(
-                    segments: [
-                      const ButtonSegment(value: 'todos', label: Text('Todos'), icon: Icon(Icons.apps)),
-                      for (final categoria in categoriasGuia)
-                        ButtonSegment(
-                          value: categoria.id,
-                          label: Text(categoria.nombre),
-                          icon: Icon(categoria.icono),
+                  padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
+                          child: FilterChip(
+                            label: Text(SoleraL10n.t('todos')),
+                            avatar: Icon(Icons.apps, size: 18),
+                            selected: _filtroCategoria == 'todos',
+                            onSelected: (_) {
+                              setState(() {
+                                _filtroCategoria = 'todos';
+                                _aciertos = 0;
+                                _intentos = 0;
+                              });
+                              _siguientePregunta();
+                            },
+                          ),
                         ),
-                    ],
-                    selected: {_filtroCategoria},
-                    onSelectionChanged: (seleccion) {
-                      setState(() {
-                        _filtroCategoria = seleccion.first;
-                        _aciertos = 0;
-                        _intentos = 0;
-                      });
-                      _siguientePregunta();
-                    },
+                        for (final categoria in categoriasGuia)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: FilterChip(
+                              label: Text(categoria.nombre),
+                              avatar: Icon(categoria.icono, size: 18),
+                              selected: _filtroCategoria == categoria.id,
+                              onSelected: (_) {
+                                setState(() {
+                                  _filtroCategoria = categoria.id;
+                                  _aciertos = 0;
+                                  _intentos = 0;
+                                });
+                                _siguientePregunta();
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
                 Padding(
@@ -144,9 +165,9 @@ class _PantallaQuizState extends State<PantallaQuiz> {
                 ),
                 Expanded(
                   child: banco.length < 3
-                      ? const _PocasEspeciesEnCategoria()
+                      ? _PocasEspeciesEnCategoria()
                       : correcta == null
-                          ? const Center(child: CircularProgressIndicator())
+                          ? Center(child: CircularProgressIndicator())
                           : _vistaPregunta(correcta),
                 ),
               ],
@@ -166,16 +187,16 @@ class _PantallaQuizState extends State<PantallaQuiz> {
               padding: const EdgeInsets.all(16),
               child: Text(
                 _enunciado(correcta),
-                style: const TextStyle(fontSize: 16),
+                style: TextStyle(fontSize: 16),
                 textAlign: TextAlign.center,
               ),
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           Expanded(
             child: ListView.separated(
               itemCount: _opciones.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              separatorBuilder: (_, __) => SizedBox(height: 8),
               itemBuilder: (_, indice) {
                 final opcion = _opciones[indice];
                 final esCorrecta = opcion.id == correcta.id;
@@ -195,9 +216,9 @@ class _PantallaQuizState extends State<PantallaQuiz> {
                     trailing: _respuestaSeleccionada == null
                         ? null
                         : esCorrecta
-                            ? const Icon(Icons.check_circle, color: Colors.green)
+                            ? Icon(Icons.check_circle, color: Colors.green)
                             : esSeleccionada
-                                ? const Icon(Icons.cancel, color: Colors.red)
+                                ? Icon(Icons.cancel, color: Colors.red)
                                 : null,
                     onTap: _respuestaSeleccionada == null ? () => _responder(opcion) : null,
                   ),
@@ -209,9 +230,9 @@ class _PantallaQuizState extends State<PantallaQuiz> {
             Padding(
               padding: const EdgeInsets.only(top: 12),
               child: FilledButton.icon(
-                icon: const Icon(Icons.arrow_forward),
+                icon: Icon(Icons.arrow_forward),
                 onPressed: _siguientePregunta,
-                label: const Text('Siguiente'),
+                label: Text(SoleraL10n.t('siguiente')),
               ),
             ),
         ],
@@ -221,7 +242,7 @@ class _PantallaQuizState extends State<PantallaQuiz> {
 }
 
 class _SinSuficientesEspecies extends StatelessWidget {
-  const _SinSuficientesEspecies();
+  _SinSuficientesEspecies();
 
   @override
   Widget build(BuildContext context) {
@@ -231,15 +252,15 @@ class _SinSuficientesEspecies extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.quiz_outlined, size: 72, color: Colors.grey),
-            const SizedBox(height: 16),
+            Icon(Icons.quiz_outlined, size: 72, color: Colors.grey),
+            SizedBox(height: 16),
             Text(
               'Hacen falta al menos 3 especies para el quiz',
               style: Theme.of(context).textTheme.titleLarge,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 8),
-            const Text(
+            SizedBox(height: 8),
+            Text(
               'Añade más entradas en lib/datos/datos_guia.dart',
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey),
@@ -252,11 +273,11 @@ class _SinSuficientesEspecies extends StatelessWidget {
 }
 
 class _PocasEspeciesEnCategoria extends StatelessWidget {
-  const _PocasEspeciesEnCategoria();
+  _PocasEspeciesEnCategoria();
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
         padding: EdgeInsets.all(24),
         child: Text(

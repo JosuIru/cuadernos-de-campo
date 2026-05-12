@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import '../servicios/cache_teselas.dart';
@@ -8,7 +9,7 @@ const _centroInicial = LatLng(40.4168, -3.7038);
 const _zoomInicialPantalla = 6.0;
 
 class PantallaMapasOffline extends StatefulWidget {
-  const PantallaMapasOffline({super.key});
+  PantallaMapasOffline({super.key});
 
   @override
   State<PantallaMapasOffline> createState() => _PantallaMapasOfflineState();
@@ -53,7 +54,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
     final limites = LimitesPrecache(sur: bounds.south, norte: bounds.north, oeste: bounds.west, este: bounds.east);
     final capas = _capasIncluidas();
     if (capas.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecciona al menos una capa.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Selecciona al menos una capa.')));
       return;
     }
 
@@ -64,8 +65,8 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
         builder: (_) => AlertDialog(
           content: Text('Vas a descargar ${resumen.totalUrls} teselas (~${(resumen.totalUrls * 25 / 1024).toStringAsFixed(1)} MB). ¿Continuar?'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Descargar')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text('Descargar')),
           ],
         ),
       );
@@ -97,7 +98,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
   Widget build(BuildContext context) {
     final progreso = _progresoActual;
     return Scaffold(
-      appBar: AppBar(title: const Text('Descargar mapas offline')),
+      appBar: AppBar(title: Text('Descargar mapas offline')),
       body: Column(
         children: [
           SizedBox(
@@ -127,8 +128,8 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                const Text('Centra y haz zoom en el mapa de arriba sobre la zona donde vayas a estar.', style: TextStyle(fontSize: 13, color: Colors.grey)),
-                const SizedBox(height: 16),
+                Text('Centra y haz zoom en el mapa de arriba sobre la zona donde vayas a estar.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                SizedBox(height: 16),
                 Row(children: [
                   Expanded(child: Text('Zoom mínimo: $_zoomMin')),
                   Expanded(
@@ -157,9 +158,9 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                     ),
                   ),
                 ]),
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 CheckboxListTile(
-                  title: const Text('Callejero (OpenStreetMap)'),
+                  title: Text('Callejero (OpenStreetMap)'),
                   value: _incluirCallejero,
                   onChanged: (v) => setState(() {
                     _incluirCallejero = v ?? true;
@@ -167,7 +168,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                   }),
                 ),
                 CheckboxListTile(
-                  title: const Text('Satélite (ESRI)'),
+                  title: Text('Satélite (ESRI)'),
                   value: _incluirSatelite,
                   onChanged: (v) => setState(() {
                     _incluirSatelite = v ?? false;
@@ -175,7 +176,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                   }),
                 ),
                 CheckboxListTile(
-                  title: const Text('Topográfico (OpenTopoMap)'),
+                  title: Text('Topográfico (OpenTopoMap)'),
                   value: _incluirTopografico,
                   onChanged: (v) => setState(() {
                     _incluirTopografico = v ?? false;
@@ -189,24 +190,24 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                     decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(6)),
                     child: Text(
                       '${_resumen!.totalUrls} teselas (~${(_resumen!.totalUrls * 25 / 1024).toStringAsFixed(1)} MB) en ${_resumen!.capas} capas',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
                 FilledButton.icon(
                   icon: _descargando
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Icon(Icons.download),
+                      ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : Icon(Icons.download),
                   onPressed: _descargando ? null : _descargar,
                   label: Text(_descargando ? 'Descargando…' : 'Descargar ahora'),
                 ),
                 if (progreso != null && _descargando) ...[
-                  const SizedBox(height: 16),
+                  SizedBox(height: 16),
                   LinearProgressIndicator(
                     value: progreso.total == 0 ? 0 : progreso.descargadas / progreso.total,
                   ),
-                  const SizedBox(height: 4),
-                  Text('${progreso.descargadas}/${progreso.total} (${progreso.falladas} fallidas) · ${(progreso.bytesAcumulados / 1024 / 1024).toStringAsFixed(1)} MB', style: const TextStyle(fontSize: 12)),
+                  SizedBox(height: 4),
+                  Text('${progreso.descargadas}/${progreso.total} (${progreso.falladas} fallidas) · ${(progreso.bytesAcumulados / 1024 / 1024).toStringAsFixed(1)} MB', style: TextStyle(fontSize: 12)),
                 ],
               ],
             ),

@@ -129,6 +129,12 @@ Future<IdentificacionEspecie> identificarEspecie({
     ],
   };
 
+  // La forma canónica de pedir output JSON estructurado a la API
+  // Anthropic es vía tool-use: declaras una tool con `input_schema`
+  // y la fuerzas con `tool_choice`. La forma anterior con
+  // `output_config.format.json_schema` no es parte de la API pública
+  // y dejaba de identificar en producción.
+  const nombreHerramienta = 'registrar_identificacion';
   final cuerpo = jsonEncode({
     'model': modelo,
     'max_tokens': 2048,
@@ -136,12 +142,15 @@ Future<IdentificacionEspecie> identificarEspecie({
     'messages': [
       {'role': 'user', 'content': mensajeUsuario}
     ],
-    'output_config': {
-      'format': {
-        'type': 'json_schema',
-        'schema': esquema,
+    'tools': [
+      {
+        'name': nombreHerramienta,
+        'description':
+            'Registra la identificación de la especie observada en la foto, con nombre científico, taxonomía y nivel de confianza.',
+        'input_schema': esquema,
       },
-    },
+    ],
+    'tool_choice': {'type': 'tool', 'name': nombreHerramienta},
   });
 
   final respuesta = await http.post(
@@ -160,18 +169,47 @@ Future<IdentificacionEspecie> identificarEspecie({
   }
 
   final json = jsonDecode(utf8.decode(respuesta.bodyBytes)) as Map<String, dynamic>;
-  final contenidos = (json['content'] as List).cast<Map<String, dynamic>>();
-  String? textoRespuesta;
+  final contenidos = ((json['content'] as List?) ?? const [])
+      .cast<Map<String, dynamic>>();
+  // Con tool-use forzado, la respuesta llega como bloque
+  // `type: 'tool_use'` con el JSON estructurado en `input`. Si por
+  // cualquier motivo el modelo devuelve un bloque `text` en su
+  // lugar, intentamos parsearlo como JSON (compat antigua).
+  Map<String, dynamic>? datos;
   for (final bloque in contenidos) {
-    if (bloque['type'] == 'text') {
-      textoRespuesta = bloque['text'] as String?;
-      break;
+    if (bloque['type'] == 'tool_use') {
+      final entrada = bloque['input'];
+      if (entrada is Map<String, dynamic>) {
+        datos = entrada;
+        break;
+      }
     }
   }
-  if (textoRespuesta == null) {
-    throw Exception('Respuesta vacía del modelo.');
+  if (datos == null) {
+    for (final bloque in contenidos) {
+      if (bloque['type'] == 'text') {
+        final texto = bloque['text'] as String?;
+        if (texto != null && texto.trim().isNotEmpty) {
+          try {
+            final d = jsonDecode(texto);
+            if (d is Map<String, dynamic>) {
+              datos = d;
+              break;
+            }
+          } catch (_) {
+            // Texto no parseable como JSON: probable mensaje de error
+            // del modelo. Lo dejamos pasar para que el throw siguiente
+            // lo reporte con contexto.
+          }
+        }
+      }
+    }
   }
-  final datos = jsonDecode(textoRespuesta) as Map<String, dynamic>;
+  if (datos == null) {
+    throw Exception(
+      'Respuesta sin contenido estructurado. body=${utf8.decode(respuesta.bodyBytes)}',
+    );
+  }
   return IdentificacionEspecie(
     categoriaDetectada: datos['categoria_detectada'] as String? ?? 'desconocido',
     nombreCientifico: datos['nombre_cientifico'] as String? ?? '',

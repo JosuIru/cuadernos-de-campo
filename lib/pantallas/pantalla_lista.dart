@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../datos/base_datos.dart';
@@ -11,7 +12,7 @@ import 'pantalla_estadisticas.dart';
 import 'pantalla_nuevo.dart';
 
 class PantallaLista extends StatefulWidget {
-  const PantallaLista({super.key});
+  PantallaLista({super.key});
 
   @override
   State<PantallaLista> createState() => _PantallaListaState();
@@ -101,7 +102,7 @@ class _PantallaListaState extends State<PantallaLista> {
                                 ),
                                 child: Text(
                                   '${indice + 1} / ${hallazgo.rutasFotos.length}',
-                                  style: const TextStyle(color: Colors.white, fontSize: 11),
+                                  style: TextStyle(color: Colors.white, fontSize: 11),
                                 ),
                               ),
                             ),
@@ -110,7 +111,7 @@ class _PantallaListaState extends State<PantallaLista> {
                     ),
                   ),
                 ),
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               _filaDetalle('Categoría', _etiquetaCategoria(hallazgo.categoria)),
               _filaDetalle('Nombre común', hallazgo.nombreComun.isEmpty ? '—' : hallazgo.nombreComun),
               _filaDetalle('Especie', hallazgo.especie.isEmpty ? '—' : hallazgo.especie),
@@ -127,12 +128,12 @@ class _PantallaListaState extends State<PantallaLista> {
                 '${hallazgo.precision != null ? " (±${hallazgo.precision!.round()} m)" : ""}',
               ),
               _filaDetalle('Notas', hallazgo.notas.isEmpty ? '—' : hallazgo.notas),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      icon: const Icon(Icons.edit_outlined),
+                      icon: Icon(Icons.edit_outlined),
                       onPressed: () async {
                         Navigator.of(sheetContext).pop();
                         final actualizado = await Navigator.of(context).push<bool>(
@@ -140,13 +141,13 @@ class _PantallaListaState extends State<PantallaLista> {
                         );
                         if (actualizado == true) _cargar();
                       },
-                      label: const Text('Editar'),
+                      label: Text(SoleraL10n.t('editar')),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
+                      icon: Icon(Icons.delete_outline, color: Colors.red),
                       onPressed: () async {
                         final confirmar = await _confirmar(context, '¿Borrar este hallazgo?');
                         if (confirmar != true) return;
@@ -155,27 +156,27 @@ class _PantallaListaState extends State<PantallaLista> {
                         Navigator.of(sheetContext).pop();
                         _cargar();
                       },
-                      label: const Text('Borrar', style: TextStyle(color: Colors.red)),
+                      label: Text('Borrar', style: TextStyle(color: Colors.red)),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: 8),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      icon: const Icon(Icons.share),
+                      icon: Icon(Icons.share),
                       onPressed: () => _compartir(hallazgo),
-                      label: const Text('Compartir texto'),
+                      label: Text('Compartir texto'),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  SizedBox(width: 8),
                   Expanded(
                     child: FilledButton.icon(
-                      icon: const Icon(Icons.image),
+                      icon: Icon(Icons.image),
                       onPressed: () => _compartirComoTarjeta(hallazgo),
-                      label: const Text('Tarjeta'),
+                      label: Text('Tarjeta'),
                     ),
                   ),
                 ],
@@ -191,7 +192,7 @@ class _PantallaListaState extends State<PantallaLista> {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => Center(child: CircularProgressIndicator()),
     );
     try {
       final fichero = await generarZipHallazgos(_hallazgos);
@@ -213,7 +214,7 @@ class _PantallaListaState extends State<PantallaLista> {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
+      builder: (_) => Center(child: CircularProgressIndicator()),
     );
     try {
       final fichero = await generarTarjetaHallazgo(hallazgo);
@@ -270,7 +271,7 @@ class _PantallaListaState extends State<PantallaLista> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: 110, child: Text(clave, style: const TextStyle(fontWeight: FontWeight.bold))),
+            SizedBox(width: 110, child: Text(clave, style: TextStyle(fontWeight: FontWeight.bold))),
             Expanded(child: Text(valor)),
           ],
         ),
@@ -281,10 +282,10 @@ class _PantallaListaState extends State<PantallaLista> {
         builder: (_) => AlertDialog(
           content: Text(texto),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Borrar', style: TextStyle(color: Colors.red)),
+              child: Text('Borrar', style: TextStyle(color: Colors.red)),
             ),
           ],
         ),
@@ -294,17 +295,17 @@ class _PantallaListaState extends State<PantallaLista> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hallazgos'),
+        title: Text('Hallazgos'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.bar_chart),
+            icon: Icon(Icons.bar_chart),
             tooltip: 'Estadísticas',
             onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PantallaEstadisticas()),
+              MaterialPageRoute(builder: (_) => PantallaEstadisticas()),
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.archive_outlined),
+            icon: Icon(Icons.archive_outlined),
             tooltip: 'Exportar ZIP',
             onPressed: _hallazgos.isEmpty ? null : _exportar,
           ),
@@ -316,7 +317,7 @@ class _PantallaListaState extends State<PantallaLista> {
             padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
             child: TextField(
               controller: _controladorBusqueda,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Buscar por nombre, taxonomía, hábitat, notas…',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(),
@@ -324,19 +325,32 @@ class _PantallaListaState extends State<PantallaLista> {
             ),
           ),
           Padding(
-            padding: const EdgeInsets.all(8),
-            child: SegmentedButton<String>(
-              segments: [
-                const ButtonSegment(value: 'todos', label: Text('Todos'), icon: Icon(Icons.apps)),
-                for (final categoria in categoriasGuia)
-                  ButtonSegment(
-                    value: categoria.id,
-                    label: Text(categoria.nombre),
-                    icon: Icon(categoria.icono),
+            padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: FilterChip(
+                      label: Text(SoleraL10n.t('todos')),
+                      avatar: Icon(Icons.apps, size: 18),
+                      selected: _filtroCategoria == 'todos',
+                      onSelected: (_) => setState(() => _filtroCategoria = 'todos'),
+                    ),
                   ),
-              ],
-              selected: {_filtroCategoria},
-              onSelectionChanged: (seleccion) => setState(() => _filtroCategoria = seleccion.first),
+                  for (final categoria in categoriasGuia)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 6),
+                      child: FilterChip(
+                        label: Text(categoria.nombre),
+                        avatar: Icon(categoria.icono, size: 18),
+                        selected: _filtroCategoria == categoria.id,
+                        onSelected: (_) => setState(() => _filtroCategoria = categoria.id),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
           if (_filtrados.isEmpty)
@@ -349,7 +363,7 @@ class _PantallaListaState extends State<PantallaLista> {
                         ? 'Aún no hay hallazgos.\nToca el + para registrar el primero.'
                         : 'Ningún hallazgo coincide con la búsqueda.',
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: Colors.grey),
+                    style: TextStyle(color: Colors.grey),
                   ),
                 ),
               ),

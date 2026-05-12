@@ -1,17 +1,81 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'pantallas/pantalla_inicio.dart';
 import 'pantallas/pantalla_mapa.dart';
 import 'pantallas/pantalla_lista.dart';
 import 'pantallas/pantalla_nuevo.dart';
 import 'pantallas/pantalla_guia.dart';
 import 'pantallas/pantalla_ajustes.dart';
+import 'pantallas/pantalla_meteo.dart';
+import 'servicios/grabador_track.dart';
+import 'servicios/estado_conexion.dart';
+import 'servicios/auto_backup.dart';
+import 'datos/base_datos.dart';
 import 'datos/datos_guia.dart';
 
-void main() {
-  runApp(const AplicacionNaturaleza());
+void _inicializarAccesosDirectos() {
+  AccesoDirectoHallazgo.inicializar(
+    onNuevoHallazgo: () {},
+  );
 }
 
-class AplicacionNaturaleza extends StatelessWidget {
-  const AplicacionNaturaleza({super.key});
+final _autoBackupNaturaleza = AutoBackup(
+  nombreApp: 'naturaleza',
+  obtenerRutaDb: () => BaseDatosNaturaleza.instancia.rutaBaseDatos(),
+  estaVacia: () => BaseDatosNaturaleza.instancia.estaVacia(),
+  reiniciarBd: () => BaseDatosNaturaleza.instancia.reiniciar(),
+);
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  _inicializarAccesosDirectos();
+  await initializeDateFormatting('es_ES', null);
+
+  final restaurado = await _autoBackupNaturaleza.restaurarSiProcede();
+
+  unawaited(GrabadorTrack.instancia.consolidarSesionesPendientes());
+  EstadoConexion.instancia.iniciar();
+  runApp(AplicacionNaturaleza(restaurado: restaurado));
+}
+
+class AplicacionNaturaleza extends StatefulWidget {
+  final bool restaurado;
+  const AplicacionNaturaleza({super.key, this.restaurado = false});
+
+  @override
+  State<AplicacionNaturaleza> createState() => _AplicacionNaturalezaState();
+}
+
+class _AplicacionNaturalezaState extends State<AplicacionNaturaleza> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    if (widget.restaurado) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Datos restaurados desde copia de seguridad.')),
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      _autoBackupNaturaleza.respaldarAhora();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +112,7 @@ class PantallaPrincipal extends StatefulWidget {
 class _PantallaPrincipalState extends State<PantallaPrincipal> {
   int indiceVistaActual = 0;
   int contadorRefrescoLista = 0;
+  int contadorRefrescoMapa = 0;
 
   void irANuevoHallazgo({double? latitudPredefinida, double? longitudPredefinida}) {
     Navigator.of(context).push(
@@ -61,7 +126,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       if (seGuardo == true) {
         setState(() {
           contadorRefrescoLista++;
-          indiceVistaActual = 1;
+          contadorRefrescoMapa++;
+          indiceVistaActual = 1; // Vuelve al mapa para ver el nuevo punto
         });
       }
     });
@@ -70,7 +136,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   @override
   Widget build(BuildContext context) {
     final pantallas = <Widget>[
+      PantallaInicio(
+        alIrAMapa: () => setState(() => indiceVistaActual = 1),
+        alIrAGuia: () => setState(() => indiceVistaActual = 4),
+      ),
       PantallaMapa(
+        key: ValueKey('mapa_$contadorRefrescoMapa'),
         alPedirNuevoHallazgo: ({double? latitud, double? longitud}) =>
             irANuevoHallazgo(latitudPredefinida: latitud, longitudPredefinida: longitud),
         alSeleccionarEspecieGuia: (idEspecie) => abrirDetalleEspecieGuia(context, idEspecie),
@@ -86,13 +157,14 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: indiceVistaActual,
         onDestinationSelected: (indice) {
-          if (indice == 2) {
+          if (indice == 3) {
             irANuevoHallazgo();
             return;
           }
           setState(() => indiceVistaActual = indice);
         },
         destinations: const [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
           NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Mapa'),
           NavigationDestination(icon: Icon(Icons.list_outlined), selectedIcon: Icon(Icons.list), label: 'Lista'),
           NavigationDestination(icon: Icon(Icons.add_circle, size: 32), label: ''),

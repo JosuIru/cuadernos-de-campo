@@ -14,6 +14,13 @@ class ResultadoTaxonInaturalist {
   final String? rangoTaxonomico;
   final String? urlFoto;
   final String? reino;
+
+  /// Valor crudo de `iconic_taxon_name` que devuelve iNaturalist
+  /// (ej. `'Aves'`, `'Mammalia'`, `'Reptilia'`, `'Insecta'`,
+  /// `'Plantae'`). Útil para detección de subcategorías cuando los
+  /// `ancestros` no vienen poblados — el endpoint `/taxa` de
+  /// búsqueda a veces los omite.
+  final String? iconicoTaxon;
   final List<String> ancestros;
 
   ResultadoTaxonInaturalist({
@@ -23,19 +30,44 @@ class ResultadoTaxonInaturalist {
     this.rangoTaxonomico,
     this.urlFoto,
     this.reino,
+    this.iconicoTaxon,
     this.ancestros = const [],
   });
 
-  /// Categoría aproximada del cuaderno: 'planta' | 'insecto' | 'animal' | null.
+  /// Categoría aproximada del cuaderno: 'planta' | 'insecto' | 'ave' |
+  /// 'mamifero' | 'reptil' | 'anfibio' | 'animal' | null. La detección
+  /// específica (ave / insecto / mamifero / reptil / anfibio) precede a
+  /// la genérica 'animal' — un mirlo es Animalia pero también Aves, y
+  /// queremos que caiga en su categoría específica para que la app le
+  /// ofrezca los atributos correctos.
   String? get categoriaInferida {
     final r = reino;
     if (r == null) return null;
     if (r == 'Plantae' || r == 'Fungi') return 'planta';
     if (r == 'Animalia') {
-      // Detectar artrópodos por la cadena de ancestros si está disponible.
+      // Detección por iconic_taxon_name (campo de primer nivel de
+      // iNaturalist, siempre presente) ANTES de mirar ancestros, que
+      // pueden no venir poblados desde /taxa.
+      if (iconicoTaxon == 'Aves') return 'ave';
+      if (iconicoTaxon == 'Mammalia') return 'mamifero';
+      if (iconicoTaxon == 'Reptilia') return 'reptil';
+      if (iconicoTaxon == 'Amphibia') return 'anfibio';
+      if (iconicoTaxon == 'Actinopterygii' || iconicoTaxon == 'Chondrichthyes') {
+        return 'pez';
+      }
+      if (iconicoTaxon == 'Insecta' || iconicoTaxon == 'Arachnida') {
+        return 'insecto';
+      }
       const filosArtropodos = {'Arthropoda'};
       for (final ancestro in ancestros) {
         if (filosArtropodos.contains(ancestro)) return 'insecto';
+        if (ancestro == 'Aves') return 'ave';
+        if (ancestro == 'Mammalia') return 'mamifero';
+        if (ancestro == 'Reptilia') return 'reptil';
+        if (ancestro == 'Amphibia') return 'anfibio';
+        if (ancestro == 'Actinopterygii' || ancestro == 'Chondrichthyes') {
+          return 'pez';
+        }
       }
       return 'animal';
     }
@@ -88,6 +120,7 @@ Future<List<ResultadoTaxonInaturalist>> buscarTaxones(
       rangoTaxonomico: mapa['rank'] as String?,
       urlFoto: fotoDefecto?['medium_url'] as String? ?? fotoDefecto?['square_url'] as String?,
       reino: _inferirReinoDesdeAncestros(mapa) ?? mapa['iconic_taxon_name'] as String?,
+      iconicoTaxon: mapa['iconic_taxon_name'] as String?,
       ancestros: ancestros,
     );
   }).toList();
@@ -146,6 +179,7 @@ Future<ResultadoTaxonInaturalist?> obtenerTaxon(int id, {String locale = 'es'}) 
     rangoTaxonomico: mapa['rank'] as String?,
     urlFoto: fotoDefecto?['medium_url'] as String?,
     reino: _inferirReinoDesdeAncestros(mapa),
+    iconicoTaxon: mapa['iconic_taxon_name'] as String?,
     ancestros: ancestros,
   );
 }

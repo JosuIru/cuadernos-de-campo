@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -81,6 +82,43 @@ class CacheTeselasDisco {
       }
     }
   }
+
+  /// Si la caché supera [maxBytes], borra los ficheros más antiguos
+  /// hasta bajar del 80% del límite. Pensado para llamar después de
+  /// escribir una tesela nueva — es barato porque sólo actúa cuando
+  /// se excede el umbral (~1 de cada N escrituras).
+  static Future<void> limpiarSiExcede(int maxBytes) async {
+    final dir = await obtenerDirectorio();
+    final ficheros = <File>[];
+    var total = 0;
+    await for (final entidad in dir.list()) {
+      if (entidad is File) {
+        try {
+          final len = await entidad.length();
+          total += len;
+          ficheros.add(entidad);
+        } catch (_) {}
+      }
+    }
+    if (total <= maxBytes) return;
+    // Ordenar por fecha de modificación (más antiguo primero)
+    ficheros.sort((a, b) {
+      try {
+        return a.lastModifiedSync().compareTo(b.lastModifiedSync());
+      } catch (_) {
+        return 0;
+      }
+    });
+    final umbral = (maxBytes * 0.8).toInt();
+    for (final f in ficheros) {
+      if (total <= umbral) break;
+      try {
+        final len = await f.length();
+        await f.delete();
+        total -= len;
+      } catch (_) {}
+    }
+  }
 }
 
 class _ImagenDesdeCacheOWeb extends ImageProvider<_ImagenDesdeCacheOWeb> {
@@ -114,6 +152,8 @@ class _ImagenDesdeCacheOWeb extends ImageProvider<_ImagenDesdeCacheOWeb> {
     }
     final bytes = respuesta.bodyBytes;
     await CacheTeselasDisco.escribir(url, bytes);
+    // Poda silenciosa si la caché crece demasiado (200 MB)
+    unawaited(CacheTeselasDisco.limpiarSiExcede(200 * 1024 * 1024));
     final buffer = await ImmutableBuffer.fromUint8List(bytes);
     return decode(buffer);
   }
@@ -127,7 +167,7 @@ class _ImagenDesdeCacheOWeb extends ImageProvider<_ImagenDesdeCacheOWeb> {
 
 class TileProviderConCache extends TileProvider {
   final String userAgent;
-  TileProviderConCache({this.userAgent = 'naturaleza_flutter'});
+  TileProviderConCache({this.userAgent = 'fosiles_flutter'});
 
   @override
   ImageProvider<Object> getImage(TileCoordinates coordinates, TileLayer options) {

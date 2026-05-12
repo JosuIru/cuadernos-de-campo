@@ -1,23 +1,28 @@
-import 'dart:convert';
 import 'dart:io';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
 import '../datos/base_datos.dart';
+import '../datos/configuracion.dart';
 import '../datos/datos_guia.dart';
+import '../modelos/atribucion_foto.dart';
 import '../modelos/hallazgo.dart';
 import '../servicios/identificador_claude.dart';
 import '../servicios/servicio_inaturalist.dart';
+import '../servicios/servicio_plantnet.dart';
 import '../utiles/permisos_gps.dart';
 import 'pantalla_anotar_foto.dart';
+import 'pantalla_buscar_foto_archivo.dart';
 
 class PantallaNuevoHallazgo extends StatefulWidget {
   final double? latitudPredefinida;
   final double? longitudPredefinida;
   final Hallazgo? hallazgoExistente;
-  const PantallaNuevoHallazgo({
+  PantallaNuevoHallazgo({
     super.key,
     this.latitudPredefinida,
     this.longitudPredefinida,
@@ -39,6 +44,13 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
 
   String _categoria = 'animal';
   final List<String> _rutasFotos = [];
+
+  /// Atribución por foto, paralela a [_rutasFotos] (mismo índice).
+  /// `null` en una posición = foto del usuario (cámara/galería).
+  /// No-null = foto de archivo descargada de un repositorio externo
+  /// con licencia abierta — necesita atribución al exportar.
+  final List<AtribucionFoto?> _atribucionesFotos = [];
+
   final Map<String, dynamic> _atributos = {};
   final Map<String, TextEditingController> _controladoresAtributos = {};
   double? _latitud;
@@ -47,6 +59,8 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   bool _capturandoGps = false;
   bool _identificando = false;
   IdentificacionEspecie? _ultimaIdentificacion;
+  bool _identificandoPlantNet = false;
+  String? _claveApiKeyPlantNetCacheada;
 
   @override
   void initState() {
@@ -60,6 +74,12 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       _controladorHabitat.text = hallazgo.habitat;
       _controladorNotas.text = hallazgo.notas;
       _rutasFotos.addAll(hallazgo.rutasFotos);
+      // Mantenemos la lista paralela alineada en longitud — si el
+      // hallazgo viejo no tenía atribuciones, rellenamos con nulls.
+      _atribucionesFotos.addAll(hallazgo.atribucionesFotos);
+      while (_atribucionesFotos.length < _rutasFotos.length) {
+        _atribucionesFotos.add(null);
+      }
       _atributos.addAll(hallazgo.atributos);
       _latitud = hallazgo.latitud;
       _longitud = hallazgo.longitud;
@@ -71,6 +91,13 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         _capturarGps();
       }
     }
+    _cargarClavePlantNet();
+  }
+
+  Future<void> _cargarClavePlantNet() async {
+    final clave = await Configuracion.obtenerApiKeyPlantNet();
+    if (!mounted) return;
+    setState(() => _claveApiKeyPlantNetCacheada = clave.trim().isEmpty ? null : clave);
   }
 
   @override
@@ -100,7 +127,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       if (!permitido) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Falta permiso de ubicación.')),
+            SnackBar(content: Text('Falta permiso de ubicación.')),
           );
         }
         return;
@@ -133,7 +160,43 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     final destino = File(path_lib.join(dirFotos.path, nombre));
     await File(imagen.path).copy(destino.path);
     if (!mounted) return;
-    setState(() => _rutasFotos.add(destino.path));
+    setState(() {
+      _rutasFotos.add(destino.path);
+      _atribucionesFotos.add(null); // foto del usuario
+    });
+  }
+
+  /// Abre el modal de búsqueda en repositorios externos
+  /// (Wikipedia + iNaturalist). Si el usuario selecciona una, la
+  /// foto se descarga al disco local y se añade al registro junto
+  /// con su atribución. Encarna el caso "no siempre se puede sacar
+  /// foto": animal lejos, peligroso, esquivo, o que no debería
+  /// molestarse — el usuario reconoce la especie y deja una imagen
+  /// de archivo como ilustración del avistamiento.
+  Future<void> _anadirFotoDeArchivo() async {
+    final consulta = _controladorEspecie.text.trim().isNotEmpty
+        ? _controladorEspecie.text.trim()
+        : _controladorNombreComun.text.trim();
+    if (consulta.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Escribe primero la especie o el nombre común para buscar.',
+          ),
+        ),
+      );
+      return;
+    }
+    final seleccion = await Navigator.of(context).push<FotoArchivoSeleccionada>(
+      MaterialPageRoute(
+        builder: (_) => PantallaBuscarFotoArchivo(consulta: consulta),
+      ),
+    );
+    if (seleccion == null || !mounted) return;
+    setState(() {
+      _rutasFotos.add(seleccion.rutaAbsoluta);
+      _atribucionesFotos.add(seleccion.atribucion);
+    });
   }
 
   Future<void> _anotarFoto(int indice) async {
@@ -149,7 +212,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   Future<void> _identificarConIa() async {
     if (_rutasFotos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Añade una foto primero.')),
+        SnackBar(content: Text('Añade una foto primero.')),
       );
       return;
     }
@@ -193,48 +256,245 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     }
   }
 
+  Future<void> _identificarConPlantNet() async {
+    final clave = _claveApiKeyPlantNetCacheada;
+    if (clave == null || clave.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Configura tu clave de Pl@ntNet en Ajustes.')),
+      );
+      return;
+    }
+    if (_rutasFotos.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Añade una foto primero.')),
+      );
+      return;
+    }
+    final organo = await _elegirOrganoPlantNet();
+    if (organo == null) return;
+    setState(() => _identificandoPlantNet = true);
+    try {
+      final resultado = await identificarPlantaConPlantNet(
+        rutaFotoLocal: _rutasFotos.first,
+        apiKey: clave,
+        organo: organo,
+      );
+      if (!mounted) return;
+      if (resultado.candidatos.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Pl@ntNet no encontró candidatos. Prueba con otra foto u otro órgano.')),
+        );
+        return;
+      }
+      final elegido = await _mostrarCandidatosPlantNet(resultado);
+      if (!mounted || elegido == null) return;
+      setState(() {
+        _categoria = 'planta';
+        _controladorEspecie.text = elegido.nombreCientifico;
+        if (_controladorNombreComun.text.trim().isEmpty &&
+            elegido.nombreComunPreferido != null) {
+          _controladorNombreComun.text = elegido.nombreComunPreferido!;
+        }
+        if (_controladorTaxonomia.text.trim().isEmpty &&
+            (elegido.familia != null || elegido.genero != null)) {
+          final partes = <String>[
+            if (elegido.familia != null) elegido.familia!,
+            if (elegido.genero != null) elegido.genero!,
+          ];
+          _controladorTaxonomia.text = partes.join(' / ');
+        }
+      });
+      if (resultado.quedanHoy != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Pl@ntNet: te quedan ${resultado.quedanHoy} identificaciones hoy.')),
+        );
+      }
+    } on PlantNetClaveInvalida catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.mensaje)));
+    } on PlantNetCuotaAgotada catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.mensaje)));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pl@ntNet falló: $e')));
+    } finally {
+      if (mounted) setState(() => _identificandoPlantNet = false);
+    }
+  }
+
+  Future<OrganoPlantNet?> _elegirOrganoPlantNet() async {
+    return showModalBottomSheet<OrganoPlantNet>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: EdgeInsets.all(16),
+              child: Text(
+                '¿Qué órgano se ve mejor en la foto?',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+            for (final entrada in const [
+              (OrganoPlantNet.hoja, 'Hoja'),
+              (OrganoPlantNet.flor, 'Flor'),
+              (OrganoPlantNet.fruto, 'Fruto'),
+              (OrganoPlantNet.corteza, 'Corteza'),
+              (OrganoPlantNet.habito, 'Hábito (planta entera)'),
+              (OrganoPlantNet.otro, 'Otro / no estoy seguro'),
+            ])
+              ListTile(
+                leading: Icon(Icons.local_florist),
+                title: Text(entrada.$2),
+                onTap: () => Navigator.of(sheetContext).pop(entrada.$1),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<CandidatoPlantNet?> _mostrarCandidatosPlantNet(ResultadoPlantNet resultado) async {
+    return showModalBottomSheet<CandidatoPlantNet>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.7,
+        builder: (_, controlador) => ListView(
+          controller: controlador,
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text(
+              'Candidatos de Pl@ntNet',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Pulsa el que mejor se ajuste para rellenar la ficha.',
+              style: TextStyle(fontSize: 12, color: Colors.black54),
+            ),
+            SizedBox(height: 12),
+            for (final candidato in resultado.candidatos)
+              Card(
+                child: ListTile(
+                  title: Text(
+                    candidato.nombreComunPreferido ?? candidato.nombreCientifico,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(candidato.nombreCientifico, style: TextStyle(fontStyle: FontStyle.italic)),
+                      if (candidato.familia != null || candidato.genero != null)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Text(
+                            [if (candidato.familia != null) candidato.familia!, if (candidato.genero != null) candidato.genero!].join(' / '),
+                            style: TextStyle(fontSize: 12, color: Colors.black54),
+                          ),
+                        ),
+                    ],
+                  ),
+                  trailing: Text(
+                    '${(candidato.score * 100).toStringAsFixed(0)}%',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  onTap: () => Navigator.of(sheetContext).pop(candidato),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _guardar() async {
     if (_latitud == null || _longitud == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Falta la posición GPS.')),
+        SnackBar(content: Text('Falta la posición GPS.')),
       );
       return;
     }
     final atributosFiltrados = _atributosRelevantesParaCategoria();
+    // Lista paralela alineada — defensivo en caso de que durante la
+    // sesión se haya añadido una foto sin propagar atribución.
+    final atribucionesAlineadas =
+        List<AtribucionFoto?>.generate(_rutasFotos.length, (i) {
+      return i < _atribucionesFotos.length ? _atribucionesFotos[i] : null;
+    });
     final hallazgoExistente = widget.hallazgoExistente;
-    if (hallazgoExistente != null) {
-      await BaseDatosNaturaleza.instancia.actualizarHallazgo(hallazgoExistente.id!, {
-        'categoria': _categoria,
-        'especie': _controladorEspecie.text.trim(),
-        'nombre_comun': _controladorNombreComun.text.trim(),
-        'taxonomia': _controladorTaxonomia.text.trim(),
-        'habitat': _controladorHabitat.text.trim(),
-        'notas': _controladorNotas.text.trim(),
-        'rutas_fotos_json': _rutasFotos.isEmpty ? null : _serializarRutas(_rutasFotos),
-        'atributos_json': atributosFiltrados.isEmpty ? null : jsonEncode(atributosFiltrados),
-      });
-    } else {
-      final hallazgo = Hallazgo(
-        fechaMs: DateTime.now().millisecondsSinceEpoch,
-        latitud: _latitud!,
-        longitud: _longitud!,
-        precision: _precision,
-        categoria: _categoria,
-        especie: _controladorEspecie.text.trim(),
-        nombreComun: _controladorNombreComun.text.trim(),
-        taxonomia: _controladorTaxonomia.text.trim(),
-        habitat: _controladorHabitat.text.trim(),
-        notas: _controladorNotas.text.trim(),
-        rutasFotos: List.unmodifiable(_rutasFotos),
-        atributos: Map.unmodifiable(atributosFiltrados),
+    try {
+      if (hallazgoExistente != null) {
+        // Para mantener una sola fuente de verdad sobre cómo se
+        // serializa `atributos_json` (que ahora también lleva
+        // `atribuciones_fotos`), construimos un Hallazgo temporal y
+        // reusamos su `toMap()` para coger las dos columnas relevantes.
+        final hallazgoActualizado = hallazgoExistente.copyWith(
+          categoria: _categoria,
+          especie: _controladorEspecie.text.trim(),
+          nombreComun: _controladorNombreComun.text.trim(),
+          taxonomia: _controladorTaxonomia.text.trim(),
+          habitat: _controladorHabitat.text.trim(),
+          notas: _controladorNotas.text.trim(),
+          rutasFotos: List.unmodifiable(_rutasFotos),
+          atribucionesFotos: List.unmodifiable(atribucionesAlineadas),
+          atributos: Map<String, dynamic>.unmodifiable(atributosFiltrados),
+        );
+        final idHallazgo = hallazgoExistente.id;
+        if (idHallazgo == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: el hallazgo no tiene ID.')),
+          );
+          return;
+        }
+        final mapa = hallazgoActualizado.toMap();
+        await BaseDatosNaturaleza.instancia.actualizarHallazgo(
+          idHallazgo,
+          {
+            'categoria': mapa['categoria'],
+            'especie': mapa['especie'],
+            'nombre_comun': mapa['nombre_comun'],
+            'taxonomia': mapa['taxonomia'],
+            'habitat': mapa['habitat'],
+            'notas': mapa['notas'],
+            'rutas_fotos_json': mapa['rutas_fotos_json'],
+            'atributos_json': mapa['atributos_json'],
+          },
+        );
+      } else {
+        final hallazgo = Hallazgo(
+          fechaMs: DateTime.now().millisecondsSinceEpoch,
+          latitud: _latitud!,
+          longitud: _longitud!,
+          precision: _precision,
+          categoria: _categoria,
+          especie: _controladorEspecie.text.trim(),
+          nombreComun: _controladorNombreComun.text.trim(),
+          taxonomia: _controladorTaxonomia.text.trim(),
+          habitat: _controladorHabitat.text.trim(),
+          notas: _controladorNotas.text.trim(),
+          rutasFotos: List.unmodifiable(_rutasFotos),
+          atribucionesFotos: List.unmodifiable(atribucionesAlineadas),
+          atributos: Map<String, dynamic>.unmodifiable(atributosFiltrados),
+        );
+        await BaseDatosNaturaleza.instancia.guardarHallazgo(hallazgo);
+      }
+    } catch (e) {
+      // Si SQLite (u otra capa) lanza, no perdemos el formulario:
+      // mostramos el error y dejamos al usuario reintentar. Antes el
+      // throw burbujeaba y desmontaba la pantalla.
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo guardar el hallazgo: $e')),
       );
-      await BaseDatosNaturaleza.instancia.guardarHallazgo(hallazgo);
+      return;
     }
     if (!mounted) return;
     Navigator.of(context).pop(true);
   }
-
-  String _serializarRutas(List<String> rutas) => '["${rutas.map((r) => r.replaceAll('"', '\\"')).join('","')}"]';
 
   Map<String, dynamic> _atributosRelevantesParaCategoria() {
     final clavesPermitidas = _clavesAtributosCategoria(_categoria);
@@ -253,6 +513,20 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     'planta': ['fenologia', 'porte', 'altura_estimada_cm'],
     'insecto': ['estadio', 'planta_hospedadora', 'numero_individuos'],
     'animal': ['evidencia', 'numero_individuos', 'comportamiento'],
+    // Aves: atributos específicos del campo. Reusa
+    // 'numero_individuos' (¿solitario, pareja, bandada?) y añade
+    // 'comportamiento_ave' (cantando/posada/volando/comiendo) y
+    // 'tipo_observacion' (vista/escuchada — la observación auditiva
+    // es legítima en aves).
+    'ave': ['comportamiento_ave', 'tipo_observacion', 'numero_individuos'],
+    // Mamíferos, reptiles y anfibios: separados de 'animal' para
+    // afinar la guía pero comparten los mismos atributos de campo
+    // (evidencia indirecta, individuos, comportamiento) — son todos
+    // vertebrados terrestres con dinámicas de avistamiento similares.
+    'mamifero': ['evidencia', 'numero_individuos', 'comportamiento'],
+    'reptil': ['evidencia', 'numero_individuos', 'comportamiento'],
+    'anfibio': ['evidencia', 'numero_individuos', 'comportamiento'],
+    'pez': ['evidencia', 'numero_individuos', 'comportamiento'],
   };
 
   static List<String> _clavesAtributosCategoria(String categoria) =>
@@ -287,22 +561,22 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       appBar: AppBar(
         title: Text(widget.esEdicion ? 'Editar hallazgo' : 'Nuevo hallazgo'),
         actions: [
-          IconButton(icon: const Icon(Icons.check), tooltip: 'Guardar', onPressed: _guardar),
+          IconButton(icon: Icon(Icons.check), tooltip: 'Guardar', onPressed: _guardar),
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _seccionCategoria(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _seccionFotos(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _seccionUbicacion(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _seccionDatos(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _seccionAtributosCategoria(),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           _seccionIdentificacion(),
         ],
       ),
@@ -310,25 +584,42 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   }
 
   Widget _seccionCategoria() {
+    // Wrap de ChoiceChip en lugar de SegmentedButton: 8 categorías
+    // con etiquetas largas ("Insectos y artrópodos", "Otros animales")
+    // se amontonaban en SegmentedButton sobre pantalla móvil. Wrap
+    // hace flow natural en varias líneas y deja icono + texto
+    // legibles, manteniendo selección única.
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Categoría', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
-            SegmentedButton<String>(
-              segments: [
+            Text('Categoría', style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
                 for (final categoria in categoriasGuia)
-                  ButtonSegment(
-                    value: categoria.id,
+                  ChoiceChip(
+                    avatar: Icon(
+                      categoria.icono,
+                      size: 18,
+                      color: _categoria == categoria.id ? Colors.white : categoria.color,
+                    ),
                     label: Text(categoria.nombre),
-                    icon: Icon(categoria.icono),
+                    selected: _categoria == categoria.id,
+                    selectedColor: categoria.color,
+                    labelStyle: TextStyle(
+                      color: _categoria == categoria.id ? Colors.white : null,
+                      fontWeight: _categoria == categoria.id ? FontWeight.bold : FontWeight.normal,
+                    ),
+                    onSelected: (sel) {
+                      if (sel) setState(() => _categoria = categoria.id);
+                    },
                   ),
               ],
-              selected: {_categoria},
-              onSelectionChanged: (seleccion) => setState(() => _categoria = seleccion.first),
             ),
           ],
         ),
@@ -343,59 +634,113 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Fotos', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
+            Text('Fotos', style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
             if (_rutasFotos.isNotEmpty)
               SizedBox(
-                height: 100,
+                height: 110,
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: _rutasFotos.length,
-                  itemBuilder: (_, indice) => Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Stack(
-                      children: [
-                        GestureDetector(
-                          onTap: () => _anotarFoto(indice),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: Image.file(File(_rutasFotos[indice]), width: 100, height: 100, fit: BoxFit.cover),
+                  itemBuilder: (_, indice) {
+                    final atribucion = indice < _atribucionesFotos.length
+                        ? _atribucionesFotos[indice]
+                        : null;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Stack(
+                        children: [
+                          GestureDetector(
+                            onTap: () => _anotarFoto(indice),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: Image.file(
+                                File(_rutasFotos[indice]),
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
                           ),
-                        ),
-                        Positioned(
-                          top: 0,
-                          right: 0,
-                          child: IconButton(
-                            icon: const Icon(Icons.close, color: Colors.white),
-                            style: IconButton.styleFrom(backgroundColor: Colors.black54, padding: const EdgeInsets.all(2)),
-                            iconSize: 16,
-                            onPressed: () => setState(() => _rutasFotos.removeAt(indice)),
+                          if (atribucion != null)
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: 0,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 2,
+                                ),
+                                color: Colors.black54,
+                                child: Text(
+                                  atribucion.etiquetaCorta(),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ),
+                          Positioned(
+                            top: 0,
+                            right: 0,
+                            child: IconButton(
+                              icon: Icon(Icons.close, color: Colors.white),
+                              style: IconButton.styleFrom(
+                                backgroundColor: Colors.black54,
+                                padding: const EdgeInsets.all(2),
+                              ),
+                              iconSize: 16,
+                              onPressed: () => setState(() {
+                                _rutasFotos.removeAt(indice);
+                                if (indice < _atribucionesFotos.length) {
+                                  _atribucionesFotos.removeAt(indice);
+                                }
+                              }),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    icon: const Icon(Icons.camera_alt),
+                    icon: Icon(Icons.camera_alt),
                     onPressed: () => _anadirFoto(fuente: ImageSource.camera),
-                    label: const Text('Cámara'),
+                    label: Text(SoleraL10n.t('camara')),
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
-                    icon: const Icon(Icons.photo_library),
+                    icon: Icon(Icons.photo_library),
                     onPressed: () => _anadirFoto(fuente: ImageSource.gallery),
-                    label: const Text('Galería'),
+                    label: Text(SoleraL10n.t('galeria')),
                   ),
                 ),
               ],
+            ),
+            SizedBox(height: 8),
+            // Tercer botón: foto de archivo (Wikipedia + iNaturalist).
+            // Útil cuando sacar foto al animal es inviable (esquivo,
+            // lejos) o desaconsejable (peligroso o estresante para el
+            // animal). El registro se marca con badge para que quede
+            // claro que la imagen es de archivo, no propia.
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: Icon(Icons.image_search_outlined),
+                onPressed: _anadirFotoDeArchivo,
+                label: Text('Foto de archivo'),
+              ),
             ),
           ],
         ),
@@ -410,22 +755,22 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Ubicación', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
+            Text('Ubicación', style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
             if (_latitud != null && _longitud != null)
               Text(
                 '${_latitud!.toStringAsFixed(5)}, ${_longitud!.toStringAsFixed(5)}'
                 '${_precision != null ? "  (±${_precision!.round()} m)" : ""}',
               )
             else
-              const Text('Sin ubicación', style: TextStyle(color: Colors.grey)),
-            const SizedBox(height: 8),
+              Text('Sin ubicación', style: TextStyle(color: Colors.grey)),
+            SizedBox(height: 8),
             FilledButton.tonalIcon(
               icon: _capturandoGps
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.gps_fixed),
+                  ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(Icons.gps_fixed),
               onPressed: _capturandoGps ? null : _capturarGps,
-              label: const Text('Capturar GPS'),
+              label: Text('Capturar GPS'),
             ),
           ],
         ),
@@ -442,40 +787,40 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           children: [
             Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text('Datos', style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 TextButton.icon(
-                  icon: const Icon(Icons.travel_explore, size: 18),
+                  icon: Icon(Icons.travel_explore, size: 18),
                   onPressed: _abrirBuscadorInaturalist,
-                  label: const Text('Buscar en iNaturalist'),
+                  label: Text('Buscar en iNaturalist'),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             TextField(
               controller: _controladorNombreComun,
-              decoration: const InputDecoration(labelText: 'Nombre común', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: 'Nombre común', border: OutlineInputBorder()),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             TextField(
               controller: _controladorEspecie,
-              decoration: const InputDecoration(labelText: 'Nombre científico (binomial)', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: 'Nombre científico (binomial)', border: OutlineInputBorder()),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             TextField(
               controller: _controladorTaxonomia,
-              decoration: const InputDecoration(labelText: 'Taxonomía', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: 'Taxonomía', border: OutlineInputBorder()),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             TextField(
               controller: _controladorHabitat,
-              decoration: const InputDecoration(labelText: 'Hábitat', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: 'Hábitat', border: OutlineInputBorder()),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: 8),
             TextField(
               controller: _controladorNotas,
-              decoration: const InputDecoration(labelText: 'Notas', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: 'Notas', border: OutlineInputBorder()),
               maxLines: 3,
             ),
           ],
@@ -493,8 +838,8 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Detalles de $etiquetaCategoria', style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
+            Text('Detalles de $etiquetaCategoria', style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
             ..._camposAtributosParaCategoria(_categoria),
           ],
         ),
@@ -511,13 +856,13 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             clave: 'fenologia',
             opciones: const ['vegetativa', 'flor', 'fruto', 'semilla', 'senescente'],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _menuDesplegable(
             etiqueta: 'Porte',
             clave: 'porte',
             opciones: const ['árbol', 'arbusto', 'mata', 'herbácea', 'trepadora', 'suculenta'],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _campoNumero(etiqueta: 'Altura aprox. (cm)', clave: 'altura_estimada_cm'),
         ];
       case 'insecto':
@@ -527,21 +872,25 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             clave: 'estadio',
             opciones: const ['huevo', 'larva', 'ninfa', 'pupa', 'adulto'],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _campoTexto(etiqueta: 'Planta hospedadora', clave: 'planta_hospedadora'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _campoNumero(etiqueta: 'Número de individuos', clave: 'numero_individuos'),
         ];
       case 'animal':
+      case 'mamifero':
+      case 'reptil':
+      case 'anfibio':
+      case 'pez':
         return [
           _menuDesplegable(
             etiqueta: 'Tipo de evidencia',
             clave: 'evidencia',
             opciones: const ['avistamiento', 'huella', 'excremento', 'pluma o pelo', 'vocalización', 'nido o madriguera', 'otro'],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _campoNumero(etiqueta: 'Número de individuos', clave: 'numero_individuos'),
-          const SizedBox(height: 8),
+          SizedBox(height: 8),
           _campoTexto(etiqueta: 'Comportamiento', clave: 'comportamiento'),
         ];
     }
@@ -556,9 +905,9 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     final valorActual = _atributos[clave] as String?;
     return DropdownButtonFormField<String>(
       value: opciones.contains(valorActual) ? valorActual : null,
-      decoration: InputDecoration(labelText: etiqueta, border: const OutlineInputBorder()),
+      decoration: InputDecoration(labelText: etiqueta, border: OutlineInputBorder()),
       items: [
-        const DropdownMenuItem(value: null, child: Text('—')),
+        DropdownMenuItem(value: null, child: Text('—')),
         for (final opcion in opciones)
           DropdownMenuItem(value: opcion, child: Text(opcion)),
       ],
@@ -575,7 +924,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   Widget _campoTexto({required String etiqueta, required String clave}) {
     return TextField(
       controller: _controladorAtributo(clave),
-      decoration: InputDecoration(labelText: etiqueta, border: const OutlineInputBorder()),
+      decoration: InputDecoration(labelText: etiqueta, border: OutlineInputBorder()),
       onChanged: (texto) {
         if (texto.trim().isEmpty) {
           _atributos.remove(clave);
@@ -590,7 +939,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     return TextField(
       controller: _controladorAtributo(clave),
       keyboardType: TextInputType.number,
-      decoration: InputDecoration(labelText: etiqueta, border: const OutlineInputBorder()),
+      decoration: InputDecoration(labelText: etiqueta, border: OutlineInputBorder()),
       onChanged: (texto) {
         final numero = int.tryParse(texto.trim());
         if (numero == null) {
@@ -610,40 +959,50 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Identificación con IA', style: TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 8),
+            Text('Identificación con IA', style: TextStyle(fontWeight: FontWeight.bold)),
+            SizedBox(height: 8),
             FilledButton.icon(
               icon: _identificando
-                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                  : const Icon(Icons.auto_awesome),
+                  ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                  : Icon(Icons.auto_awesome),
               onPressed: _identificando ? null : _identificarConIa,
-              label: const Text('Identificar con Claude'),
+              label: Text('Identificar con Claude'),
             ),
+            if (_claveApiKeyPlantNetCacheada != null) ...[
+              SizedBox(height: 8),
+              OutlinedButton.icon(
+                icon: _identificandoPlantNet
+                    ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                    : Icon(Icons.local_florist),
+                onPressed: _identificandoPlantNet ? null : _identificarConPlantNet,
+                label: Text('Identificar planta con Pl@ntNet (gratis)'),
+              ),
+            ],
             if (identificacion != null) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: 12),
               Text(
                 '${identificacion.nombreComun.isNotEmpty ? identificacion.nombreComun : identificacion.nombreCientifico} '
                 '(confianza: ${identificacion.confianza})',
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
               if (identificacion.nombreCientifico.isNotEmpty) ...[
-                const SizedBox(height: 8),
+                SizedBox(height: 8),
                 _FotoReferenciaInat(nombreCientifico: identificacion.nombreCientifico),
               ],
               if (identificacion.taxonomia.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(identificacion.taxonomia, style: const TextStyle(fontSize: 12)),
+                  child: Text(identificacion.taxonomia, style: TextStyle(fontSize: 12)),
                 ),
               if (identificacion.descripcion.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
-                  child: Text(identificacion.descripcion, style: const TextStyle(fontSize: 13)),
+                  child: Text(identificacion.descripcion, style: TextStyle(fontSize: 13)),
                 ),
               if (identificacion.alternativas.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                const Text('Alternativas:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
+                SizedBox(height: 8),
+                Text('Alternativas:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                SizedBox(height: 4),
                 _AlternativasConFoto(alternativas: identificacion.alternativas),
               ],
               if (identificacion.comoConfirmar.isNotEmpty)
@@ -651,7 +1010,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     'Cómo confirmar: ${identificacion.comoConfirmar}',
-                    style: const TextStyle(fontSize: 12),
+                    style: TextStyle(fontSize: 12),
                   ),
                 ),
             ],
@@ -664,7 +1023,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
 
 class _BuscadorInaturalist extends StatefulWidget {
   final String consultaInicial;
-  const _BuscadorInaturalist({required this.consultaInicial});
+  _BuscadorInaturalist({required this.consultaInicial});
 
   @override
   State<_BuscadorInaturalist> createState() => _BuscadorInaturalistState();
@@ -743,11 +1102,11 @@ class _BuscadorInaturalistState extends State<_BuscadorInaturalist> {
                       onSubmitted: (_) => _ejecutarBusqueda(),
                       decoration: InputDecoration(
                         hintText: 'Nombre común o científico…',
-                        prefixIcon: const Icon(Icons.search),
-                        border: const OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.search),
+                        border: OutlineInputBorder(),
                         suffixIcon: _controladorBusqueda.text.isNotEmpty
                             ? IconButton(
-                                icon: const Icon(Icons.clear),
+                                icon: Icon(Icons.clear),
                                 onPressed: () {
                                   _controladorBusqueda.clear();
                                   setState(() => _resultados = const []);
@@ -757,20 +1116,20 @@ class _BuscadorInaturalistState extends State<_BuscadorInaturalist> {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  FilledButton(onPressed: _ejecutarBusqueda, child: const Text('Buscar')),
+                  SizedBox(width: 8),
+                  FilledButton(onPressed: _ejecutarBusqueda, child: Text('Buscar')),
                 ],
               ),
             ),
-            if (_cargando) const LinearProgressIndicator(minHeight: 2),
+            if (_cargando) LinearProgressIndicator(minHeight: 2),
             if (_error != null)
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text(_error!, style: const TextStyle(color: Colors.red)),
+                child: Text(_error!, style: TextStyle(color: Colors.red)),
               ),
             Expanded(
               child: _resultados.isEmpty && !_cargando
-                  ? const Center(
+                  ? Center(
                       child: Padding(
                         padding: EdgeInsets.all(24),
                         child: Text(
@@ -792,24 +1151,25 @@ class _BuscadorInaturalistState extends State<_BuscadorInaturalist> {
                           leading: taxon.urlFoto != null
                               ? ClipRRect(
                                   borderRadius: BorderRadius.circular(4),
-                                  child: Image.network(
-                                    taxon.urlFoto!,
+                                  child: CachedNetworkImage(
+                                    imageUrl: taxon.urlFoto!,
                                     width: 48,
                                     height: 48,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => const SizedBox(
+                                    memCacheWidth: 144,
+                                    errorWidget: (_, __, ___) => SizedBox(
                                       width: 48,
                                       height: 48,
                                       child: Icon(Icons.image_not_supported),
                                     ),
                                   ),
                                 )
-                              : const SizedBox(width: 48, height: 48, child: Icon(Icons.eco_outlined)),
+                              : SizedBox(width: 48, height: 48, child: Icon(Icons.eco_outlined)),
                           title: Text(nombrePrincipal),
                           subtitle: Text(
                             '${taxon.nombreCientifico}'
                             '${taxon.rangoTaxonomico != null ? "  ·  ${taxon.rangoTaxonomico}" : ""}',
-                            style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
+                            style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12),
                           ),
                           onTap: () => Navigator.of(context).pop(taxon),
                         );
@@ -825,7 +1185,7 @@ class _BuscadorInaturalistState extends State<_BuscadorInaturalist> {
 
 class _FotoReferenciaInat extends StatelessWidget {
   final String nombreCientifico;
-  const _FotoReferenciaInat({required this.nombreCientifico});
+  _FotoReferenciaInat({required this.nombreCientifico});
 
   @override
   Widget build(BuildContext context) {
@@ -841,16 +1201,17 @@ class _FotoReferenciaInat extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  url,
+                child: CachedNetworkImage(
+                  imageUrl: url,
                   width: 100,
                   height: 100,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  memCacheWidth: 300,
+                  errorWidget: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
-              const SizedBox(width: 8),
-              const Expanded(
+              SizedBox(width: 8),
+              Expanded(
                 child: Text(
                   'Foto de referencia (iNaturalist)',
                   style: TextStyle(fontSize: 11, color: Colors.grey),
@@ -866,7 +1227,7 @@ class _FotoReferenciaInat extends StatelessWidget {
 
 class _AlternativasConFoto extends StatelessWidget {
   final List<String> alternativas;
-  const _AlternativasConFoto({required this.alternativas});
+  _AlternativasConFoto({required this.alternativas});
 
   @override
   Widget build(BuildContext context) {
@@ -875,7 +1236,7 @@ class _AlternativasConFoto extends StatelessWidget {
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: alternativas.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        separatorBuilder: (_, __) => SizedBox(width: 8),
         itemBuilder: (_, indice) {
           final nombre = alternativas[indice];
           return SizedBox(
@@ -895,19 +1256,25 @@ class _AlternativasConFoto extends StatelessWidget {
                           color: Colors.grey.shade200,
                           borderRadius: BorderRadius.circular(6),
                         ),
-                        child: const Icon(Icons.image_not_supported, color: Colors.grey),
+                        child: Icon(Icons.image_not_supported, color: Colors.grey),
                       );
                     }
                     return ClipRRect(
                       borderRadius: BorderRadius.circular(6),
-                      child: Image.network(url, width: 100, height: 80, fit: BoxFit.cover),
+                      child: CachedNetworkImage(
+                        imageUrl: url,
+                        width: 100,
+                        height: 80,
+                        fit: BoxFit.cover,
+                        memCacheWidth: 300,
+                      ),
                     );
                   },
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: 4),
                 Text(
                   nombre,
-                  style: const TextStyle(fontSize: 10, fontStyle: FontStyle.italic),
+                  style: TextStyle(fontSize: 10, fontStyle: FontStyle.italic),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
