@@ -24,7 +24,7 @@ class BaseDatosFosiles {
       final ruta = path_lib.join(directorio.path, 'fosiles.db');
       _basedatos = await openDatabase(
         ruta,
-        version: 7,
+        version: 8,
         onCreate: (db, version) async {
           await db.execute('''
           CREATE TABLE hallazgos (
@@ -45,7 +45,8 @@ class BaseDatosFosiles {
             tipo TEXT NOT NULL DEFAULT 'fosil',
             trazabilidad_json TEXT,
             firma_descubridor TEXT,
-            clave_publica_descubridor TEXT
+            clave_publica_descubridor TEXT,
+            certificaciones_json TEXT
           )
         ''');
           await db.execute('CREATE INDEX idx_hallazgos_fecha ON hallazgos (fecha_ms DESC)');
@@ -84,6 +85,12 @@ class BaseDatosFosiles {
             // bajo demanda desde la ficha si el usuario quiere.
             await db.execute('ALTER TABLE hallazgos ADD COLUMN firma_descubridor TEXT');
             await db.execute('ALTER TABLE hallazgos ADD COLUMN clave_publica_descubridor TEXT');
+          }
+          if (viejo < 8) {
+            // Fase C: cadena de certificaciones de autoridades (ING, museos).
+            // JSON nullable con la lista de eslabones firmados, vacío hasta
+            // que el descubridor recibe de vuelta una card certificada.
+            await db.execute('ALTER TABLE hallazgos ADD COLUMN certificaciones_json TEXT');
           }
         },
       );

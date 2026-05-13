@@ -545,7 +545,17 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
-            child: Image.file(archivo, width: 110, height: 110, fit: BoxFit.cover, key: ValueKey('${archivo.path}_${archivo.lastModifiedSync().millisecondsSinceEpoch}')),
+            // cacheWidth 220 (110×2 para densidad hi-dpi) evita
+            // decodificar 12 MP por miniatura.
+            child: Image.file(
+              archivo,
+              width: 110,
+              height: 110,
+              fit: BoxFit.cover,
+              cacheWidth: 220,
+              cacheHeight: 220,
+              key: ValueKey('${archivo.path}_${archivo.lastModifiedSync().millisecondsSinceEpoch}'),
+            ),
           ),
           Positioned(
             top: 2,

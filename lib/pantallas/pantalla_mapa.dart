@@ -29,6 +29,7 @@ import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../servicios/tarjeta_imagen.dart';
+import '../servicios/autoridad_certificadora.dart';
 import '../servicios/certificado_hallazgo.dart';
 import '../servicios/formato_fos_card.dart';
 import '../servicios/identidad_descubridor.dart';
@@ -101,14 +102,51 @@ class _PantallaMapaState extends State<PantallaMapa> {
   bool _mostrarMonumentos = false;
   Timer? _debounceMovimiento;
   bool _mostrarAsistente = false;
-  ContextoGeologico? _contextoAsistente;
-  bool _cargandoAsistente = false;
+  // Estado del asistente IGME: contexto + cargando. Lo aislamos en un
+  // notifier para que cada llamada (al moverse el mapa con asistente
+  // activo) NO rebuildee FlutterMap+capas+markers. Sólo se repinta el
+  // panel asistente.
+  final ValueNotifier<_EstadoAsistente> _asistenteNotifier =
+      ValueNotifier(const _EstadoAsistente(cargando: false, contexto: null));
+  bool get _cargandoAsistente => _asistenteNotifier.value.cargando;
   bool _menuModosExpandido = false;
   bool _modoHeatmap = false;
   bool _mostrarYacimientos = false;
   String? _filtroPeriodoId;
-  Position? _ubicacionActual;
+  // Ubicación: usamos un ValueNotifier en vez de un campo + setState.
+  // El stream de geolocator dispara cada 10m y antes provocaba un
+  // setState que reconstruía TODO el FlutterMap (todas las capas,
+  // todos los markers, todas las teselas). Con el notifier sólo se
+  // reconstruye el MarkerLayer de la posición. Para leer la última
+  // posición desde otras partes (cálculo de distancia, "ir a mi
+  // ubicación"), exponemos el getter `_ubicacionActual`.
+  final ValueNotifier<Position?> _ubicacionNotifier = ValueNotifier(null);
+  Position? get _ubicacionActual => _ubicacionNotifier.value;
+  // Idem para el track en grabación: cada GPS-fix del grabador antes
+  // disparaba setState que reconstruía el FlutterMap entero. Ahora un
+  // notifier que sólo agita la PolylineLayer.
+  final ValueNotifier<int> _tickTrack = ValueNotifier(0);
   List<Hallazgo> _hallazgos = [];
+
+  // Conteos de hallazgos por periodo, cacheados. Antes la fila de chips
+  // de filtro recorría `_hallazgos.where(...)` para CADA periodo en
+  // CADA build(), lo que era O(N×P) por frame y se notaba con muchos
+  // hallazgos cargados. Ahora se recalculan junto a los markers, sólo
+  // cuando `_hallazgos` cambia.
+  Map<String, int> _conteosPorPeriodoCache = const {};
+
+  // Caches de listas de markers. Antes se generaban DE CERO en cada
+  // build() — cada Marker construye un GestureDetector + Container +
+  // BoxShadow + Icon, así que aunque la cantidad sea moderada (100-500
+  // markers) la construcción es notable. Ahora se recalculan SÓLO en
+  // los métodos que cambian la fuente (cargar cuevas, cargar
+  // monumentos, recargar hallazgos, alternar heatmap, cambiar filtro
+  // de periodo, alternar yacimientos).
+  List<Marker> _markersHallazgosCache = const [];
+  List<Marker> _markersCuevasCache = const [];
+  List<Marker> _markersMonumentosCache = const [];
+  List<Marker> _markersYacimientosCache = const [];
+  List<CircleMarker> _circulosCalorCache = const [];
   final List<CuevaOSM> _cuevasVisibles = [];
   final Set<String> _idsCuevasYaPintadas = {};
   final List<MonumentoArqueologico> _monumentosVisibles = [];
@@ -126,22 +164,30 @@ class _PantallaMapaState extends State<PantallaMapa> {
     _cargarHallazgos();
     _iniciarSeguimientoUbicacion();
     _subTrack = GrabadorTrack.instancia.cambios.listen((_) {
-      if (mounted) setState(() {});
+      // No setState — incrementamos el tick para que sólo se reconstruya
+      // la PolylineLayer del track, no todo el FlutterMap.
+      if (mounted) _tickTrack.value++;
     });
     _conectado = EstadoConexion.instancia.conectado;
     _subConexion = EstadoConexion.instancia.cambios.listen((online) {
       if (mounted) setState(() => _conectado = online);
     });
-    _subEventosMapa = _controladorMapa.mapEventStream.listen((evento) {
-      if (evento is MapEventMoveEnd) {
-        _debounceMovimiento?.cancel();
-        _debounceMovimiento = Timer(Duration(milliseconds: 1500), () {
-          if (!mounted) return;
-          if (_mostrarCuevas && !_cargandoCuevas) _cargarCuevasVistaActual();
-          if (_mostrarMonumentos && !_cargandoMonumentos) _cargarMonumentosVistaActual();
-          if (_mostrarAsistente && !_cargandoAsistente) _actualizarAsistenteCentro();
-        });
-      }
+    // Antes el listener procesaba TODOS los eventos del stream (frame
+    // a frame durante un gesto: rotación, fly, dragStart/dragUpdate/
+    // dragEnd, doubleTap, scrollWheel…). Filtramos por
+    // MapEventMoveEnd antes para no pasar por aquí 60 veces/segundo
+    // durante un pan. Igual hay que debouncar después, pero ahorra
+    // muchas comprobaciones triviales en cada frame del gesto.
+    _subEventosMapa = _controladorMapa.mapEventStream
+        .where((evento) => evento is MapEventMoveEnd)
+        .listen((evento) {
+      _debounceMovimiento?.cancel();
+      _debounceMovimiento = Timer(const Duration(milliseconds: 1500), () {
+        if (!mounted) return;
+        if (_mostrarCuevas && !_cargandoCuevas) _cargarCuevasVistaActual();
+        if (_mostrarMonumentos && !_cargandoMonumentos) _cargarMonumentosVistaActual();
+        if (_mostrarAsistente && !_cargandoAsistente) _actualizarAsistenteCentro();
+      });
     });
   }
 
@@ -152,6 +198,9 @@ class _PantallaMapaState extends State<PantallaMapa> {
     _subEventosMapa?.cancel();
     _subConexion?.cancel();
     _debounceMovimiento?.cancel();
+    _ubicacionNotifier.dispose();
+    _tickTrack.dispose();
+    _asistenteNotifier.dispose();
     _controladorMapa.dispose();
     super.dispose();
   }
@@ -159,18 +208,24 @@ class _PantallaMapaState extends State<PantallaMapa> {
   Future<void> _cargarHallazgos() async {
     final lista = await BaseDatosFosiles.instancia.listarHallazgos();
     if (!mounted) return;
-    setState(() => _hallazgos = lista);
+    setState(() {
+      _hallazgos = lista;
+      _recalcularMarkersHallazgos();
+    });
   }
 
   Future<void> _iniciarSeguimientoUbicacion() async {
     final permitido = await asegurarPermisoUbicacion();
     if (!permitido) return;
     var primeraPosicionRecibida = false;
+    // distanceFilter 10m (antes 5): suficiente para anotar hallazgos
+    // con precisión razonable y mitad de updates → menos rebuilds del
+    // MarkerLayer. La precisión sigue siendo `high` (~3m).
     _subUbicacion = Geolocator.getPositionStream(
-      locationSettings: LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 5),
+      locationSettings: LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 10),
     ).listen((pos) {
       if (!mounted) return;
-      setState(() => _ubicacionActual = pos);
+      _ubicacionNotifier.value = pos;
       if (!primeraPosicionRecibida) {
         primeraPosicionRecibida = true;
         _controladorMapa.move(LatLng(pos.latitude, pos.longitude), 12);
@@ -196,7 +251,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
     if (!permitido) return;
     final pos = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
     if (!mounted) return;
-    setState(() => _ubicacionActual = pos);
+    _ubicacionNotifier.value = pos;
     _controladorMapa.move(LatLng(pos.latitude, pos.longitude), 16);
   }
 
@@ -319,12 +374,17 @@ class _PantallaMapaState extends State<PantallaMapa> {
 
   void _alTocarMapa(LatLng punto) async {
     if (_modo == _ModoMapa.marcarPunto) {
+      // Marcar punto es de un solo uso: tras tocar, vuelve a "ver"
+      // para que el siguiente toque no abra otra pantalla de Nuevo
+      // por accidente.
       setState(() => _modo = _ModoMapa.ver);
       widget.alPedirNuevoHallazgo(latitud: punto.latitude, longitud: punto.longitude);
       return;
     }
     if (_modo == _ModoMapa.explorarGeologia) {
-      setState(() => _modo = _ModoMapa.ver);
+      // Explorar geología se queda activo entre toques — el usuario
+      // suele consultar varios puntos seguidos. Se desactiva sólo al
+      // volver a pulsar el botón "Explorar geología" en la barra.
       _mostrarFichaGeologia(punto);
       return;
     }
@@ -333,24 +393,34 @@ class _PantallaMapaState extends State<PantallaMapa> {
   Future<void> _actualizarAsistenteCentro() async {
     if (_cargandoAsistente) return;
     final centro = _controladorMapa.camera.center;
-    setState(() => _cargandoAsistente = true);
+    _asistenteNotifier.value = _EstadoAsistente(
+      cargando: true,
+      contexto: _asistenteNotifier.value.contexto,
+    );
     try {
       final ctx = await consultarContextoGeologico(centro.latitude, centro.longitude);
       if (!mounted || !_mostrarAsistente) return;
-      setState(() => _contextoAsistente = ctx);
+      _asistenteNotifier.value = _EstadoAsistente(cargando: false, contexto: ctx);
     } catch (_) {
       // silencio: si falla, simplemente no actualizamos
-    } finally {
-      if (mounted) setState(() => _cargandoAsistente = false);
+      if (mounted) {
+        _asistenteNotifier.value = _EstadoAsistente(
+          cargando: false,
+          contexto: _asistenteNotifier.value.contexto,
+        );
+      }
     }
   }
 
   void _alternarAsistente() {
     setState(() {
       _mostrarAsistente = !_mostrarAsistente;
-      if (!_mostrarAsistente) _contextoAsistente = null;
     });
-    if (_mostrarAsistente) _actualizarAsistenteCentro();
+    if (!_mostrarAsistente) {
+      _asistenteNotifier.value = const _EstadoAsistente(cargando: false, contexto: null);
+    } else {
+      _actualizarAsistenteCentro();
+    }
   }
 
   Future<void> _alternarCuevas() async {
@@ -360,6 +430,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
         _mostrarCuevas = false;
         _cuevasVisibles.clear();
         _idsCuevasYaPintadas.clear();
+        _recalcularMarkersCuevas();
       });
       return;
     }
@@ -374,6 +445,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
         _mostrarMonumentos = false;
         _monumentosVisibles.clear();
         _idsMonumentosYaPintados.clear();
+        _recalcularMarkersMonumentos();
       });
       return;
     }
@@ -409,6 +481,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
             _monumentosVisibles.add(m);
           }
         }
+        _recalcularMarkersMonumentos();
       });
       if (mounted) {
         final mensaje = monumentos.isEmpty
@@ -548,6 +621,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
             _cuevasVisibles.add(cueva);
           }
         }
+        _recalcularMarkersCuevas();
       });
       if (mounted) {
         final mensaje = cuevas.isEmpty
@@ -610,8 +684,16 @@ class _PantallaMapaState extends State<PantallaMapa> {
                                   children: [
                                     ClipRRect(
                                       borderRadius: BorderRadius.circular(8),
-                                      child: Image.file(File(h.rutasFotos[fi]),
-                                          height: 240, width: double.infinity, fit: BoxFit.cover),
+                                      // cacheWidth 1600 → decodificación
+                                      // tope, evita 12 MP RAM por foto
+                                      // (originales 4000+ px de cámara).
+                                      child: Image.file(
+                                        File(h.rutasFotos[fi]),
+                                        height: 240,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        cacheWidth: 1600,
+                                      ),
                                     ),
                                     if (h.rutasFotos.length > 1)
                                       Positioned(
@@ -632,6 +714,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
                           ),
                         SizedBox(height: 12),
                         _BadgeFirmaHallazgo(hallazgo: h),
+                        if (h.estaCertificado) ...[
+                          SizedBox(height: 8),
+                          _SelloCertificacionAutoridad(hallazgo: h),
+                        ],
                         SizedBox(height: 8),
                         _filaHallazgo('Especie', h.especie.isEmpty ? '—' : h.especie),
                         _filaHallazgo('Edad', h.edad.isEmpty ? '—' : h.edad),
@@ -1173,102 +1259,133 @@ class _PantallaMapaState extends State<PantallaMapa> {
     return _hallazgos.where((h) => inferirPeriodoDesdeEdad(h.edad) == _filtroPeriodoId).toList();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final hallazgosVisibles = _hallazgosFiltrados;
-    final marcadoresHallazgos = _modoHeatmap
-        ? <Marker>[]
-        : List.generate(hallazgosVisibles.length, (i) {
-            final h = hallazgosVisibles[i];
-            final periodoId = inferirPeriodoDesdeEdad(h.edad);
-            final color = periodoId != null ? buscarPeriodo(periodoId)?.color : null;
-            final esMineral = h.esMineral;
-            final icono = esMineral ? Icons.diamond : Icons.location_on;
-            final colorIcono = color ?? (esMineral ? Color(0xFF2E5C8A) : Color(0xFFB54A2A));
-            return Marker(
-              point: LatLng(h.latitud, h.longitud),
-              width: 44,
-              height: 44,
-              child: GestureDetector(
-                onTap: () => _mostrarFichaHallazgo(hallazgosVisibles, i),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 3)],
-                  ),
-                  child: Icon(icono, color: colorIcono, size: esMineral ? 24 : 28),
-                ),
-              ),
-            );
-          });
-    final circulosCalor = _modoHeatmap
-        ? hallazgosVisibles.map((h) => CircleMarker(
-              point: LatLng(h.latitud, h.longitud),
-              radius: 24,
-              useRadiusInMeter: false,
-              color: Color(0xFFB54A2A).withValues(alpha: 0.35),
-              borderStrokeWidth: 0,
-            )).toList()
-        : <CircleMarker>[];
+  /// Recalcula los markers/círculos de hallazgos y los conteos por
+  /// periodo (los chips del filtro). Se invoca:
+  /// - tras cargar hallazgos de BD (_cargarHallazgos)
+  /// - al cambiar _filtroPeriodoId
+  /// - al alternar _modoHeatmap
+  void _recalcularMarkersHallazgos() {
+    final conteos = <String, int>{};
+    for (final h in _hallazgos) {
+      final periodoId = inferirPeriodoDesdeEdad(h.edad);
+      if (periodoId == null) continue;
+      conteos.update(periodoId, (v) => v + 1, ifAbsent: () => 1);
+    }
+    _conteosPorPeriodoCache = conteos;
 
-    final marcadoresCuevas = _cuevasVisibles.map((c) => Marker(
-          point: LatLng(c.latitud, c.longitud),
-          width: 28,
-          height: 28,
-          child: GestureDetector(
-            onTap: () => _mostrarPopupCueva(c),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Color(0xFF7A4A9A),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              alignment: Alignment.center,
-              child: Text('🦇', style: TextStyle(fontSize: 14)),
+    final visibles = _hallazgosFiltrados;
+    if (_modoHeatmap) {
+      _markersHallazgosCache = const [];
+      _circulosCalorCache = visibles
+          .map((h) => CircleMarker(
+                point: LatLng(h.latitud, h.longitud),
+                radius: 24,
+                useRadiusInMeter: false,
+                color: const Color(0xFFB54A2A).withValues(alpha: 0.35),
+                borderStrokeWidth: 0,
+              ))
+          .toList();
+      return;
+    }
+    _circulosCalorCache = const [];
+    _markersHallazgosCache = List.generate(visibles.length, (i) {
+      final h = visibles[i];
+      final periodoId = inferirPeriodoDesdeEdad(h.edad);
+      final color = periodoId != null ? buscarPeriodo(periodoId)?.color : null;
+      final esMineral = h.esMineral;
+      final icono = esMineral ? Icons.diamond : Icons.location_on;
+      final colorIcono = color ?? (esMineral ? const Color(0xFF2E5C8A) : const Color(0xFFB54A2A));
+      return Marker(
+        point: LatLng(h.latitud, h.longitud),
+        width: 44,
+        height: 44,
+        child: GestureDetector(
+          onTap: () => _mostrarFichaHallazgo(visibles, i),
+          child: Container(
+            padding: const EdgeInsets.all(4),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 3)],
             ),
+            child: Icon(icono, color: colorIcono, size: esMineral ? 24 : 28),
           ),
-        )).toList();
+        ),
+      );
+    });
+  }
 
-    final marcadoresYacimientos = _mostrarYacimientos
-        ? yacimientosCurados.map((y) => Marker(
-              point: LatLng(y.latitud, y.longitud),
-              width: 32,
-              height: 32,
+  void _recalcularMarkersCuevas() {
+    _markersCuevasCache = _cuevasVisibles
+        .map((c) => Marker(
+              point: LatLng(c.latitud, c.longitud),
+              width: 28,
+              height: 28,
               child: GestureDetector(
-                onTap: () => _mostrarFichaYacimiento(y),
+                onTap: () => _mostrarPopupCueva(c),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Color(0xFF8B0000),
+                    color: const Color(0xFF7A4A9A),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white, width: 2),
                   ),
                   alignment: Alignment.center,
-                  child: Text(y.emoji, style: TextStyle(fontSize: 16)),
+                  child: const Text('🦇', style: TextStyle(fontSize: 14)),
                 ),
               ),
-            )).toList()
-        : <Marker>[];
+            ))
+        .toList();
+  }
 
-    final marcadoresMonumentos = _monumentosVisibles.map((m) => Marker(
-          point: LatLng(m.latitud, m.longitud),
-          width: 28,
-          height: 28,
-          child: GestureDetector(
-            onTap: () => _mostrarPopupMonumento(m),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Color(0xFF806040),
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
+  void _recalcularMarkersMonumentos() {
+    _markersMonumentosCache = _monumentosVisibles
+        .map((m) => Marker(
+              point: LatLng(m.latitud, m.longitud),
+              width: 28,
+              height: 28,
+              child: GestureDetector(
+                onTap: () => _mostrarPopupMonumento(m),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF806040),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 2),
+                  ),
+                  alignment: Alignment.center,
+                  // m.emoji varía por tipo (castillo, iglesia, dolmen…).
+                  child: Text(m.emoji, style: const TextStyle(fontSize: 14)),
+                ),
               ),
-              alignment: Alignment.center,
-              child: Text(m.emoji, style: TextStyle(fontSize: 14)),
-            ),
-          ),
-        )).toList();
+            ))
+        .toList();
+  }
 
+  void _recalcularMarkersYacimientos() {
+    _markersYacimientosCache = _mostrarYacimientos
+        ? yacimientosCurados
+            .map((y) => Marker(
+                  point: LatLng(y.latitud, y.longitud),
+                  width: 32,
+                  height: 32,
+                  child: GestureDetector(
+                    onTap: () => _mostrarFichaYacimiento(y),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF8B0000),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(y.emoji, style: const TextStyle(fontSize: 16)),
+                    ),
+                  ),
+                ))
+            .toList()
+        : const [];
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(SoleraL10n.t('mapa')),
@@ -1313,12 +1430,18 @@ class _PantallaMapaState extends State<PantallaMapa> {
           IconButton(
             icon: Icon(_modoHeatmap ? Icons.local_fire_department : Icons.local_fire_department_outlined),
             tooltip: _modoHeatmap ? 'Ver puntos' : 'Ver mapa de calor',
-            onPressed: () => setState(() => _modoHeatmap = !_modoHeatmap),
+            onPressed: () => setState(() {
+              _modoHeatmap = !_modoHeatmap;
+              _recalcularMarkersHallazgos();
+            }),
           ),
           IconButton(
             icon: Icon(_mostrarYacimientos ? Icons.museum : Icons.museum_outlined),
             tooltip: _mostrarYacimientos ? 'Ocultar yacimientos' : 'Mostrar yacimientos curados',
-            onPressed: () => setState(() => _mostrarYacimientos = !_mostrarYacimientos),
+            onPressed: () => setState(() {
+              _mostrarYacimientos = !_mostrarYacimientos;
+              _recalcularMarkersYacimientos();
+            }),
           ),
           IconButton(
             icon: Icon(GrabadorTrack.instancia.grabando ? Icons.stop_circle : Icons.fiber_manual_record),
@@ -1360,7 +1483,16 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 ),
               ),
             ),
-          FlutterMap(
+          // RepaintBoundary aísla todo el subárbol del FlutterMap a
+          // su propia capa GPU. Eventos del HUD (chips de filtros,
+          // FAB, snackbars, banners de conexión) y cambios de estado
+          // que no afectan al mapa (p. ej. _conectado, _mostrarAsistente)
+          // ya no fuerzan repintar las capas raster. La diferencia se
+          // nota sobre todo cuando el panel del asistente se expande
+          // o cuando aparece un SnackBar — el mapa antes parpadeaba
+          // brevemente; ahora se queda quieto.
+          RepaintBoundary(
+            child: FlutterMap(
             mapController: _controladorMapa,
             options: MapOptions(
               initialCenter: _centroEuskalHerria,
@@ -1371,11 +1503,19 @@ class _PantallaMapaState extends State<PantallaMapa> {
               onLongPress: (_, punto) => _mostrarDistanciaYRumbo(punto),
             ),
             children: [
+              // keepBuffer alto en los TileLayers: cuando el usuario hace
+              // pan o zoom, las teselas anteriores se quedan visibles
+              // mientras cargan las nuevas — evita el "flash blanco" y
+              // el efecto "el mapa cambia según el cuadro" en las capas
+              // WMS pesadas del IGME. Por defecto es 2; subiendo a 4
+              // tenemos 1-2 niveles de margen alrededor del viewport.
               TileLayer(
                 urlTemplate: _capaBaseActual.urlPlantilla,
                 maxZoom: _capaBaseActual.maxZoom.toDouble(),
                 userAgentPackageName: 'com.josu.fosiles',
                 tileProvider: _proveedorTeselasCache,
+                keepBuffer: 4,
+                panBuffer: 1,
               ),
               if (_capaGeologicaActual != null)
                 Opacity(
@@ -1391,6 +1531,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     ),
                     userAgentPackageName: 'com.josu.fosiles',
                     tileProvider: _proveedorTeselasCache,
+                    keepBuffer: 4,
+                    panBuffer: 1,
                   ),
                 ),
               if (_mostrarLig)
@@ -1407,6 +1549,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     ),
                     userAgentPackageName: 'com.josu.fosiles',
                     tileProvider: _proveedorTeselasCache,
+                    keepBuffer: 4,
+                    panBuffer: 1,
                   ),
                 ),
               if (_mostrarHillshade)
@@ -1417,6 +1561,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     maxZoom: 16,
                     userAgentPackageName: 'com.josu.fosiles',
                     tileProvider: _proveedorTeselasCache,
+                    keepBuffer: 4,
                   ),
                 ),
               if (_capaGeologicaActual != null || _mostrarLig)
@@ -1426,37 +1571,62 @@ class _PantallaMapaState extends State<PantallaMapa> {
                   maxZoom: 19,
                   userAgentPackageName: 'com.josu.fosiles',
                   tileProvider: _proveedorTeselasCache,
+                  keepBuffer: 4,
                 ),
-              if (GrabadorTrack.instancia.grabando && GrabadorTrack.instancia.puntos.length >= 2)
-                PolylineLayer(polylines: [
-                  Polyline(
-                    points: GrabadorTrack.instancia.puntos.map((p) => LatLng(p.latitud, p.longitud)).toList(),
-                    color: Colors.red,
-                    strokeWidth: 4,
-                  ),
-                ]),
-              if (circulosCalor.isNotEmpty) CircleLayer(circles: circulosCalor),
-              if (marcadoresHallazgos.isNotEmpty) MarkerLayer(markers: marcadoresHallazgos),
-              if (marcadoresCuevas.isNotEmpty) MarkerLayer(markers: marcadoresCuevas),
-              if (marcadoresMonumentos.isNotEmpty) MarkerLayer(markers: marcadoresMonumentos),
-              if (marcadoresYacimientos.isNotEmpty) MarkerLayer(markers: marcadoresYacimientos),
-              if (_ubicacionActual != null)
-                MarkerLayer(markers: [
-                  Marker(
-                    point: LatLng(_ubicacionActual!.latitude, _ubicacionActual!.longitude),
-                    width: 24,
-                    height: 24,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Color(0xFF5E7D3A),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+              // PolylineLayer del track grabando: extraída a notifier
+              // para que cada nuevo punto NO reconstruya FlutterMap.
+              ValueListenableBuilder<int>(
+                valueListenable: _tickTrack,
+                builder: (context, _, __) {
+                  if (!GrabadorTrack.instancia.grabando ||
+                      GrabadorTrack.instancia.puntos.length < 2) {
+                    return const SizedBox.shrink();
+                  }
+                  return PolylineLayer(polylines: [
+                    Polyline(
+                      points: GrabadorTrack.instancia.puntos
+                          .map((p) => LatLng(p.latitud, p.longitud))
+                          .toList(),
+                      color: Colors.red,
+                      strokeWidth: 4,
+                    ),
+                  ]);
+                },
+              ),
+              if (_circulosCalorCache.isNotEmpty) CircleLayer(circles: _circulosCalorCache),
+              if (_markersHallazgosCache.isNotEmpty) MarkerLayer(markers: _markersHallazgosCache),
+              if (_markersCuevasCache.isNotEmpty) MarkerLayer(markers: _markersCuevasCache),
+              if (_markersMonumentosCache.isNotEmpty) MarkerLayer(markers: _markersMonumentosCache),
+              if (_markersYacimientosCache.isNotEmpty) MarkerLayer(markers: _markersYacimientosCache),
+              // MarkerLayer de "yo aquí" extraído a ValueListenableBuilder
+              // para que el stream del GPS NO reconstruya el resto del
+              // FlutterMap. Cada cambio de ubicación sólo redibuja ESTE
+              // MarkerLayer; las capas WMS, los markers de hallazgos/
+              // cuevas/monumentos y los marcadores de yacimientos siguen
+              // intactos. Es la diferencia entre fluido y atascado.
+              ValueListenableBuilder<Position?>(
+                valueListenable: _ubicacionNotifier,
+                builder: (context, ubicacion, _) {
+                  if (ubicacion == null) return const SizedBox.shrink();
+                  return MarkerLayer(markers: [
+                    Marker(
+                      point: LatLng(ubicacion.latitude, ubicacion.longitude),
+                      width: 24,
+                      height: 24,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF5E7D3A),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 3),
+                          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4)],
+                        ),
                       ),
                     ),
-                  ),
-                ]),
+                  ]);
+                },
+              ),
             ],
+            ),
           ),
           if (_modo != _ModoMapa.ver)
             Positioned(
@@ -1487,7 +1657,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                   children: [
                     _chipFiltro(null, 'Todos', _hallazgos.length),
                     ...periodos.map((p) {
-                      final n = _hallazgos.where((h) => inferirPeriodoDesdeEdad(h.edad) == p.id).length;
+                      final n = _conteosPorPeriodoCache[p.id] ?? 0;
                       if (n == 0) return const SizedBox.shrink();
                       return _chipFiltro(p.id, p.nombre, n, color: p.color);
                     }),
@@ -1520,15 +1690,19 @@ class _PantallaMapaState extends State<PantallaMapa> {
               left: 8,
               right: 8,
               bottom: 8,
-              child: _panelAsistente(),
+              child: ValueListenableBuilder<_EstadoAsistente>(
+                valueListenable: _asistenteNotifier,
+                builder: (context, estado, _) => _panelAsistente(estado),
+              ),
             ),
         ],
       ),
     );
   }
 
-  Widget _panelAsistente() {
-    final ctx = _contextoAsistente;
+  Widget _panelAsistente(_EstadoAsistente estado) {
+    final ctx = estado.contexto;
+    final cargando = estado.cargando;
     final periodoId = inferirPeriodoDesdeEdad(ctx?.edad);
     final periodo = periodoId != null ? buscarPeriodo(periodoId) : null;
     final fosiles = periodoId != null ? fosilesPorPeriodo(periodoId).take(4).toList() : <FosilGuia>[];
@@ -1553,7 +1727,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
               SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  _cargandoAsistente
+                  cargando
                       ? 'Consultando IGME…'
                       : (ctx?.edad ?? 'Sin datos del IGME en el centro del mapa'),
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: esquema.onSurface),
@@ -1621,7 +1795,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
         borderRadius: BorderRadius.circular(20),
         child: InkWell(
           borderRadius: BorderRadius.circular(20),
-          onTap: () => setState(() => _filtroPeriodoId = activo ? null : id),
+          onTap: () => setState(() {
+            _filtroPeriodoId = activo ? null : id;
+            _recalcularMarkersHallazgos();
+          }),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             child: Row(
@@ -2025,4 +2202,132 @@ enum _TipoFirma { miaValida, otraValida, sinFirma, rota }
 class _EstadoFirma {
   final _TipoFirma tipo;
   _EstadoFirma({required this.tipo});
+}
+
+/// Estado inmutable del asistente IGME. Va dentro de un ValueNotifier
+/// para que el panel asistente se reconstruya sin tocar el FlutterMap.
+class _EstadoAsistente {
+  final bool cargando;
+  final ContextoGeologico? contexto;
+  const _EstadoAsistente({required this.cargando, required this.contexto});
+}
+
+/// Sello dorado con info de la(s) autoridad(es) que certificaron este
+/// hallazgo. Verifica criptográficamente la cadena de firmas antes de
+/// renderizar — si algún eslabón está roto, en lugar del sello pinta una
+/// advertencia roja para que el usuario no se fíe.
+class _SelloCertificacionAutoridad extends StatefulWidget {
+  final Hallazgo hallazgo;
+  const _SelloCertificacionAutoridad({required this.hallazgo});
+
+  @override
+  State<_SelloCertificacionAutoridad> createState() =>
+      _SelloCertificacionAutoridadState();
+}
+
+class _SelloCertificacionAutoridadState
+    extends State<_SelloCertificacionAutoridad> {
+  Future<bool>? _futureCadenaValida;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureCadenaValida = verificarCadenaCertificaciones(widget.hallazgo);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final certs = widget.hallazgo.certificaciones
+        .where((c) => c.tipo == TipoCertificacion.certificacion)
+        .toList();
+    if (certs.isEmpty) return const SizedBox.shrink();
+    return FutureBuilder<bool>(
+      future: _futureCadenaValida,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Text('Verificando certificación…'),
+          );
+        }
+        if (snap.data != true) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.red.shade50,
+              border: Border.all(color: Colors.red.shade400),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.red.shade700, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Cadena de certificación inválida — al menos un eslabón está roto.',
+                    style: TextStyle(color: Colors.red.shade900, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        final ultimaCert = certs.last;
+        final fecha = DateTime.fromMillisecondsSinceEpoch(ultimaCert.fechaMs);
+        final fechaTexto =
+            '${fecha.day.toString().padLeft(2, '0')}/${fecha.month.toString().padLeft(2, '0')}/${fecha.year}';
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFFF8E1), // crema cálido
+            border: Border.all(color: const Color(0xFFB8860B), width: 2),
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFB8860B),
+                  shape: BoxShape.circle,
+                ),
+                child: const Center(
+                  child: Text(
+                    '◆',
+                    style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Certificada por ${ultimaCert.nombreAutoridad}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    if (ultimaCert.colegiacion.isNotEmpty)
+                      Text(
+                        ultimaCert.colegiacion,
+                        style: const TextStyle(fontSize: 12, color: Colors.black54),
+                      ),
+                    Text(
+                      'Firmada $fechaTexto · ${certs.length} certificación${certs.length == 1 ? "" : "es"}',
+                      style: const TextStyle(fontSize: 11, color: Colors.black54),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
 }

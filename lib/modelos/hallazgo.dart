@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../servicios/autoridad_certificadora.dart' show Certificacion;
+
 class EventoTrazabilidad {
   final int fechaMs;
   final String tipo; // 'deposito_museo', 'estudio', 'publicacion', 'otro'
@@ -65,6 +67,13 @@ class Hallazgo {
   /// sea autocontenida al exportarla.
   final String? clavePublicaDescubridor;
 
+  /// Cadena de certificaciones añadidas sobre el hallazgo por autoridades
+  /// firmantes (Instituto Nacional de Geología, museos, sociedades). Cada
+  /// certificación firma el hash del estado anterior (firma del
+  /// descubridor + certificaciones previas), formando una cadena
+  /// verificable hacia atrás. Vacía mientras nadie haya certificado.
+  final List<Certificacion> certificaciones;
+
   Hallazgo({
     this.id,
     required this.fechaMs,
@@ -83,6 +92,7 @@ class Hallazgo {
     this.historialTrazabilidad = const [],
     this.firmaDescubridor,
     this.clavePublicaDescubridor,
+    this.certificaciones = const [],
   });
 
   bool get esMineral => tipo == 'mineral';
@@ -93,6 +103,12 @@ class Hallazgo {
       firmaDescubridor!.isNotEmpty &&
       clavePublicaDescubridor != null &&
       clavePublicaDescubridor!.isNotEmpty;
+
+  /// True si el hallazgo lleva al menos una certificación de tipo
+  /// 'certificacion' (no sólo acuses o descartes) — basta para pintar el
+  /// sello dorado "◆ ING" en la UI.
+  bool get estaCertificado =>
+      certificaciones.any((c) => c.tipo.name == 'certificacion');
 
   String? get rutaFoto => rutasFotos.isEmpty ? null : rutasFotos.first;
 
@@ -117,6 +133,9 @@ class Hallazgo {
             : jsonEncode(historialTrazabilidad.map((e) => e.toJson()).toList()),
         'firma_descubridor': firmaDescubridor,
         'clave_publica_descubridor': clavePublicaDescubridor,
+        'certificaciones_json': certificaciones.isEmpty
+            ? null
+            : jsonEncode(certificaciones.map((c) => c.toJson()).toList()),
       };
 
   factory Hallazgo.fromMap(Map<String, Object?> mapa) {
@@ -150,7 +169,20 @@ class Hallazgo {
       historialTrazabilidad: _parsearTrazabilidad(mapa['trazabilidad_json'] as String?),
       firmaDescubridor: mapa['firma_descubridor'] as String?,
       clavePublicaDescubridor: mapa['clave_publica_descubridor'] as String?,
+      certificaciones: _parsearCertificaciones(mapa['certificaciones_json'] as String?),
     );
+  }
+
+  static List<Certificacion> _parsearCertificaciones(String? json) {
+    if (json == null || json.isEmpty) return const [];
+    try {
+      final lista = jsonDecode(json) as List;
+      return lista
+          .map((e) => Certificacion.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } catch (_) {
+      return const [];
+    }
   }
 
   static List<EventoTrazabilidad> _parsearTrazabilidad(String? json) {
@@ -177,6 +209,7 @@ class Hallazgo {
     List<EventoTrazabilidad>? historialTrazabilidad,
     String? firmaDescubridor,
     String? clavePublicaDescubridor,
+    List<Certificacion>? certificaciones,
   }) =>
       Hallazgo(
         id: id,
@@ -196,5 +229,6 @@ class Hallazgo {
         historialTrazabilidad: historialTrazabilidad ?? this.historialTrazabilidad,
         firmaDescubridor: firmaDescubridor ?? this.firmaDescubridor,
         clavePublicaDescubridor: clavePublicaDescubridor ?? this.clavePublicaDescubridor,
+        certificaciones: certificaciones ?? this.certificaciones,
       );
 }

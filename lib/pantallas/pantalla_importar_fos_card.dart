@@ -5,9 +5,12 @@ import 'package:intl/intl.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../datos/base_datos.dart';
+import '../servicios/autoridad_certificadora.dart';
 import '../servicios/formato_fos_card.dart';
+import 'pantalla_certificar.dart';
 
 /// Pantalla de import de un `.fos-card` compartido.
 ///
@@ -38,11 +41,19 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
   String? _errorParseo;
   bool _importando = false;
   bool _yaImportado = false;
+  bool _modoExpertoActivo = false;
 
   @override
   void initState() {
     super.initState();
     _parsear();
+    _comprobarModoExperto();
+  }
+
+  Future<void> _comprobarModoExperto() async {
+    final activo = await AutoridadCertificadora.instancia.estaActiva();
+    if (!mounted) return;
+    setState(() => _modoExpertoActivo = activo);
   }
 
   Future<void> _parsear() async {
@@ -162,20 +173,140 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
         const SizedBox(height: 16),
         _bloqueHallazgo(h, p),
         const SizedBox(height: 24),
+        ..._botonesAccion(p),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  List<Widget> _botonesAccion(FosCardParseada p) {
+    // Modo Experto activo: revisar para certificar en lugar de importar
+    // a la colección propia.
+    if (_modoExpertoActivo) {
+      return [
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: Colors.amber.shade50,
+            border: Border.all(color: Colors.amber.shade400),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.verified_user, color: Colors.amber),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Estás en Modo Experto. Esta card se procesa para revisión '
+                  '— no entra en tu colección personal.',
+                  style: TextStyle(fontSize: 13),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
         FilledButton.icon(
-          icon: const Icon(Icons.download_done),
-          label: const Text('Importar a mi colección'),
-          onPressed: _importando ? null : _importar,
+          icon: const Icon(Icons.verified),
+          label: const Text('Certificar'),
+          onPressed: _importando ? null : () => _abrirCertificacion(p),
           style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
         ),
         const SizedBox(height: 8),
-        OutlinedButton(
-          onPressed: _importando ? null : () => Navigator.of(context).pop(),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.mail_outline),
+          label: const Text('Acusar recibo (revisaré más tarde)'),
+          onPressed: _importando ? null : () => _registrarAcuseODescarte(p, esAcuse: true),
           style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.cancel_outlined, color: Colors.red),
+          label: const Text(
+            'Descartar (no es de interés científico)',
+            style: TextStyle(color: Colors.red),
+          ),
+          onPressed: _importando ? null : () => _registrarAcuseODescarte(p, esAcuse: false),
+          style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+        ),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: _importando ? null : () => Navigator.of(context).pop(),
           child: Text(SoleraL10n.t('cancelar')),
         ),
-        const SizedBox(height: 24),
-      ],
+      ];
+    }
+    // Modo descubridor normal: importar a la colección propia.
+    return [
+      FilledButton.icon(
+        icon: const Icon(Icons.download_done),
+        label: const Text('Importar a mi colección'),
+        onPressed: _importando ? null : _importar,
+        style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+      ),
+      const SizedBox(height: 8),
+      OutlinedButton(
+        onPressed: _importando ? null : () => Navigator.of(context).pop(),
+        style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
+        child: Text(SoleraL10n.t('cancelar')),
+      ),
+    ];
+  }
+
+  Future<void> _abrirCertificacion(FosCardParseada p) async {
+    final hecho = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => PantallaCertificar(parseada: p),
+      ),
+    );
+    if (hecho == true && mounted) {
+      Navigator.of(context).pop(true);
+    }
+  }
+
+  Future<void> _registrarAcuseODescarte(FosCardParseada p, {required bool esAcuse}) async {
+    setState(() => _importando = true);
+    try {
+      final cert = await construirCertificacion(
+        hallazgo: p.hallazgo,
+        tipo: esAcuse ? TipoCertificacion.acuse : TipoCertificacion.descarte,
+        camposRevisados: {
+          'mensaje': esAcuse
+              ? 'Card recibida, en cola para revisión.'
+              : 'No es de interés para esta autoridad.',
+        },
+      );
+      final hallazgoConCert = p.hallazgo.copyWith(
+        certificaciones: [...p.hallazgo.certificaciones, cert],
+      );
+      // Exportar de vuelta directamente — para acuse/descarte no
+      // necesitamos cola intermedia: el experto firma y manda al
+      // momento.
+      final resultado = await exportarFosCard(
+        hallazgo: hallazgoConCert,
+        modoCoordenadas: p.coordenadasDifuminadas
+            ? ModoCompartirCoordenadas.difuminadas
+            : ModoCompartirCoordenadas.precisas,
+      );
+      if (!mounted) return;
+      final etiqueta = esAcuse ? 'Acuse de recibo' : 'Descarte';
+      await _compartir(resultado.archivo.path, etiqueta);
+      if (!mounted) return;
+      setState(() => _yaImportado = true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _importando = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error firmando: $e')),
+      );
+    }
+  }
+
+  Future<void> _compartir(String ruta, String etiqueta) async {
+    await Share.shareXFiles(
+      [XFile(ruta, mimeType: 'application/x-fos-card')],
+      subject: '$etiqueta — Fósiles',
+      text: 'Devolución firmada por la autoridad.',
     );
   }
 

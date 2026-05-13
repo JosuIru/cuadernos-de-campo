@@ -12,6 +12,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../datos/configuracion.dart';
 import '../modelos/hallazgo.dart';
+import 'autoridad_certificadora.dart';
 import 'identidad_descubridor.dart';
 
 /// Formato `.fos-card` v1 — card de un hallazgo lista para compartir por
@@ -132,8 +133,14 @@ Future<ResultadoExportarFosCard> exportarFosCard({
     }
   }
 
+  // Certificaciones acumuladas — Fase C. Si el hallazgo viene ya
+  // certificado (p. ej. al devolverlo al descubridor desde el modo
+  // Experto), las metemos tal cual.
+  final certificacionesJson =
+      hallazgo.certificaciones.map((c) => c.toJson()).toList();
+
   final hallazgoJson = <String, dynamic>{
-    'formato': 'hallazgo_fos_card_v1',
+    'formato': 'hallazgo_fos_card_v2',
     'fecha_export_iso': ahora.toIso8601String(),
     'datos': {
       'fecha_descubrimiento_ms': hallazgo.fechaMs,
@@ -176,6 +183,10 @@ Future<ResultadoExportarFosCard> exportarFosCard({
         'nombre_descubridor': nombre,
       },
     },
+    // Cadena de certificaciones añadidas por autoridades (Fase C).
+    // Vacía mientras nadie haya certificado. Cada eslabón firma el
+    // hash del anterior.
+    'certificaciones': certificacionesJson,
   };
 
   final archivo = Archive();
@@ -268,7 +279,9 @@ Future<FosCardParseada> parsearFosCard(File ficheroFosCard) async {
   );
   final hallazgoJson =
       jsonDecode(utf8.decode(hallazgoFichero.content as List<int>)) as Map<String, dynamic>;
-  if (hallazgoJson['formato'] != 'hallazgo_fos_card_v1') {
+  // Aceptamos v1 (sin certificaciones) y v2 (con certificaciones).
+  if (hallazgoJson['formato'] != 'hallazgo_fos_card_v1' &&
+      hallazgoJson['formato'] != 'hallazgo_fos_card_v2') {
     throw FormatException('Versión de hallazgo desconocida: ${hallazgoJson['formato']}');
   }
 
@@ -276,6 +289,10 @@ Future<FosCardParseada> parsearFosCard(File ficheroFosCard) async {
   final descubridor = hallazgoJson['descubridor'] as Map<String, dynamic>;
   final firmaMap = hallazgoJson['firma'] as Map<String, dynamic>;
   final mensajeCanonicoMap = firmaMap['mensaje_canonico_v1'] as Map<String, dynamic>;
+  final certificacionesRaw = (hallazgoJson['certificaciones'] as List?) ?? const [];
+  final certificaciones = certificacionesRaw
+      .map((e) => Certificacion.fromJson(e as Map<String, dynamic>))
+      .toList();
 
   // Reconstruir mensaje canónico para verificar firma
   final mensajeCanonico = [
@@ -327,6 +344,7 @@ Future<FosCardParseada> parsearFosCard(File ficheroFosCard) async {
         .toList(),
     firmaDescubridor: firmaB64,
     clavePublicaDescubridor: clavePublicaB64,
+    certificaciones: certificaciones,
   );
 
   return FosCardParseada(
@@ -339,4 +357,98 @@ Future<FosCardParseada> parsearFosCard(File ficheroFosCard) async {
     clavePublicaRemitente: clavePublicaB64,
     coordenadasDifuminadas: (datos['coordenadas_difuminadas'] as bool?) ?? false,
   );
+}
+
+/// Construye una nueva [Certificacion] firmada por la autoridad activa
+/// (modo Experto). Calcula el `hashAnterior` correcto a partir del
+/// estado del hallazgo (firma del descubridor + cadena previa) para
+/// que esta certificación quede atada criptográficamente.
+///
+/// Lanza StateError si no hay modo Experto activo en la instalación.
+Future<Certificacion> construirCertificacion({
+  required Hallazgo hallazgo,
+  required TipoCertificacion tipo,
+  required Map<String, String> camposRevisados,
+}) async {
+  final autoridad = AutoridadCertificadora.instancia;
+  if (!await autoridad.estaActiva()) {
+    throw StateError('Modo Experto no activo: no hay autoridad para firmar.');
+  }
+
+  // hash anterior = SHA256(firma_descubridor + último eslabón de la cadena
+  // anterior, si lo hay). Vincula cada certificación a TODA la historia
+  // anterior — modificar cualquier eslabón previo rompe la verificación.
+  final firmaDescubridor = hallazgo.firmaDescubridor ?? '';
+  final String hashAnterior;
+  if (hallazgo.certificaciones.isEmpty) {
+    hashAnterior =
+        crypto_sha.sha256.convert(utf8.encode(firmaDescubridor)).toString();
+  } else {
+    final ultimo = hallazgo.certificaciones.last;
+    hashAnterior = ultimo.calcularHashEslabon();
+  }
+
+  final nombre = await autoridad.obtenerNombreAutoridad();
+  final colegiacion = await autoridad.obtenerColegiacion();
+  final clavePublicaAutoridad = await autoridad.obtenerClavePublicaBase64();
+  final fechaMs = DateTime.now().toUtc().millisecondsSinceEpoch;
+
+  final mensajeCanonico = Certificacion.mensajeCanonico(
+    tipo: tipo,
+    hashAnterior: hashAnterior,
+    nombreAutoridad: nombre,
+    colegiacion: colegiacion,
+    clavePublicaAutoridadB64: clavePublicaAutoridad,
+    camposRevisados: camposRevisados,
+    fechaMs: fechaMs,
+  );
+  final firma = await autoridad.firmar(mensajeCanonico);
+
+  return Certificacion(
+    tipo: tipo,
+    hashAnterior: hashAnterior,
+    nombreAutoridad: nombre,
+    colegiacion: colegiacion,
+    clavePublicaAutoridadB64: clavePublicaAutoridad,
+    camposRevisados: camposRevisados,
+    firmaB64: firma,
+    fechaMs: fechaMs,
+  );
+}
+
+/// Verifica que toda la cadena de certificaciones del hallazgo está
+/// firmada correctamente y los hashes encadenan. Devuelve true si todo
+/// cuadra, false si algún eslabón está roto o firmado con clave que no
+/// cuadra. Si la lista está vacía, devuelve true (no hay nada que
+/// validar — el hallazgo está sin certificar, no es un error).
+Future<bool> verificarCadenaCertificaciones(Hallazgo hallazgo) async {
+  if (hallazgo.certificaciones.isEmpty) return true;
+  String hashEsperado;
+  if (hallazgo.firmaDescubridor == null) {
+    hashEsperado = crypto_sha.sha256.convert(utf8.encode('')).toString();
+  } else {
+    hashEsperado = crypto_sha.sha256
+        .convert(utf8.encode(hallazgo.firmaDescubridor!))
+        .toString();
+  }
+  for (final cert in hallazgo.certificaciones) {
+    if (cert.hashAnterior != hashEsperado) return false;
+    final canonico = Certificacion.mensajeCanonico(
+      tipo: cert.tipo,
+      hashAnterior: cert.hashAnterior,
+      nombreAutoridad: cert.nombreAutoridad,
+      colegiacion: cert.colegiacion,
+      clavePublicaAutoridadB64: cert.clavePublicaAutoridadB64,
+      camposRevisados: cert.camposRevisados,
+      fechaMs: cert.fechaMs,
+    );
+    final valida = await AutoridadCertificadora.verificarFirma(
+      mensajeCanonico: canonico,
+      firmaBase64: cert.firmaB64,
+      clavePublicaBase64: cert.clavePublicaAutoridadB64,
+    );
+    if (!valida) return false;
+    hashEsperado = cert.calcularHashEslabon();
+  }
+  return true;
 }

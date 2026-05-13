@@ -10,6 +10,7 @@ import '../servicios/servicio_backup.dart';
 import '../servicios/geofencing.dart';
 import 'pantalla_identidad.dart';
 import 'pantalla_mapas_offline.dart';
+import 'pantalla_modo_experto.dart';
 import 'pantalla_verificar_certificado.dart';
 import 'sheet_donaciones.dart';
 
@@ -290,6 +291,14 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
               MaterialPageRoute(builder: (_) => PantallaVerificarCertificado()),
             ),
             label: Text('Verificar un certificado'),
+          ),
+          SizedBox(height: 8),
+          OutlinedButton.icon(
+            icon: Icon(Icons.school_outlined),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PantallaModoExperto()),
+            ),
+            label: Text('Modo Experto (autoridades certificadoras)'),
           ),
 
           SizedBox(height: 32),

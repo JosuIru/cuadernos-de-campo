@@ -104,7 +104,17 @@ class _PantallaListaState extends State<PantallaLista> {
                         children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.file(File(hallazgo.rutasFotos[i]), height: 240, width: double.infinity, fit: BoxFit.cover),
+                            // cacheWidth: 1600 → decodificación tope a
+                            // 1600 px ancho. Suficiente para llenar la
+                            // ficha aun en tablet, y evita decodificar
+                            // 12 MP de RAM por foto.
+                            child: Image.file(
+                              File(hallazgo.rutasFotos[i]),
+                              height: 240,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              cacheWidth: 1600,
+                            ),
                           ),
                           if (hallazgo.rutasFotos.length > 1)
                             Positioned(
@@ -474,8 +484,19 @@ class _PantallaListaState extends State<PantallaLista> {
             leading: h.rutaFoto != null
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(6),
-                    child: Image.file(File(h.rutaFoto!),
-                        width: 48, height: 48, fit: BoxFit.cover),
+                    // cacheWidth fuerza a Flutter a decodificar la foto a
+                    // 96 px de ancho (densidad 2x para pantallas hi-dpi)
+                    // en lugar de a su resolución original (típicamente
+                    // 4000+ px). Sin esto, una lista con 100 hallazgos de
+                    // cámara consume varios GB de RAM por miniatura.
+                    child: Image.file(
+                      File(h.rutaFoto!),
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      cacheWidth: 96,
+                      cacheHeight: 96,
+                    ),
                   )
                 : const CircleAvatar(child: Icon(Icons.image_not_supported)),
             title: Row(
