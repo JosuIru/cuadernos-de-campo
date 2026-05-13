@@ -268,7 +268,9 @@ class _PantallaChatState extends State<PantallaChat> {
                                       child: Image.file(File(m.rutaImagen!),
                                           height: 200,
                                           width: double.infinity,
-                                          fit: BoxFit.cover),
+                                          fit: BoxFit.cover,
+                                          cacheWidth: 800,
+                                          cacheHeight: 400),
                                     ),
                                   ),
                                 if (m.texto.isNotEmpty)
@@ -306,7 +308,11 @@ class _PantallaChatState extends State<PantallaChat> {
                     ClipRRect(
                       borderRadius: BorderRadius.circular(6),
                       child: Image.file(File(_imagenAdjunta!),
-                          height: 48, width: 48, fit: BoxFit.cover),
+                          height: 48,
+                          width: 48,
+                          fit: BoxFit.cover,
+                          cacheWidth: 96,
+                          cacheHeight: 96),
                     ),
                     const SizedBox(width: 8),
                     Expanded(

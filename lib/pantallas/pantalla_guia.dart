@@ -17,15 +17,46 @@ class _PantallaGuiaState extends State<PantallaGuia> {
   final _controladorBusqueda = TextEditingController();
   String _consulta = '';
 
+  List<Widget> _itemsFosilesAplanados = const [];
+  List<Widget> _itemsMineralesAplanados = const [];
+
   @override
   void initState() {
     super.initState();
-    _controladorBusqueda.addListener(() {
-      setState(() => _consulta = _controladorBusqueda.text.trim().toLowerCase());
+    _controladorBusqueda.addListener(_alCambiarConsulta);
+    _recalcularListas();
+  }
+
+  @override
+  void dispose() {
+    _controladorBusqueda.removeListener(_alCambiarConsulta);
+    _controladorBusqueda.dispose();
+    super.dispose();
+  }
+
+  void _alCambiarConsulta() {
+    final nuevaConsulta = _controladorBusqueda.text.trim().toLowerCase();
+    if (nuevaConsulta == _consulta) return;
+    setState(() {
+      _consulta = nuevaConsulta;
+      _recalcularListas();
     });
   }
 
-  List<FosilGuia> _filtrar(List<FosilGuia> entrada) {
+  void _recalcularListas() {
+    final itemsFosiles = <Widget>[];
+    for (final periodo in periodos) {
+      itemsFosiles.addAll(_construirBloquePeriodo(periodo));
+    }
+    final itemsMinerales = <Widget>[];
+    for (final clase in clasesMinerales) {
+      itemsMinerales.addAll(_construirBloqueClaseMineral(clase));
+    }
+    _itemsFosilesAplanados = itemsFosiles;
+    _itemsMineralesAplanados = itemsMinerales;
+  }
+
+  List<FosilGuia> _filtrarFosiles(List<FosilGuia> entrada) {
     if (_consulta.isEmpty) return entrada;
     return entrada.where((f) {
       final texto = '${f.nombre} ${f.grupo} ${f.descripcionCorta} ${f.dondeEncontrar}'.toLowerCase();
@@ -79,17 +110,15 @@ class _PantallaGuiaState extends State<PantallaGuia> {
             Expanded(
               child: TabBarView(
                 children: [
-                  ListView(
+                  ListView.builder(
                     padding: const EdgeInsets.all(8),
-                    children: [
-                      for (final periodo in periodos) ..._construirBloquePeriodo(periodo),
-                    ],
+                    itemCount: _itemsFosilesAplanados.length,
+                    itemBuilder: (_, indice) => _itemsFosilesAplanados[indice],
                   ),
-                  ListView(
+                  ListView.builder(
                     padding: const EdgeInsets.all(8),
-                    children: [
-                      for (final clase in clasesMinerales) ..._construirBloqueClaseMineral(clase),
-                    ],
+                    itemCount: _itemsMineralesAplanados.length,
+                    itemBuilder: (_, indice) => _itemsMineralesAplanados[indice],
                   ),
                 ],
               ),
@@ -162,7 +191,7 @@ class _PantallaGuiaState extends State<PantallaGuia> {
   }
 
   List<Widget> _construirBloquePeriodo(PeriodoGeologico periodo) {
-    final fosilesDelPeriodo = _filtrar(fosilesPorPeriodo(periodo.id));
+    final fosilesDelPeriodo = _filtrarFosiles(fosilesPorPeriodo(periodo.id));
     if (fosilesDelPeriodo.isEmpty) return [];
     return [
       Padding(

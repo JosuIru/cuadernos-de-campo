@@ -10,6 +10,8 @@ class FotoSegura extends StatelessWidget {
   final double? width;
   final BoxFit? fit;
   final Widget? fallback;
+  final int? cacheWidth;
+  final int? cacheHeight;
 
   const FotoSegura({
     super.key,
@@ -18,6 +20,8 @@ class FotoSegura extends StatelessWidget {
     this.width,
     this.fit,
     this.fallback,
+    this.cacheWidth,
+    this.cacheHeight,
   });
 
   @override
@@ -38,6 +42,8 @@ class FotoSegura extends StatelessWidget {
       height: height,
       width: width,
       fit: fit ?? BoxFit.cover,
+      cacheWidth: cacheWidth,
+      cacheHeight: cacheHeight,
       errorBuilder: (_, __, ___) => fallback ??
           Container(
             height: height,

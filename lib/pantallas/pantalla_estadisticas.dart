@@ -15,6 +15,15 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
   List<Hallazgo> _hallazgos = [];
   bool _cargando = true;
 
+  Map<String, int> _conteoPeriodoCache = const {};
+  Map<String, int> _topEspeciesCache = const {};
+  Map<String, int> _topFormacionesCache = const {};
+  int _maxConteoPeriodoCache = 0;
+  int _especiesUnicasCache = 0;
+  int _conFotoCache = 0;
+  DateTime? _primeraFechaCache;
+  DateTime? _ultimaFechaCache;
+
   @override
   void initState() {
     super.initState();
@@ -24,24 +33,47 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
   Future<void> _cargar() async {
     final lista = await BaseDatosFosiles.instancia.listarHallazgos();
     if (!mounted) return;
+    _recalcularAgregados(lista);
     setState(() {
       _hallazgos = lista;
       _cargando = false;
     });
   }
 
-  Map<String, int> _conteoPorPeriodo() {
+  void _recalcularAgregados(List<Hallazgo> lista) {
+    _conteoPeriodoCache = _calcularConteoPorPeriodo(lista);
+    _maxConteoPeriodoCache = _conteoPeriodoCache.values.fold<int>(0, (a, b) => a > b ? a : b);
+    _topEspeciesCache = _calcularTopConteo(lista, (h) => h.especie);
+    _topFormacionesCache = _calcularTopConteo(lista, (h) => h.formacion);
+    final especiesUnicas = <String>{};
+    var conFoto = 0;
+    int? primeraMs;
+    int? ultimaMs;
+    for (final h in lista) {
+      final especie = h.especie.trim();
+      if (especie.isNotEmpty) especiesUnicas.add(especie);
+      if (h.rutaFoto != null) conFoto++;
+      if (primeraMs == null || h.fechaMs < primeraMs) primeraMs = h.fechaMs;
+      if (ultimaMs == null || h.fechaMs > ultimaMs) ultimaMs = h.fechaMs;
+    }
+    _especiesUnicasCache = especiesUnicas.length;
+    _conFotoCache = conFoto;
+    _primeraFechaCache = primeraMs != null ? DateTime.fromMillisecondsSinceEpoch(primeraMs) : null;
+    _ultimaFechaCache = ultimaMs != null ? DateTime.fromMillisecondsSinceEpoch(ultimaMs) : null;
+  }
+
+  Map<String, int> _calcularConteoPorPeriodo(List<Hallazgo> lista) {
     final mapa = <String, int>{};
-    for (final h in _hallazgos) {
+    for (final h in lista) {
       final periodoId = inferirPeriodoDesdeEdad(h.edad) ?? 'desconocido';
       mapa.update(periodoId, (v) => v + 1, ifAbsent: () => 1);
     }
     return mapa;
   }
 
-  Map<String, int> _topConteo(String Function(Hallazgo) clave, {int limite = 5}) {
+  Map<String, int> _calcularTopConteo(List<Hallazgo> lista, String Function(Hallazgo) clave, {int limite = 5}) {
     final mapa = <String, int>{};
-    for (final h in _hallazgos) {
+    for (final h in lista) {
       final v = clave(h).trim();
       if (v.isEmpty) continue;
       mapa.update(v, (n) => n + 1, ifAbsent: () => 1);
@@ -70,15 +102,9 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
       );
     }
 
-    final conteoPeriodo = _conteoPorPeriodo();
-    final maxConteo = conteoPeriodo.values.fold<int>(0, (a, b) => a > b ? a : b);
-    final fechas = _hallazgos.map((h) => h.fechaMs).toList()..sort();
-    final primero = DateTime.fromMillisecondsSinceEpoch(fechas.first);
-    final ultimo = DateTime.fromMillisecondsSinceEpoch(fechas.last);
     final formato = DateFormat('dd MMM yyyy', 'es_ES');
-    final especiesUnicas = _hallazgos.map((h) => h.especie.trim()).where((s) => s.isNotEmpty).toSet();
-    final topEspecies = _topConteo((h) => h.especie);
-    final topFormaciones = _topConteo((h) => h.formacion);
+    final primero = _primeraFechaCache!;
+    final ultimo = _ultimaFechaCache!;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Estadísticas')),
@@ -87,8 +113,8 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
         children: [
           _filaTotales([
             ('Hallazgos', _hallazgos.length.toString()),
-            ('Especies', especiesUnicas.length.toString()),
-            ('Con foto', _hallazgos.where((h) => h.rutaFoto != null).length.toString()),
+            ('Especies', _especiesUnicasCache.toString()),
+            ('Con foto', _conFotoCache.toString()),
           ]),
           const SizedBox(height: 16),
           _tarjeta(
@@ -96,28 +122,28 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
             child: Column(
               children: [
                 ...periodos.map((p) {
-                  final n = conteoPeriodo[p.id] ?? 0;
-                  return _filaBarra(p.nombre, n, maxConteo, color: p.color);
+                  final n = _conteoPeriodoCache[p.id] ?? 0;
+                  return _filaBarra(p.nombre, n, _maxConteoPeriodoCache, color: p.color);
                 }),
-                if ((conteoPeriodo['desconocido'] ?? 0) > 0)
-                  _filaBarra('Sin clasificar', conteoPeriodo['desconocido']!, maxConteo, color: Colors.grey.shade400),
+                if ((_conteoPeriodoCache['desconocido'] ?? 0) > 0)
+                  _filaBarra('Sin clasificar', _conteoPeriodoCache['desconocido']!, _maxConteoPeriodoCache, color: Colors.grey.shade400),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          if (topEspecies.isNotEmpty)
+          if (_topEspeciesCache.isNotEmpty)
             _tarjeta(
               titulo: 'Top especies',
               child: Column(
-                children: topEspecies.entries.map((e) => _filaTexto(e.key, '${e.value}')).toList(),
+                children: _topEspeciesCache.entries.map((e) => _filaTexto(e.key, '${e.value}')).toList(),
               ),
             ),
           const SizedBox(height: 16),
-          if (topFormaciones.isNotEmpty)
+          if (_topFormacionesCache.isNotEmpty)
             _tarjeta(
               titulo: 'Top formaciones',
               child: Column(
-                children: topFormaciones.entries.map((e) => _filaTexto(e.key, '${e.value}')).toList(),
+                children: _topFormacionesCache.entries.map((e) => _filaTexto(e.key, '${e.value}')).toList(),
               ),
             ),
           const SizedBox(height: 16),

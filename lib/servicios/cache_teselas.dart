@@ -121,6 +121,36 @@ class CacheTeselasDisco {
   }
 }
 
+/// Caché LRU en memoria de bytes de teselas. Evita el ida-y-vuelta al
+/// disco cuando el FlutterMap recarga teselas que ya estaban visibles
+/// (caso típico: cualquier rebuild del árbol que pase por el TileLayer).
+///
+/// Capacidad fijada a 256 teselas (~25-50 MB en memoria — una tesela
+/// ronda 100-200 KB). Suficiente para cubrir 2-3 niveles de zoom de la
+/// ventana actual sin re-leer disco. Se purga la entrada más antigua
+/// cuando se excede.
+class _CacheTeselasMemoria {
+  static final _CacheTeselasMemoria instancia = _CacheTeselasMemoria._();
+  _CacheTeselasMemoria._();
+  static const int _maxEntradas = 256;
+  final Map<String, Uint8List> _entradas = <String, Uint8List>{};
+
+  Uint8List? leer(String url) {
+    final bytes = _entradas.remove(url);
+    if (bytes == null) return null;
+    // Re-insertar para marcarla como reciente (LRU).
+    _entradas[url] = bytes;
+    return bytes;
+  }
+
+  void guardar(String url, Uint8List bytes) {
+    _entradas[url] = bytes;
+    if (_entradas.length > _maxEntradas) {
+      _entradas.remove(_entradas.keys.first);
+    }
+  }
+}
+
 class _ImagenDesdeCacheOWeb extends ImageProvider<_ImagenDesdeCacheOWeb> {
   final String url;
   final String userAgent;
@@ -141,18 +171,28 @@ class _ImagenDesdeCacheOWeb extends ImageProvider<_ImagenDesdeCacheOWeb> {
   }
 
   Future<ui.Codec> _cargarCodec(ImageDecoderCallback decode) async {
+    // 1. RAM
+    final enMemoria = _CacheTeselasMemoria.instancia.leer(url);
+    if (enMemoria != null) {
+      final buffer = await ImmutableBuffer.fromUint8List(enMemoria);
+      return decode(buffer);
+    }
+    // 2. Disco
     final bytesCacheados = await CacheTeselasDisco.leer(url);
     if (bytesCacheados != null && bytesCacheados.isNotEmpty) {
+      _CacheTeselasMemoria.instancia.guardar(url, bytesCacheados);
       final buffer = await ImmutableBuffer.fromUint8List(bytesCacheados);
       return decode(buffer);
     }
+    // 3. Red
     final respuesta = await http.get(Uri.parse(url), headers: {'User-Agent': userAgent});
     if (respuesta.statusCode != 200) {
       throw Exception('HTTP ${respuesta.statusCode} para $url');
     }
     final bytes = respuesta.bodyBytes;
+    _CacheTeselasMemoria.instancia.guardar(url, bytes);
     await CacheTeselasDisco.escribir(url, bytes);
-    // Poda silenciosa si la caché crece demasiado (200 MB)
+    // Poda silenciosa si la caché en disco crece demasiado (200 MB)
     unawaited(CacheTeselasDisco.limpiarSiExcede(200 * 1024 * 1024));
     final buffer = await ImmutableBuffer.fromUint8List(bytes);
     return decode(buffer);

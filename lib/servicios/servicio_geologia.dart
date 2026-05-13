@@ -53,6 +53,32 @@ class ContextoGeologico {
 String _claveGeologia(double latitud, double longitud) =>
     '${latitud.toStringAsFixed(3)},${longitud.toStringAsFixed(3)}';
 
+/// Caché LRU en memoria de respuestas IGME ya consultadas (con su clave
+/// redondeada a 3 decimales ≈ 111 m). Evita el ida-y-vuelta al disco
+/// cuando el usuario pasea por una zona ya explorada con el asistente
+/// activo, o cuando vuelve a tocar un punto que ya miró antes. Capacidad
+/// 200 entradas (~50 KB de RAM como mucho).
+class _CacheGeologiaMemoria {
+  static const int _maxEntradas = 200;
+  static final Map<String, ContextoGeologico?> _entradas = <String, ContextoGeologico?>{};
+
+  static ContextoGeologico? leer(String clave, {required bool sentinel}) {
+    if (!_entradas.containsKey(clave)) return null;
+    final valor = _entradas.remove(clave);
+    _entradas[clave] = valor; // re-insertar para marcar como reciente
+    return valor;
+  }
+
+  static bool contiene(String clave) => _entradas.containsKey(clave);
+
+  static void guardar(String clave, ContextoGeologico? valor) {
+    _entradas[clave] = valor;
+    if (_entradas.length > _maxEntradas) {
+      _entradas.remove(_entradas.keys.first);
+    }
+  }
+}
+
 Future<ContextoGeologico?> _leerCacheGeologia(String clave) async {
   try {
     final dir = await getApplicationDocumentsDirectory();
@@ -89,10 +115,17 @@ Future<void> _escribirCacheGeologia(String clave, ContextoGeologico ctx) async {
 
 Future<ContextoGeologico?> consultarContextoGeologico(double latitud, double longitud) async {
   final clave = _claveGeologia(latitud, longitud);
-  // 1. Caché en disco
+  // 1. Caché en memoria (incluye respuestas "sin datos" para no repreguntar)
+  if (_CacheGeologiaMemoria.contiene(clave)) {
+    return _CacheGeologiaMemoria.leer(clave, sentinel: true);
+  }
+  // 2. Caché en disco
   final cache = await _leerCacheGeologia(clave);
-  if (cache != null) return cache;
-  // 2. Red con reintentos
+  if (cache != null) {
+    _CacheGeologiaMemoria.guardar(clave, cache);
+    return cache;
+  }
+  // 3. Red con reintentos
   const intentos = 3;
   for (var i = 0; i < intentos; i++) {
     final resultado = await _intentarConsultarGeode(latitud, longitud);
@@ -100,6 +133,7 @@ Future<ContextoGeologico?> consultarContextoGeologico(double latitud, double lon
       if (resultado.contexto != null) {
         await _escribirCacheGeologia(clave, resultado.contexto!);
       }
+      _CacheGeologiaMemoria.guardar(clave, resultado.contexto);
       return resultado.contexto;
     }
     if (i < intentos - 1) {

@@ -158,8 +158,20 @@ class _PantallaAnotarFotoState extends State<PantallaAnotarFoto> {
                               key: _claveLienzo,
                               fit: StackFit.expand,
                               children: [
-                                Image.file(widget.archivoFoto, fit: BoxFit.fill),
-                                CustomPaint(painter: _PintorAnotaciones(_trazos)),
+                                RepaintBoundary(
+                                  child: Image.file(
+                                    widget.archivoFoto,
+                                    fit: BoxFit.fill,
+                                    cacheWidth: 1600,
+                                    gaplessPlayback: true,
+                                  ),
+                                ),
+                                RepaintBoundary(
+                                  child: CustomPaint(
+                                    painter: _PintorAnotaciones(_trazos),
+                                    size: Size(w, h),
+                                  ),
+                                ),
                               ],
                             ),
                           ),
