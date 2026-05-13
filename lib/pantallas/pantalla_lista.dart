@@ -10,6 +10,7 @@ import '../servicios/exportar_zip.dart';
 import '../servicios/tarjeta_imagen.dart';
 import 'pantalla_estadisticas.dart';
 import 'pantalla_nuevo.dart';
+import 'widgets/barra_filtro_categoria.dart';
 
 class PantallaLista extends StatefulWidget {
   PantallaLista({super.key});
@@ -314,42 +315,38 @@ class _PantallaListaState extends State<PantallaLista> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
             child: TextField(
               controller: _controladorBusqueda,
               decoration: InputDecoration(
                 hintText: 'Buscar por nombre, taxonomía, hábitat, notas…',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+                prefixIcon: const Icon(Icons.search),
+                suffixIcon: _consulta.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: const Icon(Icons.clear),
+                        tooltip: 'Limpiar búsqueda',
+                        onPressed: () => _controladorBusqueda.clear(),
+                      ),
+                border: const OutlineInputBorder(),
+                isDense: true,
               ),
             ),
           ),
+          BarraFiltroCategoria(
+            filtroActual: _filtroCategoria,
+            onCambio: (nuevo) => setState(() => _filtroCategoria = nuevo),
+            conTarjeta: false,
+          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: FilterChip(
-                      label: Text(SoleraL10n.t('todos')),
-                      avatar: Icon(Icons.apps, size: 18),
-                      selected: _filtroCategoria == 'todos',
-                      onSelected: (_) => setState(() => _filtroCategoria = 'todos'),
-                    ),
-                  ),
-                  for (final categoria in categoriasGuia)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 6),
-                      child: FilterChip(
-                        label: Text(categoria.nombre),
-                        avatar: Icon(categoria.icono, size: 18),
-                        selected: _filtroCategoria == categoria.id,
-                        onSelected: (_) => setState(() => _filtroCategoria = categoria.id),
-                      ),
-                    ),
-                ],
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 6),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _filtrados.length == _hallazgos.length
+                    ? '${_hallazgos.length} hallazgo${_hallazgos.length == 1 ? "" : "s"}'
+                    : '${_filtrados.length} de ${_hallazgos.length} hallazgos',
+                style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
               ),
             ),
           ),

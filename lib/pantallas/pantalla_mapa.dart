@@ -18,6 +18,7 @@ import 'pantalla_nuevo.dart';
 import '../utiles/permisos_gps.dart' show asegurarPermisoUbicacion, asegurarPermisoNotificaciones;
 import 'pantalla_mapas_offline.dart';
 import 'pantalla_tracks.dart';
+import 'widgets/barra_filtro_categoria.dart';
 
 typedef CallbackPedirNuevoHallazgo = void Function({double? latitud, double? longitud});
 typedef CallbackSeleccionarEspecieGuia = void Function(String idEspecie);
@@ -685,7 +686,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
             top: MediaQuery.of(context).padding.top + 8,
             left: 8,
             right: 8,
-            child: _BarraFiltro(
+            child: BarraFiltroCategoria(
               filtroActual: _filtroCategoria,
               onCambio: (nuevo) => setState(() => _filtroCategoria = nuevo),
             ),
@@ -764,41 +765,6 @@ class _IconoHallazgo extends StatelessWidget {
         boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
       ),
       child: Icon(icono, color: Colors.white, size: 18),
-    );
-  }
-}
-
-class _BarraFiltro extends StatelessWidget {
-  final String filtroActual;
-  final ValueChanged<String> onCambio;
-  _BarraFiltro({required this.filtroActual, required this.onCambio});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        child: Row(
-          children: [
-            ChoiceChip(
-              label: Text(SoleraL10n.t('todos')),
-              selected: filtroActual == 'todos',
-              onSelected: (_) => onCambio('todos'),
-            ),
-            for (final categoria in categoriasGuia)
-              Padding(
-                padding: const EdgeInsets.only(left: 6),
-                child: ChoiceChip(
-                  avatar: Icon(categoria.icono, size: 18),
-                  label: Text(categoria.nombre),
-                  selected: filtroActual == categoria.id,
-                  onSelected: (_) => onCambio(categoria.id),
-                ),
-              ),
-          ],
-        ),
-      ),
     );
   }
 }
