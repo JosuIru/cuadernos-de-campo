@@ -5,7 +5,10 @@ import '../servicios/servicio_inaturalist.dart';
 import '../servicios/servicio_wikipedia.dart';
 
 class CategoriaGuia {
-  final String id; // 'animal' | 'insecto' | 'planta'
+  /// Identificador interno. Valores actuales: 'mamifero', 'ave',
+  /// 'reptil', 'anfibio', 'pez', 'insecto', 'planta', 'seta',
+  /// 'animal' (cajón otros animales).
+  final String id;
   final String nombre;
   final IconData icono;
   final Color color;
@@ -89,6 +92,10 @@ const List<CategoriaGuia> categoriasGuia = [
   CategoriaGuia(id: 'pez', nombre: 'Peces', icono: Icons.set_meal, color: Color(0xFF1F6F8B)),
   CategoriaGuia(id: 'insecto', nombre: 'Insectos y artrópodos', icono: Icons.bug_report, color: Color(0xFFB8860B)),
   CategoriaGuia(id: 'planta', nombre: 'Plantas', icono: Icons.local_florist, color: Color(0xFF5E7D3A)),
+  // Setas / hongos — reino Fungi, no animal ni planta. El icono
+  // `umbrella` tiene la silueta del sombrero. Color marrón anaranjado
+  // tipo boletus.
+  CategoriaGuia(id: 'seta', nombre: 'Setas y hongos', icono: Icons.umbrella, color: Color(0xFFA0522D)),
   CategoriaGuia(id: 'animal', nombre: 'Otros animales', icono: Icons.pets, color: Color(0xFF8E7B5C)),
 ];
 
@@ -2324,6 +2331,101 @@ const List<EspecieGuia> especiesGuia = [
     habitat: 'Cultivada como medicinal-supersticiosa y asilvestrada en muros.',
     tituloWikipedia: 'Ruta_graveolens',
     usos: ['medicinal', 'urticante'],
+  ),
+
+  // ─── Setas y hongos ─────────────────────────────────────
+  // Selección inicial de macromicetos comunes en Iberia. Mantenida
+  // conservadora: incluye dos mortales/tóxicas reconocibles para que
+  // la guía pueda servir como recordatorio de identificación de
+  // riesgo. La determinación final siempre la hace un micólogo —
+  // ninguna app sustituye al ojo experto.
+  EspecieGuia(
+    id: 'boletus-edulis',
+    nombreCientifico: 'Boletus edulis',
+    nombreComun: 'Boleto, hongo, cep',
+    categoriaId: 'seta',
+    descripcionCorta: 'Sombrero pardo brillante de hasta 25 cm, pie robusto blanquecino con retículo en la parte alta, himenóforo de tubos blanco-crema que viran a amarillo-verdoso.',
+    distintivos: ['Pie con retículo blanco en su tercio superior', 'Tubos en lugar de láminas', 'Carne firme y blanca que no cambia al corte'],
+    habitat: 'Bajo coníferas y planifolios (pinos, hayas, robles, castaños) en suelos ácidos a neutros, finales de verano y otoño.',
+    tituloWikipedia: 'Boletus_edulis',
+    usos: ['comestible'],
+  ),
+  EspecieGuia(
+    id: 'lactarius-deliciosus',
+    nombreCientifico: 'Lactarius deliciosus',
+    nombreComun: 'Níscalo, rovellón, robellón',
+    categoriaId: 'seta',
+    descripcionCorta: 'Sombrero anaranjado a naranja zanahoria con zonas concéntricas más oscuras; láminas y carne segregan látex anaranjado al corte.',
+    distintivos: ['Látex naranja al cortar', 'Zonas concéntricas en el sombrero', 'Manchas verdes al envejecer o magullarse'],
+    habitat: 'Bajo pino carrasco, piñonero y silvestre, en pinares mediterráneos y de montaña media.',
+    tituloWikipedia: 'Lactarius_deliciosus',
+    usos: ['comestible'],
+  ),
+  EspecieGuia(
+    id: 'amanita-muscaria',
+    nombreCientifico: 'Amanita muscaria',
+    nombreComun: 'Matamoscas, oronja falsa',
+    categoriaId: 'seta',
+    descripcionCorta: 'Sombrero rojo escarlata cubierto de escamas blancas (restos del velo universal), láminas blancas, anillo y volva en saco.',
+    distintivos: ['Sombrero rojo con verrugas blancas', 'Anillo blanco colgante en el pie', 'Volva en escamas concéntricas en la base'],
+    habitat: 'Asociada a abedules, pinos y hayas; otoño en bosques húmedos.',
+    tituloWikipedia: 'Amanita_muscaria',
+    usos: ['toxica'],
+  ),
+  EspecieGuia(
+    id: 'amanita-phalloides',
+    nombreCientifico: 'Amanita phalloides',
+    nombreComun: 'Oronja verde, cicuta verde (MORTAL)',
+    categoriaId: 'seta',
+    descripcionCorta: 'Sombrero verde oliva con fibrillas radiales más oscuras, láminas blancas libres, anillo blanco y volva membranosa en saco. Es la seta más mortífera de Europa.',
+    distintivos: ['Sombrero verde oliva fibrilloso', 'Volva en saco blanca y persistente', 'Anillo blanco colgante', 'Olor dulzón al madurar'],
+    habitat: 'Bajo robles, castaños y otros planifolios; finales de verano y otoño.',
+    tituloWikipedia: 'Amanita_phalloides',
+    usos: ['toxica'],
+  ),
+  EspecieGuia(
+    id: 'cantharellus-cibarius',
+    nombreCientifico: 'Cantharellus cibarius',
+    nombreComun: 'Rebozuelo, cabrilla, chantarela',
+    categoriaId: 'seta',
+    descripcionCorta: 'Cuerpo fructífero amarillo huevo, en forma de embudo, con falsas láminas decurrentes (pliegues) en lugar de láminas verdaderas. Carne blanca con olor a albaricoque.',
+    distintivos: ['Pliegues decurrentes, no láminas', 'Color amarillo huevo uniforme', 'Olor frutal a albaricoque'],
+    habitat: 'Bajo coníferas y caducifolios en suelos ácidos; primavera y otoño.',
+    tituloWikipedia: 'Cantharellus_cibarius',
+    usos: ['comestible'],
+  ),
+  EspecieGuia(
+    id: 'macrolepiota-procera',
+    nombreCientifico: 'Macrolepiota procera',
+    nombreComun: 'Parasol, apagador, galamperna',
+    categoriaId: 'seta',
+    descripcionCorta: 'Seta de gran porte con sombrero hasta 30 cm de forma de parasol, pardo con escamas concéntricas. Pie largo y delgado con anillo doble desplazable.',
+    distintivos: ['Anillo doble desplazable como tuerca', 'Pie con dibujo serpentiforme atigrado', 'Sombrero con mamelón central y escamas concéntricas'],
+    habitat: 'Praderas, claros de bosque, dehesas y herbazales nitrificados; finales de verano y otoño.',
+    tituloWikipedia: 'Macrolepiota_procera',
+    usos: ['comestible'],
+  ),
+  EspecieGuia(
+    id: 'agaricus-campestris',
+    nombreCientifico: 'Agaricus campestris',
+    nombreComun: 'Champiñón silvestre',
+    categoriaId: 'seta',
+    descripcionCorta: 'Sombrero blanco a crema de hasta 10 cm, láminas que pasan de rosadas a pardas oscuras al madurar; anillo simple en el pie.',
+    distintivos: ['Láminas rosadas que oscurecen al envejecer', 'Anillo blanco frágil', 'Olor agradable a champiñón cultivado'],
+    habitat: 'Praderas, herbazales y suelos abonados; primavera y otoño.',
+    tituloWikipedia: 'Agaricus_campestris',
+    usos: ['comestible'],
+  ),
+  EspecieGuia(
+    id: 'pleurotus-ostreatus',
+    nombreCientifico: 'Pleurotus ostreatus',
+    nombreComun: 'Seta de chopo, seta de ostra',
+    categoriaId: 'seta',
+    descripcionCorta: 'Cuerpos fructíferos en grupos solapados sobre madera, sombrero gris pizarra o pardo en forma de concha, láminas blancas decurrentes hasta el pie lateral.',
+    distintivos: ['Crecimiento en racimos sobre madera', 'Sombrero asimétrico tipo concha u ostra', 'Pie lateral o ausente'],
+    habitat: 'Saprofito y parásito sobre madera muerta o débil de chopos, álamos, hayas y olmos; otoño-invierno.',
+    tituloWikipedia: 'Pleurotus_ostreatus',
+    usos: ['comestible'],
   ),
 ];
 

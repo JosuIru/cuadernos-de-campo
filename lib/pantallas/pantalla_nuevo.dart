@@ -527,6 +527,12 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     'reptil': ['evidencia', 'numero_individuos', 'comportamiento'],
     'anfibio': ['evidencia', 'numero_individuos', 'comportamiento'],
     'pez': ['evidencia', 'numero_individuos', 'comportamiento'],
+    // Setas / hongos: campos que el recolector reconoce sobre el
+    // terreno. Tamaño y color del sombrero son las pistas más
+    // inmediatas; el sustrato (madera muerta, hojarasca, suelo bajo
+    // pinos…) es lo que más reduce posibilidades junto con el árbol
+    // hospedante asociado en especies micorrícicas.
+    'seta': ['sustrato', 'color_sombrero', 'sombrero_diametro_cm', 'numero_individuos'],
   };
 
   static List<String> _clavesAtributosCategoria(String categoria) =>
@@ -892,6 +898,42 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           _campoNumero(etiqueta: 'Número de individuos', clave: 'numero_individuos'),
           SizedBox(height: 8),
           _campoTexto(etiqueta: 'Comportamiento', clave: 'comportamiento'),
+        ];
+      case 'seta':
+        return [
+          _menuDesplegable(
+            etiqueta: 'Sustrato',
+            clave: 'sustrato',
+            opciones: const [
+              'suelo / hojarasca',
+              'bajo conífera',
+              'bajo planifolio',
+              'pradera / herbazal',
+              'madera muerta',
+              'tocón',
+              'otro',
+            ],
+          ),
+          SizedBox(height: 8),
+          _menuDesplegable(
+            etiqueta: 'Color del sombrero',
+            clave: 'color_sombrero',
+            opciones: const [
+              'blanco / crema',
+              'pardo / marrón',
+              'naranja / rojizo',
+              'amarillo',
+              'rojo escarlata',
+              'verde oliva',
+              'gris / negruzco',
+              'violáceo',
+              'otro',
+            ],
+          ),
+          SizedBox(height: 8),
+          _campoNumero(etiqueta: 'Diámetro sombrero (cm)', clave: 'sombrero_diametro_cm'),
+          SizedBox(height: 8),
+          _campoNumero(etiqueta: 'Número de ejemplares', clave: 'numero_individuos'),
         ];
     }
     return const [];

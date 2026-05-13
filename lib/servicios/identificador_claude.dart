@@ -9,7 +9,7 @@ class ContextoIdentificacion {
   final String? habitat;
   final String? notas;
   final String? especieTentativa;
-  final String categoriaEsperada; // 'animal' | 'insecto' | 'planta' | 'auto'
+  final String categoriaEsperada; // 'animal' | 'insecto' | 'planta' | 'seta' | 'auto'
 
   ContextoIdentificacion({
     this.latitud,
@@ -22,7 +22,7 @@ class ContextoIdentificacion {
 }
 
 class IdentificacionEspecie {
-  final String categoriaDetectada; // 'animal' | 'insecto' | 'planta' | 'desconocido'
+  final String categoriaDetectada; // 'animal' | 'insecto' | 'planta' | 'seta' | 'desconocido'
   final String nombreCientifico;
   final String nombreComun;
   final String taxonomia; // p.ej. "Animalia › Chordata › Aves › Passeriformes › Turdidae › Turdus › T. merula"
@@ -52,11 +52,16 @@ class IdentificacionEspecie {
 }
 
 const String _systemPrompt = '''
-Eres un naturalista experto en identificación de animales (vertebrados), insectos (y otros artrópodos) y plantas, con conocimiento profundo de la fauna y flora del Paleártico occidental, incluida la península ibérica y los Pirineos.
-Recibirás una foto de un ser vivo (animal, insecto/artrópodo o planta), opcionalmente con contexto (coordenadas, hábitat, notas).
-Detecta primero la categoría: 'animal' (vertebrado: mamífero, ave, reptil, anfibio, pez), 'insecto' (todos los artrópodos: insectos, arácnidos, miriápodos, crustáceos terrestres) o 'planta' (incluye hongos y líquenes a falta de categoría propia).
+Eres un naturalista experto en identificación de animales (vertebrados), insectos (y otros artrópodos), plantas y hongos macroscópicos (setas), con conocimiento profundo de la fauna, flora y micobiota del Paleártico occidental, incluida la península ibérica y los Pirineos.
+Recibirás una foto de un ser vivo (animal, insecto/artrópodo, planta u hongo), opcionalmente con contexto (coordenadas, hábitat, notas).
+Detecta primero la categoría:
+- 'animal' (vertebrado: mamífero, ave, reptil, anfibio, pez)
+- 'insecto' (todos los artrópodos: insectos, arácnidos, miriápodos, crustáceos terrestres)
+- 'planta' (plantas vasculares, briófitos, líquenes — fototróficos en general)
+- 'seta' (hongos macroscópicos con cuerpo fructífero visible: basidiomicetos como Boletus, Amanita, Lactarius, Cantharellus, Russula; ascomicetos como Morchella, Tuber, Helvella; y formas afines como pirenomicetos visibles, gasteromicetos, etc. Fíjate en sombrero/píleo, himenóforo —láminas, tubos, pliegues, aguijones—, pie, anillo, volva, sustrato y color de la esporada si aparece).
 Devuelve nombre científico binomial cuando sea posible, nombre común en español, y la cadena taxonómica desde reino hasta especie.
-Usa las coordenadas y el hábitat para razonar sobre la distribución y ecología probables.
+Usa las coordenadas y el hábitat para razonar sobre la distribución y ecología probables — en setas, las simbiosis micorrícicas con árboles concretos (encina, pino, haya, castaño, jara) son determinantes.
+ATENCIÓN ESPECIAL EN SETAS: muchas especies tóxicas o mortales se parecen mucho a comestibles (Amanita phalloides vs Agaricus campestris, Cortinarius orellanus vs níscalos, etc.). Si hay cualquier duda, baja la confianza a 'baja' y propón alternativas peligrosas, recordando en como_confirmar que la identificación visual NO es suficiente para consumo — siempre validación con micólogo/asociación local.
 Responde SIEMPRE en español neutro. Sé honesto sobre la confianza: si no estás seguro, dilo y propón alternativas.
 Si la foto no contiene un ser vivo reconocible o es de muy mala calidad, indícalo en categoria_detectada="desconocido" y explica por qué en razonamiento.
 ''';
@@ -105,7 +110,7 @@ Future<IdentificacionEspecie> identificarEspecie({
   final esquema = {
     'type': 'object',
     'properties': {
-      'categoria_detectada': {'type': 'string', 'enum': ['animal', 'insecto', 'planta', 'desconocido']},
+      'categoria_detectada': {'type': 'string', 'enum': ['animal', 'insecto', 'planta', 'seta', 'desconocido']},
       'nombre_cientifico': {'type': 'string', 'description': 'Binomial Genus species cuando sea posible.'},
       'nombre_comun': {'type': 'string', 'description': 'Nombre vulgar en español.'},
       'taxonomia': {'type': 'string', 'description': 'Cadena Reino › Filo › Clase › Orden › Familia › Género › Especie.'},
