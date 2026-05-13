@@ -1,13 +1,16 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'pantallas/pantalla_inicio.dart';
 import 'pantallas/pantalla_mapa.dart';
 import 'pantallas/pantalla_lista.dart';
 import 'pantallas/pantalla_nuevo.dart';
 import 'pantallas/pantalla_guia.dart';
 import 'pantallas/pantalla_ajustes.dart';
+import 'pantallas/pantalla_importar_fos_card.dart';
 import 'servicios/grabador_track.dart';
 import 'servicios/estado_conexion.dart';
 import 'servicios/auto_backup.dart';
@@ -113,6 +116,54 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   int indiceVistaActual = 0;
   int contadorRefrescoLista = 0;
   int contadorRefrescoMapa = 0;
+  StreamSubscription<List<SharedMediaFile>>? _suscripcionShare;
+
+  @override
+  void initState() {
+    super.initState();
+    // Escuchar archivos compartidos (.fos-card) en caliente y al arrancar.
+    _suscripcionShare = ReceiveSharingIntent.instance
+        .getMediaStream()
+        .listen(_manejarMediaCompartida, onError: (_) {});
+    ReceiveSharingIntent.instance.getInitialMedia().then((media) {
+      if (media.isNotEmpty) {
+        _manejarMediaCompartida(media);
+        ReceiveSharingIntent.instance.reset();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _suscripcionShare?.cancel();
+    super.dispose();
+  }
+
+  void _manejarMediaCompartida(List<SharedMediaFile> media) {
+    if (media.isEmpty) return;
+    final fosCards = media.where((m) => m.path.toLowerCase().endsWith('.fos-card')).toList();
+    if (fosCards.isEmpty) return;
+    final primero = fosCards.first;
+    final fichero = File(primero.path);
+    if (!fichero.existsSync()) return;
+    // Difiero a un postFrame para que el árbol esté montado.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context)
+          .push<bool>(MaterialPageRoute(
+            builder: (_) => PantallaImportarFosCard(ficheroFosCard: fichero),
+          ))
+          .then((importado) {
+        if (importado == true) {
+          setState(() {
+            contadorRefrescoLista++;
+            contadorRefrescoMapa++;
+            indiceVistaActual = 2; // pasar a la lista para que vea la entrante
+          });
+        }
+      });
+    });
+  }
 
   void irANuevoHallazgo({double? latitudPredefinida, double? longitudPredefinida}) {
     Navigator.of(context).push(

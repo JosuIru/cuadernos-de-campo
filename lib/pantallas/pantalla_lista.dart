@@ -11,6 +11,7 @@ import '../modelos/hallazgo.dart';
 import '../datos/configuracion.dart';
 import '../servicios/certificado_hallazgo.dart';
 import '../servicios/exportar_zip.dart';
+import '../servicios/identidad_descubridor.dart';
 import '../servicios/tarjeta_imagen.dart';
 import '../widgets/dialogo_trazabilidad.dart';
 import 'pantalla_estadisticas.dart';
@@ -28,11 +29,13 @@ class _PantallaListaState extends State<PantallaLista> {
   List<Hallazgo> _hallazgos = [];
   String _consulta = '';
   String _filtroTipo = 'todos'; // 'todos' | 'fosil' | 'mineral'
+  String? _miClavePublicaB64;
 
   @override
   void initState() {
     super.initState();
     _cargar();
+    _cargarMiClave();
     _controladorBusqueda.addListener(() {
       setState(() => _consulta = _controladorBusqueda.text.trim().toLowerCase());
     });
@@ -44,14 +47,35 @@ class _PantallaListaState extends State<PantallaLista> {
     setState(() => _hallazgos = lista);
   }
 
-  List<Hallazgo> get _filtrados {
-    return _hallazgos.where((h) {
+  Future<void> _cargarMiClave() async {
+    final clave = await IdentidadDescubridor.instancia.obtenerClavePublicaBase64();
+    if (!mounted) return;
+    setState(() => _miClavePublicaB64 = clave);
+  }
+
+  /// True si el hallazgo viene de otra persona (clave pública distinta a
+  /// la mía). Hallazgos sin firma o firmados con mi clave cuentan como
+  /// "propios".
+  bool _esCompartido(Hallazgo h) {
+    if (!h.tieneFirma) return false;
+    if (_miClavePublicaB64 == null) return false;
+    return h.clavePublicaDescubridor != _miClavePublicaB64;
+  }
+
+  List<Hallazgo> _aplicarFiltros(Iterable<Hallazgo> origen) {
+    return origen.where((h) {
       if (_filtroTipo != 'todos' && h.tipo != _filtroTipo) return false;
       if (_consulta.isEmpty) return true;
       final texto = '${h.especie} ${h.edad} ${h.formacion} ${h.notas}'.toLowerCase();
       return texto.contains(_consulta);
     }).toList();
   }
+
+  List<Hallazgo> get _propios =>
+      _aplicarFiltros(_hallazgos.where((h) => !_esCompartido(h)));
+  List<Hallazgo> get _compartidos =>
+      _aplicarFiltros(_hallazgos.where(_esCompartido));
+
 
   Future<void> _abrirDetalle(Hallazgo hallazgo) async {
     await showModalBottomSheet<void>(
@@ -313,88 +337,172 @@ class _PantallaListaState extends State<PantallaLista> {
 
   @override
   Widget build(BuildContext context) {
+    // Sólo mostramos la pestaña "Compartidas conmigo" si hay al menos una.
+    // Antes del primer import, la app se ve exactamente igual que siempre.
+    final hayCompartidos = _hallazgos.any(_esCompartido);
+    if (!hayCompartidos) return _construirSinTabs();
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Hallazgos'),
+          actions: _accionesAppBar(),
+          bottom: TabBar(
+            tabs: [
+              Tab(text: 'Mías (${_propios.length})'),
+              Tab(text: 'Compartidas (${_compartidos.length})'),
+            ],
+          ),
+        ),
+        body: Column(
+          children: [
+            _buscadorYFiltros(),
+            Expanded(
+              child: TabBarView(
+                children: [
+                  _listaHallazgos(_propios, mensajeVacio: _mensajeVacioMias()),
+                  _listaHallazgos(
+                    _compartidos,
+                    mensajeVacio: 'Ningún hallazgo recibido coincide con la búsqueda.',
+                    mostrarBadgeRemitente: true,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _construirSinTabs() {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Hallazgos'),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.bar_chart),
-            tooltip: 'Estadísticas',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaEstadisticas())),
-          ),
-          IconButton(
-            icon: Icon(Icons.archive_outlined),
-            tooltip: 'Exportar ZIP',
-            onPressed: _hallazgos.isEmpty ? null : _exportar,
-          ),
-        ],
+        title: const Text('Hallazgos'),
+        actions: _accionesAppBar(),
       ),
       body: Column(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-            child: TextField(
-              controller: _controladorBusqueda,
-              decoration: InputDecoration(
-                hintText: 'Buscar por nombre, edad, notas…',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
-              ),
-            ),
+          _buscadorYFiltros(),
+          Expanded(
+            child: _listaHallazgos(_propios, mensajeVacio: _mensajeVacioMias()),
           ),
-          Padding(
-            padding: const EdgeInsets.all(8),
-            child: SegmentedButton<String>(
-              segments: [
-                ButtonSegment(value: 'todos', label: Text(SoleraL10n.t('todos')), icon: const Icon(Icons.apps)),
-                const ButtonSegment(value: 'fosil', label: Text('Fósiles'), icon: Icon(Icons.bug_report)),
-                const ButtonSegment(value: 'mineral', label: Text('Minerales'), icon: Icon(Icons.diamond)),
-              ],
-              selected: {_filtroTipo},
-              onSelectionChanged: (s) => setState(() => _filtroTipo = s.first),
-            ),
-          ),
-          if (_filtrados.isEmpty)
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Text(
-                    _hallazgos.isEmpty
-                        ? 'Aún no hay hallazgos.\nToca el + para registrar el primero.'
-                        : 'Ningún hallazgo coincide con la búsqueda.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-              ),
-            )
-          else
-            Expanded(
-              child: RefreshIndicator(
-                onRefresh: _cargar,
-                child: ListView.builder(
-                  itemCount: _filtrados.length,
-                  itemBuilder: (_, i) {
-                    final h = _filtrados[i];
-                    final fecha = DateFormat('dd MMM yyyy', 'es_ES').format(DateTime.fromMillisecondsSinceEpoch(h.fechaMs));
-                    return ListTile(
-                      leading: h.rutaFoto != null
-                          ? ClipRRect(
-                              borderRadius: BorderRadius.circular(6),
-                              child: Image.file(File(h.rutaFoto!), width: 48, height: 48, fit: BoxFit.cover),
-                            )
-                          : CircleAvatar(child: Icon(Icons.image_not_supported)),
-                      title: Text(h.especie.isEmpty ? 'Sin nombre' : h.especie),
-                      subtitle: Text('${h.edad.isEmpty ? "—" : h.edad}\n$fecha · ${h.latitud.toStringAsFixed(4)}, ${h.longitud.toStringAsFixed(4)}'),
-                      isThreeLine: true,
-                      onTap: () => _abrirDetalle(h),
-                    );
-                  },
-                ),
-              ),
-            ),
         ],
+      ),
+    );
+  }
+
+  List<Widget> _accionesAppBar() {
+    return [
+      IconButton(
+        icon: const Icon(Icons.bar_chart),
+        tooltip: 'Estadísticas',
+        onPressed: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => PantallaEstadisticas()),
+        ),
+      ),
+      IconButton(
+        icon: const Icon(Icons.archive_outlined),
+        tooltip: 'Exportar ZIP',
+        onPressed: _hallazgos.isEmpty ? null : _exportar,
+      ),
+    ];
+  }
+
+  Widget _buscadorYFiltros() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+          child: TextField(
+            controller: _controladorBusqueda,
+            decoration: const InputDecoration(
+              hintText: 'Buscar por nombre, edad, notas…',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.all(8),
+          child: SegmentedButton<String>(
+            segments: [
+              ButtonSegment(value: 'todos', label: Text(SoleraL10n.t('todos')), icon: const Icon(Icons.apps)),
+              const ButtonSegment(value: 'fosil', label: Text('Fósiles'), icon: Icon(Icons.bug_report)),
+              const ButtonSegment(value: 'mineral', label: Text('Minerales'), icon: Icon(Icons.diamond)),
+            ],
+            selected: {_filtroTipo},
+            onSelectionChanged: (s) => setState(() => _filtroTipo = s.first),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _mensajeVacioMias() {
+    return _hallazgos.isEmpty
+        ? 'Aún no hay hallazgos.\nToca el + para registrar el primero.'
+        : 'Ningún hallazgo coincide con la búsqueda.';
+  }
+
+  Widget _listaHallazgos(
+    List<Hallazgo> lista, {
+    required String mensajeVacio,
+    bool mostrarBadgeRemitente = false,
+  }) {
+    if (lista.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            mensajeVacio,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.grey),
+          ),
+        ),
+      );
+    }
+    return RefreshIndicator(
+      onRefresh: _cargar,
+      child: ListView.builder(
+        itemCount: lista.length,
+        itemBuilder: (_, i) {
+          final h = lista[i];
+          final fecha = DateFormat('dd MMM yyyy', 'es_ES')
+              .format(DateTime.fromMillisecondsSinceEpoch(h.fechaMs));
+          return ListTile(
+            leading: h.rutaFoto != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: Image.file(File(h.rutaFoto!),
+                        width: 48, height: 48, fit: BoxFit.cover),
+                  )
+                : const CircleAvatar(child: Icon(Icons.image_not_supported)),
+            title: Row(
+              children: [
+                Expanded(child: Text(h.especie.isEmpty ? 'Sin nombre' : h.especie)),
+                if (mostrarBadgeRemitente)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text(
+                      '↓ recibida',
+                      style: TextStyle(fontSize: 11, color: Colors.blue),
+                    ),
+                  ),
+              ],
+            ),
+            subtitle: Text(
+              '${h.edad.isEmpty ? "—" : h.edad}\n$fecha · '
+              '${h.latitud.toStringAsFixed(4)}, ${h.longitud.toStringAsFixed(4)}',
+            ),
+            isThreeLine: true,
+            onTap: () => _abrirDetalle(h),
+          );
+        },
       ),
     );
   }

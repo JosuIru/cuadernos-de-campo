@@ -54,6 +54,18 @@ dependencies:
   cryptography: ^2.7.0
   flutter_secure_storage: ^9.2.2
 
+  # Redimensionado de fotos al exportar .fos-card (Fase B). Reducimos a
+  # 1600 px lado mayor + JPEG q75 → ~400 KB por foto. Suficiente para
+  # identificación visual profesional (resolución equivalente a iNaturalist)
+  # y compatible con WhatsApp/email sin sufrir más recompresión.
+  image: ^4.2.0
+
+  # Recibir un .fos-card compartido desde WhatsApp/email/Drive (Fase B).
+  # El sistema operativo lanza Fósiles con un intent VIEW/SEND apuntando
+  # al archivo; este plugin lo expone como stream para que el orquestador
+  # abra la pantalla de import.
+  receive_sharing_intent: ^1.8.0
+
   # Sensores (brújula y acelerómetro para medir orientación de estratos)
   sensors_plus: ^6.0.1
   flutter_compass: ^0.8.1

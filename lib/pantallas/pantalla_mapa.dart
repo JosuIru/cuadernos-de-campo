@@ -30,6 +30,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../servicios/tarjeta_imagen.dart';
 import '../servicios/certificado_hallazgo.dart';
+import '../servicios/formato_fos_card.dart';
 import '../servicios/identidad_descubridor.dart';
 import 'pantalla_identidad.dart';
 import '../datos/configuracion.dart';
@@ -721,6 +722,15 @@ class _PantallaMapaState extends State<PantallaMapa> {
                             minimumSize: Size(double.infinity, 40),
                           ),
                         ),
+                        SizedBox(height: 8),
+                        FilledButton.icon(
+                          icon: Icon(Icons.send_outlined),
+                          onPressed: () => _enviarComoFosCard(sheetContext, h),
+                          label: Text('Enviar a otra app Fósiles'),
+                          style: FilledButton.styleFrom(
+                            minimumSize: Size(double.infinity, 40),
+                          ),
+                        ),
                         SizedBox(height: 16),
                         if (h.historialTrazabilidad.isNotEmpty) ...[
                           Text('Historial de trazabilidad',
@@ -817,6 +827,84 @@ class _PantallaMapaState extends State<PantallaMapa> {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error generando tarjeta: $e')));
+    }
+  }
+
+  /// Compartir un hallazgo como `.fos-card` listo para que otra instalación
+  /// de Fósiles lo importe en su pestaña "Compartidas conmigo". Modal previo
+  /// elige el grado de precisión de las coordenadas (anti-saqueo).
+  Future<void> _enviarComoFosCard(BuildContext sheetContext, Hallazgo hallazgo) async {
+    final modo = await showModalBottomSheet<ModoCompartirCoordenadas>(
+      context: sheetContext,
+      isScrollControlled: true,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Precisión de las coordenadas',
+                  style: Theme.of(context).textTheme.titleLarge),
+              SizedBox(height: 8),
+              Text(
+                'Las coordenadas precisas pueden facilitar el saqueo de yacimientos. '
+                'Para colegas de confianza o el Instituto, manda precisas; para aficionados '
+                'desconocidos o público en general, difuminadas (precisión ~1 km).',
+                style: TextStyle(fontSize: 13, color: Colors.black54),
+              ),
+              SizedBox(height: 16),
+              FilledButton.icon(
+                icon: Icon(Icons.blur_on),
+                label: Text('Difuminadas (~1 km)  ·  recomendado'),
+                onPressed: () =>
+                    Navigator.pop(sheetContext, ModoCompartirCoordenadas.difuminadas),
+                style: FilledButton.styleFrom(minimumSize: Size(double.infinity, 48)),
+              ),
+              SizedBox(height: 8),
+              OutlinedButton.icon(
+                icon: Icon(Icons.gps_fixed),
+                label: Text('Precisas (~11 cm)'),
+                onPressed: () =>
+                    Navigator.pop(sheetContext, ModoCompartirCoordenadas.precisas),
+                style: OutlinedButton.styleFrom(minimumSize: Size(double.infinity, 48)),
+              ),
+              SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.pop(sheetContext, null),
+                child: Text(SoleraL10n.t('cancelar')),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (modo == null) return;
+
+    if (!mounted) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => Center(child: CircularProgressIndicator()),
+    );
+    try {
+      final resultado = await exportarFosCard(hallazgo: hallazgo, modoCoordenadas: modo);
+      if (!mounted) return;
+      Navigator.of(context).pop(); // cerrar spinner
+      final tamMb = (resultado.bytesTotales / (1024 * 1024)).toStringAsFixed(1);
+      await Share.shareXFiles(
+        [XFile(resultado.archivo.path, mimeType: 'application/x-fos-card')],
+        subject: 'Card de hallazgo: ${hallazgo.especie.isEmpty ? "(sin especie)" : hallazgo.especie}',
+        text: 'Card de Fósiles ($tamMb MB · ${resultado.fotosIncluidas} fotos · '
+            '${modo == ModoCompartirCoordenadas.difuminadas ? "coords difuminadas" : "coords precisas"}). '
+            'Para importarlo, abre el archivo en otra instalación de la app Fósiles.',
+      );
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context).pop(); // cerrar spinner
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generando card: $e')),
+      );
     }
   }
 

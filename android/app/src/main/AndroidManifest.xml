@@ -37,6 +37,33 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <!-- Fase B del compartir-certificar: aceptar .fos-card como
+                 archivo abierto desde WhatsApp/email/Drive. WhatsApp envía
+                 archivos desconocidos con MIME genérico, así que filtramos
+                 también por extensión literal "*.fos-card" como fallback. -->
+            <intent-filter android:label="Importar card de Fósiles">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="content"/>
+                <data android:scheme="file"/>
+                <data android:host="*"/>
+                <data android:mimeType="application/x-fos-card"/>
+                <data android:mimeType="application/zip"/>
+                <data android:mimeType="application/octet-stream"/>
+                <data android:pathPattern=".*\\.fos-card"/>
+                <data android:pathPattern=".*\\..*\\.fos-card"/>
+                <data android:pathPattern=".*\\..*\\..*\\.fos-card"/>
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.fos-card"/>
+            </intent-filter>
+            <intent-filter android:label="Importar card de Fósiles">
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="application/x-fos-card"/>
+                <data android:mimeType="application/zip"/>
+                <data android:mimeType="application/octet-stream"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
