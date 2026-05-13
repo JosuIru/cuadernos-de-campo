@@ -842,6 +842,10 @@ class _IconoHallazgo extends StatelessWidget {
   }
 }
 
+/// Lateral derecho del mapa. Antes eran 8 FABs apilados que ocupaban
+/// casi toda la altura en pantallas pequeñas. Ahora son 5: dos acciones
+/// directas (GPS y track) y tres menús desplegables que agrupan capas,
+/// datos cargables y tracks/offline.
 class _BotonesAccion extends StatelessWidget {
   final CapaBase capaActual;
   final ValueChanged<CapaBase> onCambioCapa;
@@ -877,82 +881,173 @@ class _BotonesAccion extends StatelessWidget {
     required this.onRefrescarLugares,
   });
 
+  Future<void> _abrirMenuCapas(BuildContext context) async {
+    const valorOffline = '__offline__';
+    final seleccion = await showMenu<dynamic>(
+      context: context,
+      position: const RelativeRect.fromLTRB(1000, 100, 8, 0),
+      items: [
+        for (final capa in capasBaseDisponibles)
+          PopupMenuItem(
+            value: capa,
+            child: Row(
+              children: [
+                Icon(
+                  capa.nombre == capaActual.nombre ? Icons.check : Icons.layers_outlined,
+                  size: 18,
+                  color: capa.nombre == capaActual.nombre ? Colors.green.shade700 : null,
+                ),
+                const SizedBox(width: 8),
+                Text(capa.nombre),
+              ],
+            ),
+          ),
+        const PopupMenuDivider(),
+        const PopupMenuItem(
+          value: valorOffline,
+          child: Row(
+            children: [
+              Icon(Icons.download_for_offline, size: 18),
+              SizedBox(width: 8),
+              Text('Mapas offline…'),
+            ],
+          ),
+        ),
+      ],
+    );
+    if (seleccion is CapaBase) {
+      onCambioCapa(seleccion);
+    } else if (seleccion == valorOffline) {
+      onAbrirOffline();
+    }
+  }
+
+  Future<void> _abrirMenuDatos(BuildContext context) async {
+    const valorLugares = '__lugares__';
+    const valorRecargarLugares = '__lugares_refresh__';
+    const valorGbifVer = '__gbif_ver__';
+    const valorGbifOcultar = '__gbif_ocultar__';
+
+    final seleccion = await showMenu<String>(
+      context: context,
+      position: const RelativeRect.fromLTRB(1000, 100, 8, 0),
+      items: [
+        PopupMenuItem(
+          value: valorLugares,
+          child: Row(
+            children: [
+              Icon(
+                Icons.place_outlined,
+                size: 18,
+                color: hayLugaresActivos ? Colors.green.shade700 : null,
+              ),
+              const SizedBox(width: 8),
+              Text(hayLugaresActivos
+                  ? 'Lugares de interés (activos)…'
+                  : 'Lugares de interés…'),
+            ],
+          ),
+        ),
+        if (hayLugaresActivos)
+          const PopupMenuItem(
+            value: valorRecargarLugares,
+            child: Row(
+              children: [
+                Icon(Icons.refresh, size: 18),
+                SizedBox(width: 8),
+                Text('Recargar lugares en la vista'),
+              ],
+            ),
+          ),
+        const PopupMenuDivider(),
+        if (!hayGbif)
+          const PopupMenuItem(
+            value: valorGbifVer,
+            child: Row(
+              children: [
+                Icon(Icons.public, size: 18),
+                SizedBox(width: 8),
+                Text('Observaciones GBIF cerca'),
+              ],
+            ),
+          )
+        else
+          PopupMenuItem(
+            value: valorGbifOcultar,
+            child: Row(
+              children: [
+                Icon(Icons.layers_clear, size: 18, color: Colors.deepOrange),
+                const SizedBox(width: 8),
+                const Text('Ocultar observaciones GBIF'),
+              ],
+            ),
+          ),
+      ],
+    );
+    switch (seleccion) {
+      case valorLugares:
+        onAbrirSelectorLugares();
+        break;
+      case valorRecargarLugares:
+        onRefrescarLugares();
+        break;
+      case valorGbifVer:
+        onConsultarGbif();
+        break;
+      case valorGbifOcultar:
+        onLimpiarGbif();
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final hayDatosCargados = hayLugaresActivos || hayGbif;
     return Column(
       children: [
         FloatingActionButton.small(
-          heroTag: 'capa',
-          onPressed: () async {
-            final seleccion = await showMenu<CapaBase>(
-              context: context,
-              position: const RelativeRect.fromLTRB(1000, 100, 8, 0),
-              items: capasBaseDisponibles
-                  .map((capa) => PopupMenuItem(value: capa, child: Text(capa.nombre)))
-                  .toList(),
-            );
-            if (seleccion != null) onCambioCapa(seleccion);
-          },
-          child: Icon(Icons.layers),
-        ),
-        SizedBox(height: 8),
-        FloatingActionButton.small(
           heroTag: 'gps',
+          tooltip: 'Centrar en mi ubicación',
           onPressed: onCentrar,
-          child: Icon(Icons.my_location),
+          child: const Icon(Icons.my_location),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'track',
+          tooltip: estaGrabando ? 'Detener grabación de track' : 'Grabar track',
           backgroundColor: estaGrabando ? Colors.red : null,
           foregroundColor: estaGrabando ? Colors.white : null,
           onPressed: onAlternarGrabacion,
           child: Icon(estaGrabando ? Icons.stop : Icons.fiber_manual_record),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         FloatingActionButton.small(
-          heroTag: 'lugares',
-          backgroundColor: hayLugaresActivos ? Colors.green.shade700 : null,
-          foregroundColor: hayLugaresActivos ? Colors.white : null,
-          tooltip: 'Capas de lugares (miradores, reservas, charcas...)',
-          onPressed: cargandoLugares ? null : onAbrirSelectorLugares,
-          child: cargandoLugares
-              ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : Icon(Icons.place_outlined),
+          heroTag: 'capas',
+          tooltip: 'Capas del mapa',
+          onPressed: () => _abrirMenuCapas(context),
+          child: const Icon(Icons.layers),
         ),
-        if (hayLugaresActivos) ...[
-          SizedBox(height: 4),
-          FloatingActionButton.small(
-            heroTag: 'lugares-refresh',
-            tooltip: 'Recargar lugares en la vista actual',
-            onPressed: cargandoLugares ? null : onRefrescarLugares,
-            child: Icon(Icons.refresh, size: 18),
-          ),
-        ],
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         FloatingActionButton.small(
-          heroTag: 'gbif',
-          backgroundColor: hayGbif ? Colors.deepOrange : null,
-          foregroundColor: hayGbif ? Colors.white : null,
-          tooltip: hayGbif ? 'Ocultar observaciones GBIF' : 'Ver observaciones GBIF cerca',
-          onPressed: cargandoGbif
-              ? null
-              : (hayGbif ? onLimpiarGbif : onConsultarGbif),
-          child: cargandoGbif
-              ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-              : Icon(hayGbif ? Icons.layers_clear : Icons.public),
+          heroTag: 'datos',
+          tooltip: 'Lugares de interés y observaciones',
+          backgroundColor: hayDatosCargados ? Colors.green.shade700 : null,
+          foregroundColor: hayDatosCargados ? Colors.white : null,
+          onPressed: (cargandoLugares || cargandoGbif) ? null : () => _abrirMenuDatos(context),
+          child: (cargandoLugares || cargandoGbif)
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.eco_outlined),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'tracks',
+          tooltip: 'Tracks guardados',
           onPressed: onAbrirTracks,
-          child: Icon(Icons.route),
-        ),
-        SizedBox(height: 8),
-        FloatingActionButton.small(
-          heroTag: 'offline',
-          onPressed: onAbrirOffline,
-          child: Icon(Icons.download_for_offline),
+          child: const Icon(Icons.route),
         ),
       ],
     );
