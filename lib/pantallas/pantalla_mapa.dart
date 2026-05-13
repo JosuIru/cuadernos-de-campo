@@ -152,6 +152,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
   final List<MonumentoArqueologico> _monumentosVisibles = [];
   final Set<String> _idsMonumentosYaPintados = {};
 
+  // Cache de celdas ya consultadas a Overpass por capa, para evitar que al
+  // mover el mapa unos metros (o volver a una zona ya vista) dispare una
+  // request HTTP nueva de 5-20 s. Cada celda es ~0.05° (~5 km × 5 km).
+  // La cache vive en memoria — desaparece al cerrar la app, no envejece.
+  final Set<String> _celdasConsultadasCuevas = {};
+  final Set<String> _celdasConsultadasMonumentos = {};
+  static const double _ladoCeldaGrados = 0.05;
+
   StreamSubscription<void>? _subTrack;
   StreamSubscription<Position>? _subUbicacion;
   StreamSubscription<MapEvent>? _subEventosMapa;
@@ -430,12 +438,13 @@ class _PantallaMapaState extends State<PantallaMapa> {
         _mostrarCuevas = false;
         _cuevasVisibles.clear();
         _idsCuevasYaPintadas.clear();
+        _celdasConsultadasCuevas.clear();
         _recalcularMarkersCuevas();
       });
       return;
     }
     setState(() => _mostrarCuevas = true);
-    await _cargarCuevasVistaActual();
+    await _cargarCuevasVistaActual(esActivacionInicial: true);
   }
 
   Future<void> _alternarMonumentos() async {
@@ -445,25 +454,53 @@ class _PantallaMapaState extends State<PantallaMapa> {
         _mostrarMonumentos = false;
         _monumentosVisibles.clear();
         _idsMonumentosYaPintados.clear();
+        _celdasConsultadasMonumentos.clear();
         _recalcularMarkersMonumentos();
       });
       return;
     }
     setState(() => _mostrarMonumentos = true);
-    await _cargarMonumentosVistaActual();
+    await _cargarMonumentosVistaActual(esActivacionInicial: true);
   }
 
-  Future<void> _cargarMonumentosVistaActual() async {
+  /// Calcula el conjunto de claves de celda (`lat:lon` truncadas a
+  /// [_ladoCeldaGrados]) que cubren la bbox dada. Sirve para saber si
+  /// una vista ya fue consultada antes y evitar una request Overpass
+  /// redundante.
+  Set<String> _celdasEnBbox(LatLngBounds bounds) {
+    final celdas = <String>{};
+    final latIni = (bounds.south / _ladoCeldaGrados).floor();
+    final latFin = (bounds.north / _ladoCeldaGrados).floor();
+    final lonIni = (bounds.west / _ladoCeldaGrados).floor();
+    final lonFin = (bounds.east / _ladoCeldaGrados).floor();
+    for (var i = latIni; i <= latFin; i++) {
+      for (var j = lonIni; j <= lonFin; j++) {
+        celdas.add('$i:$j');
+      }
+    }
+    return celdas;
+  }
+
+  Future<void> _cargarMonumentosVistaActual({bool esActivacionInicial = false}) async {
     if (_cargandoMonumentos) return;
     final camara = _controladorMapa.camera;
     if (camara.zoom < 9) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('🗿 Acércate más (zoom ≥ 9) para cargar monumentos.'), duration: Duration(seconds: 4)),
-      );
+      if (esActivacionInicial) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('🗿 Acércate más (zoom ≥ 9) para cargar monumentos.'), duration: Duration(seconds: 4)),
+        );
+      }
       return;
     }
     final bounds = camara.visibleBounds;
-    debugPrint('[fosiles] cargando monumentos bbox=${bounds.south},${bounds.west},${bounds.north},${bounds.east}');
+    final celdasViewport = _celdasEnBbox(bounds);
+    final celdasNuevas = celdasViewport.difference(_celdasConsultadasMonumentos);
+    if (celdasNuevas.isEmpty) {
+      // Toda la vista ya fue consultada antes — saltamos la HTTP.
+      debugPrint('[fosiles] monumentos: vista ya cacheada, skip HTTP');
+      return;
+    }
+    debugPrint('[fosiles] cargando monumentos bbox=${bounds.south},${bounds.west},${bounds.north},${bounds.east} celdasNuevas=${celdasNuevas.length}');
     setState(() => _cargandoMonumentos = true);
     try {
       final monumentos = await buscarMonumentosArqueologicos(LimitesGeograficos(
@@ -481,9 +518,13 @@ class _PantallaMapaState extends State<PantallaMapa> {
             _monumentosVisibles.add(m);
           }
         }
+        // Marcamos toda la viewport como consultada (no solo las celdas
+        // nuevas) para que el solapamiento con bboxes futuras también
+        // cuente como cacheado.
+        _celdasConsultadasMonumentos.addAll(celdasViewport);
         _recalcularMarkersMonumentos();
       });
-      if (mounted) {
+      if (mounted && esActivacionInicial) {
         final mensaje = monumentos.isEmpty
             ? '🗿 Sin monumentos OSM en esta vista. Prueba a desplazar el mapa.'
             : '🗿 ${monumentos.length} monumentos cargados.';
@@ -492,7 +533,9 @@ class _PantallaMapaState extends State<PantallaMapa> {
     } catch (e) {
       debugPrint('[fosiles] error monumentos: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error monumentos: $e'), duration: Duration(seconds: 6)));
+      if (esActivacionInicial) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error monumentos: $e'), duration: Duration(seconds: 6)));
+      }
     } finally {
       if (mounted) setState(() => _cargandoMonumentos = false);
     }
@@ -593,19 +636,27 @@ class _PantallaMapaState extends State<PantallaMapa> {
     );
   }
 
-  Future<void> _cargarCuevasVistaActual() async {
+  Future<void> _cargarCuevasVistaActual({bool esActivacionInicial = false}) async {
     if (_cargandoCuevas) return;
     final camara = _controladorMapa.camera;
     if (camara.zoom < 10) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('🦇 Acércate más (zoom ≥ 10) para cargar cuevas.'), duration: Duration(seconds: 4)),
-      );
+      if (esActivacionInicial) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('🦇 Acércate más (zoom ≥ 10) para cargar cuevas.'), duration: Duration(seconds: 4)),
+        );
+      }
       return;
     }
     final bounds = camara.visibleBounds;
+    final celdasViewport = _celdasEnBbox(bounds);
+    final celdasNuevas = celdasViewport.difference(_celdasConsultadasCuevas);
+    if (celdasNuevas.isEmpty) {
+      debugPrint('[fosiles] cuevas: vista ya cacheada, skip HTTP');
+      return;
+    }
     setState(() => _cargandoCuevas = true);
     try {
-      debugPrint('[fosiles] cargando cuevas bbox=${bounds.south},${bounds.west},${bounds.north},${bounds.east}');
+      debugPrint('[fosiles] cargando cuevas bbox=${bounds.south},${bounds.west},${bounds.north},${bounds.east} celdasNuevas=${celdasNuevas.length}');
       final cuevas = await buscarCuevas(LimitesGeograficos(
         sur: bounds.south,
         norte: bounds.north,
@@ -621,9 +672,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
             _cuevasVisibles.add(cueva);
           }
         }
+        _celdasConsultadasCuevas.addAll(celdasViewport);
         _recalcularMarkersCuevas();
       });
-      if (mounted) {
+      if (mounted && esActivacionInicial) {
         final mensaje = cuevas.isEmpty
             ? '🦇 Sin cuevas OSM en esta vista. Prueba a desplazar el mapa.'
             : '🦇 ${cuevas.length} cuevas cargadas.';
@@ -632,7 +684,9 @@ class _PantallaMapaState extends State<PantallaMapa> {
     } catch (e) {
       debugPrint('[fosiles] error cuevas: $e');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error cuevas: $e'), duration: Duration(seconds: 6)));
+      if (esActivacionInicial) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error cuevas: $e'), duration: Duration(seconds: 6)));
+      }
     } finally {
       if (mounted) setState(() => _cargandoCuevas = false);
     }
