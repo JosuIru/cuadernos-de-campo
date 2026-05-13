@@ -113,6 +113,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   int contadorRefrescoLista = 0;
   int contadorRefrescoMapa = 0;
 
+  // IndexedStack construye TODOS los hijos al primer frame: arrancando la app
+  // se inicializaba el mapa con sus GPS streams y tile providers aunque el
+  // usuario empezase en Inicio. Con este set sólo construimos cada pantalla
+  // la primera vez que se visita y desde ahí se conserva en el stack.
+  final Set<int> _indicesVisitados = {0};
+
   void irANuevoHallazgo({double? latitudPredefinida, double? longitudPredefinida}) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -126,29 +132,51 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         setState(() {
           contadorRefrescoLista++;
           contadorRefrescoMapa++;
+          _indicesVisitados.add(1);
           indiceVistaActual = 1; // Vuelve al mapa para ver el nuevo punto
         });
       }
     });
   }
 
+  Widget _construirPantalla(int indice) {
+    switch (indice) {
+      case 0:
+        return PantallaInicio(
+          alIrAMapa: () => setState(() {
+            _indicesVisitados.add(1);
+            indiceVistaActual = 1;
+          }),
+          alIrAGuia: () => setState(() {
+            _indicesVisitados.add(4);
+            indiceVistaActual = 4;
+          }),
+        );
+      case 1:
+        return PantallaMapa(
+          key: ValueKey('mapa_$contadorRefrescoMapa'),
+          alPedirNuevoHallazgo: ({double? latitud, double? longitud}) =>
+              irANuevoHallazgo(latitudPredefinida: latitud, longitudPredefinida: longitud),
+          alSeleccionarEspecieGuia: (idEspecie) => abrirDetalleEspecieGuia(context, idEspecie),
+        );
+      case 2:
+        return PantallaLista(key: ValueKey(contadorRefrescoLista));
+      case 4:
+        return const PantallaGuia();
+      case 5:
+        return const PantallaAjustes();
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final pantallas = <Widget>[
-      PantallaInicio(
-        alIrAMapa: () => setState(() => indiceVistaActual = 1),
-        alIrAGuia: () => setState(() => indiceVistaActual = 4),
-      ),
-      PantallaMapa(
-        key: ValueKey('mapa_$contadorRefrescoMapa'),
-        alPedirNuevoHallazgo: ({double? latitud, double? longitud}) =>
-            irANuevoHallazgo(latitudPredefinida: latitud, longitudPredefinida: longitud),
-        alSeleccionarEspecieGuia: (idEspecie) => abrirDetalleEspecieGuia(context, idEspecie),
-      ),
-      PantallaLista(key: ValueKey(contadorRefrescoLista)),
-      const SizedBox.shrink(),
-      const PantallaGuia(),
-      const PantallaAjustes(),
+      for (var indice = 0; indice < 6; indice++)
+        _indicesVisitados.contains(indice)
+            ? _construirPantalla(indice)
+            : const SizedBox.shrink(),
     ];
 
     return Scaffold(
@@ -160,7 +188,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             irANuevoHallazgo();
             return;
           }
-          setState(() => indiceVistaActual = indice);
+          setState(() {
+            _indicesVisitados.add(indice);
+            indiceVistaActual = indice;
+          });
         },
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),

@@ -90,12 +90,30 @@ class _PantallaMapaState extends State<PantallaMapa> {
   bool _modoAgregar = false;
   LatLng? _ultimoCentroMapa;
 
+  // Tick del track: cada GPS-fix del grabador antes disparaba setState que
+  // reconstruía TODO el FlutterMap (tiles base, lugares, GBIF, clusters).
+  // Ahora un notifier que sólo agita la PolylineLayer del track.
+  final ValueNotifier<int> _tickTrack = ValueNotifier(0);
+
+  // Caches de markers/hallazgos filtrados. Antes se generaban DE CERO en
+  // cada build() — para cada hallazgo, lugar y ocurrencia GBIF se creaba
+  // un GestureDetector + Container + BoxShadow. Cualquier setState (filtro
+  // de categoría, cargar GBIF, cambiar capa base, banner de conexión) tiraba
+  // toda la lista. Ahora se recalculan SÓLO en los métodos que cambian la
+  // fuente.
+  List<Hallazgo> _hallazgosFiltradosCache = const [];
+  List<Marker> _markersHallazgosCache = const [];
+  List<Marker> _markersLugaresCache = const [];
+  List<Marker> _markersGbifCache = const [];
+
   @override
   void initState() {
     super.initState();
     _cargarHallazgos();
     _suscripcionTrack = GrabadorTrack.instancia.cambios.listen((_) {
-      if (mounted) setState(() {});
+      // No setState — incrementamos el tick para que sólo se reconstruya
+      // la PolylineLayer del track, no todo el FlutterMap.
+      _tickTrack.value++;
     });
     _conectado = EstadoConexion.instancia.conectado;
     _subConexion = EstadoConexion.instancia.cambios.listen((online) {
@@ -107,18 +125,87 @@ class _PantallaMapaState extends State<PantallaMapa> {
   void dispose() {
     _suscripcionTrack?.cancel();
     _subConexion?.cancel();
+    _tickTrack.dispose();
     super.dispose();
   }
 
   Future<void> _cargarHallazgos() async {
     final lista = await BaseDatosNaturaleza.instancia.listarHallazgos();
     if (!mounted) return;
-    setState(() => _hallazgos = lista);
+    setState(() {
+      _hallazgos = lista;
+      _recalcularHallazgosFiltrados();
+    });
   }
 
-  List<Hallazgo> get _hallazgosFiltrados {
-    if (_filtroCategoria == 'todos') return _hallazgos;
-    return _hallazgos.where((hallazgo) => hallazgo.categoria == _filtroCategoria).toList();
+  void _recalcularHallazgosFiltrados() {
+    _hallazgosFiltradosCache = _filtroCategoria == 'todos'
+        ? _hallazgos
+        : _hallazgos.where((hallazgo) => hallazgo.categoria == _filtroCategoria).toList();
+    _recalcularMarkersHallazgos();
+  }
+
+  void _recalcularMarkersHallazgos() {
+    final lista = _hallazgosFiltradosCache;
+    _markersHallazgosCache = List.generate(lista.length, (i) {
+      final hallazgo = lista[i];
+      return Marker(
+        width: 36,
+        height: 36,
+        point: LatLng(hallazgo.latitud, hallazgo.longitud),
+        child: GestureDetector(
+          onTap: () => _abrirDetalleHallazgo(lista, i),
+          child: _IconoHallazgo(hallazgo: hallazgo),
+        ),
+      );
+    });
+  }
+
+  void _recalcularMarkersLugares() {
+    _markersLugaresCache = [
+      for (final lugar in _lugaresInteres)
+        Marker(
+          width: 32,
+          height: 32,
+          point: LatLng(lugar.latitud, lugar.longitud),
+          child: GestureDetector(
+            onTap: () => _abrirDetalleLugar(lugar),
+            child: Container(
+              decoration: BoxDecoration(
+                color: _colorTipoLugar(lugar.tipo),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 1.5),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 1)),
+                ],
+              ),
+              child: Icon(_iconoTipoLugar(lugar.tipo), color: Colors.white, size: 16),
+            ),
+          ),
+        ),
+    ];
+  }
+
+  void _recalcularMarkersGbif() {
+    _markersGbifCache = [
+      for (final ocurrencia in _ocurrenciasGbif)
+        if (ocurrencia.latitud != null && ocurrencia.longitud != null)
+          Marker(
+            width: 22,
+            height: 22,
+            point: LatLng(ocurrencia.latitud!, ocurrencia.longitud!),
+            child: GestureDetector(
+              onTap: () => _abrirDetalleOcurrenciaGbif(ocurrencia),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.deepOrange.withValues(alpha: 0.7),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+    ];
   }
 
   Future<void> _centrarEnMiUbicacion() async {
@@ -150,7 +237,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
     if (seleccion == null) return;
     setState(() => _tiposLugaresActivos = seleccion);
     if (seleccion.isEmpty) {
-      setState(() => _lugaresInteres = []);
+      setState(() {
+        _lugaresInteres = const [];
+        _recalcularMarkersLugares();
+      });
     } else {
       await _refrescarLugaresInteres();
     }
@@ -170,7 +260,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
         tipos: _tiposLugaresActivos,
       );
       if (!mounted) return;
-      setState(() => _lugaresInteres = lugares);
+      setState(() {
+        _lugaresInteres = lugares;
+        _recalcularMarkersLugares();
+      });
       if (lugares.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sin lugares de interés en esta zona.')),
@@ -270,7 +363,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
         limite: 200,
       );
       if (!mounted) return;
-      setState(() => _ocurrenciasGbif = ocurrencias);
+      setState(() {
+        _ocurrenciasGbif = ocurrencias;
+        _recalcularMarkersGbif();
+      });
       if (ocurrencias.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Sin observaciones GBIF en esta zona.')),
@@ -279,7 +375,13 @@ class _PantallaMapaState extends State<PantallaMapa> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('${ocurrencias.length} observaciones de la comunidad cargadas.'),
-            action: SnackBarAction(label: 'Ocultar', onPressed: () => setState(() => _ocurrenciasGbif = [])),
+            action: SnackBarAction(
+              label: 'Ocultar',
+              onPressed: () => setState(() {
+                _ocurrenciasGbif = const [];
+                _recalcularMarkersGbif();
+              }),
+            ),
           ),
         );
       }
@@ -417,11 +519,15 @@ class _PantallaMapaState extends State<PantallaMapa> {
                                 itemCount: h.rutasFotos.length,
                                 itemBuilder: (_, fi) => ClipRRect(
                                   borderRadius: BorderRadius.circular(8),
+                                  // cacheWidth: 1600 → decodificación tope
+                                  // a 1600 px. Sin esto una foto de cámara
+                                  // de 12 MP se decodifica entera en RAM.
                                   child: Image.file(
                                     File(h.rutasFotos[fi]),
                                     height: 200,
                                     width: double.infinity,
                                     fit: BoxFit.cover,
+                                    cacheWidth: 1600,
                                   ),
                                 ),
                               ),
@@ -571,116 +677,80 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 ),
               ),
             ),
-          FlutterMap(
-            mapController: _controladorMapa,
-            options: MapOptions(
-              initialCenter: _centroInicial,
-              initialZoom: _zoomInicial,
-              onLongPress: (_, punto) => widget.alPedirNuevoHallazgo(
-                latitud: punto.latitude,
-                longitud: punto.longitude,
+          // RepaintBoundary aísla todo el subárbol del FlutterMap a su
+          // propia capa GPU. Eventos del HUD (FAB, snackbars, banner de
+          // conexión) y cambios de estado que no afectan al mapa ya no
+          // fuerzan repintar las teselas raster.
+          RepaintBoundary(
+            child: FlutterMap(
+              mapController: _controladorMapa,
+              options: MapOptions(
+                initialCenter: _centroInicial,
+                initialZoom: _zoomInicial,
+                onLongPress: (_, punto) => widget.alPedirNuevoHallazgo(
+                  latitud: punto.latitude,
+                  longitud: punto.longitude,
+                ),
               ),
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: _capaBaseActual.urlPlantilla,
-                maxZoom: _capaBaseActual.maxZoom.toDouble(),
-                tileProvider: _proveedorTeselasCache,
-                userAgentPackageName: 'com.josu.naturaleza',
-              ),
-              if (estaGrabando && grabador.puntos.length > 1)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: grabador.puntos.map((p) => LatLng(p.latitud, p.longitud)).toList(),
-                      strokeWidth: 4,
-                      color: Colors.redAccent,
-                    ),
-                  ],
+              children: [
+                TileLayer(
+                  urlTemplate: _capaBaseActual.urlPlantilla,
+                  maxZoom: _capaBaseActual.maxZoom.toDouble(),
+                  tileProvider: _proveedorTeselasCache,
+                  userAgentPackageName: 'com.josu.naturaleza',
+                  keepBuffer: 4,
+                  panBuffer: 1,
                 ),
-              if (_lugaresInteres.isNotEmpty)
-                MarkerLayer(
-                  markers: [
-                    for (final lugar in _lugaresInteres)
-                      Marker(
-                        width: 32,
-                        height: 32,
-                        point: LatLng(lugar.latitud, lugar.longitud),
-                        child: GestureDetector(
-                          onTap: () => _abrirDetalleLugar(lugar),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: _colorTipoLugar(lugar.tipo),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 1.5),
-                              boxShadow: const [
-                                BoxShadow(color: Colors.black26, blurRadius: 3, offset: Offset(0, 1)),
-                              ],
-                            ),
-                            child: Icon(_iconoTipoLugar(lugar.tipo), color: Colors.white, size: 16),
-                          ),
-                        ),
+                // PolylineLayer del track grabando: extraída a notifier para
+                // que cada nuevo punto NO reconstruya FlutterMap.
+                ValueListenableBuilder<int>(
+                  valueListenable: _tickTrack,
+                  builder: (context, _, __) {
+                    if (!GrabadorTrack.instancia.grabando ||
+                        GrabadorTrack.instancia.puntos.length < 2) {
+                      return const SizedBox.shrink();
+                    }
+                    return PolylineLayer(polylines: [
+                      Polyline(
+                        points: GrabadorTrack.instancia.puntos
+                            .map((p) => LatLng(p.latitud, p.longitud))
+                            .toList(),
+                        strokeWidth: 4,
+                        color: Colors.redAccent,
                       ),
-                  ],
+                    ]);
+                  },
                 ),
-              if (_ocurrenciasGbif.isNotEmpty)
-                MarkerLayer(
-                  markers: [
-                    for (final ocurrencia in _ocurrenciasGbif)
-                      if (ocurrencia.latitud != null && ocurrencia.longitud != null)
-                        Marker(
-                          width: 22,
-                          height: 22,
-                          point: LatLng(ocurrencia.latitud!, ocurrencia.longitud!),
-                          child: GestureDetector(
-                            onTap: () => _abrirDetalleOcurrenciaGbif(ocurrencia),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Colors.deepOrange.withValues(alpha: 0.7),
-                                shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white, width: 1.5),
-                              ),
-                            ),
-                          ),
-                        ),
-                  ],
-                ),
-              MarkerClusterLayerWidget(
-                options: MarkerClusterLayerOptions(
-                  maxClusterRadius: 60,
-                  size: Size(40, 40),
-                  alignment: Alignment.center,
-                  padding: const EdgeInsets.all(50),
-                  markers: [
-                    for (var i = 0; i < _hallazgosFiltrados.length; i++)
-                      Marker(
-                        width: 36,
-                        height: 36,
-                        point: LatLng(_hallazgosFiltrados[i].latitud, _hallazgosFiltrados[i].longitud),
-                        child: GestureDetector(
-                          onTap: () => _abrirDetalleHallazgo(_hallazgosFiltrados, i),
-                          child: _IconoHallazgo(hallazgo: _hallazgosFiltrados[i]),
-                        ),
-                      ),
-                  ],
-                  builder: (context, marcadores) => Container(
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.primary,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                      boxShadow: const [
-                        BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
-                      ],
-                    ),
+                if (_markersLugaresCache.isNotEmpty)
+                  MarkerLayer(markers: _markersLugaresCache),
+                if (_markersGbifCache.isNotEmpty)
+                  MarkerLayer(markers: _markersGbifCache),
+                MarkerClusterLayerWidget(
+                  options: MarkerClusterLayerOptions(
+                    maxClusterRadius: 60,
+                    size: Size(40, 40),
                     alignment: Alignment.center,
-                    child: Text(
-                      '${marcadores.length}',
-                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                    padding: const EdgeInsets.all(50),
+                    markers: _markersHallazgosCache,
+                    builder: (context, marcadores) => Container(
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2)),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${marcadores.length}',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           Positioned(
             top: MediaQuery.of(context).padding.top + 8,
@@ -688,7 +758,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
             right: 8,
             child: BarraFiltroCategoria(
               filtroActual: _filtroCategoria,
-              onCambio: (nuevo) => setState(() => _filtroCategoria = nuevo),
+              onCambio: (nuevo) => setState(() {
+                _filtroCategoria = nuevo;
+                _recalcularHallazgosFiltrados();
+              }),
             ),
           ),
           Positioned(

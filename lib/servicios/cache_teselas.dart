@@ -121,6 +121,34 @@ class CacheTeselasDisco {
   }
 }
 
+/// Cache LRU en RAM de teselas. Se consulta antes que la cache de disco para
+/// evitar el roundtrip al filesystem en pan/zoom rápido — las mismas teselas
+/// se piden múltiples veces cuando el usuario revisita una zona. Tamaño
+/// pequeño (256 entradas) para limitar memoria; con 25-50 KB por tesela
+/// equivale a 6-12 MB, suficiente para varios viewports.
+class _CacheTeselasMemoria {
+  static final _CacheTeselasMemoria instancia = _CacheTeselasMemoria._();
+  _CacheTeselasMemoria._();
+
+  static const int _maxEntradas = 256;
+  final Map<String, Uint8List> _entradas = <String, Uint8List>{};
+
+  Uint8List? leer(String url) {
+    final bytes = _entradas.remove(url);
+    if (bytes == null) return null;
+    _entradas[url] = bytes; // move-to-end → LRU
+    return bytes;
+  }
+
+  void guardar(String url, Uint8List bytes) {
+    _entradas.remove(url);
+    _entradas[url] = bytes;
+    if (_entradas.length > _maxEntradas) {
+      _entradas.remove(_entradas.keys.first);
+    }
+  }
+}
+
 class _ImagenDesdeCacheOWeb extends ImageProvider<_ImagenDesdeCacheOWeb> {
   final String url;
   final String userAgent;
@@ -141,8 +169,14 @@ class _ImagenDesdeCacheOWeb extends ImageProvider<_ImagenDesdeCacheOWeb> {
   }
 
   Future<ui.Codec> _cargarCodec(ImageDecoderCallback decode) async {
+    final bytesRam = _CacheTeselasMemoria.instancia.leer(url);
+    if (bytesRam != null) {
+      final buffer = await ImmutableBuffer.fromUint8List(bytesRam);
+      return decode(buffer);
+    }
     final bytesCacheados = await CacheTeselasDisco.leer(url);
     if (bytesCacheados != null && bytesCacheados.isNotEmpty) {
+      _CacheTeselasMemoria.instancia.guardar(url, bytesCacheados);
       final buffer = await ImmutableBuffer.fromUint8List(bytesCacheados);
       return decode(buffer);
     }
@@ -151,6 +185,7 @@ class _ImagenDesdeCacheOWeb extends ImageProvider<_ImagenDesdeCacheOWeb> {
       throw Exception('HTTP ${respuesta.statusCode} para $url');
     }
     final bytes = respuesta.bodyBytes;
+    _CacheTeselasMemoria.instancia.guardar(url, bytes);
     await CacheTeselasDisco.escribir(url, bytes);
     // Poda silenciosa si la caché crece demasiado (200 MB)
     unawaited(CacheTeselasDisco.limpiarSiExcede(200 * 1024 * 1024));
