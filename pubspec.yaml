@@ -1,7 +1,7 @@
 name: naturaleza_flutter
 description: "Cuaderno de campo de naturaleza (animales, insectos y plantas)"
 publish_to: 'none'
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.5.0
@@ -65,6 +65,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^4.0.0
   flutter_launcher_icons: ^0.14.1
+  # Genera el splash nativo Android para que el primer arranque no
+  # sea una pantalla en blanco — invocar con
+  # `dart run flutter_native_splash:create` cuando cambie el logo.
+  flutter_native_splash: ^2.4.1
 
 flutter:
   uses-material-design: true
@@ -76,3 +80,12 @@ flutter_launcher_icons:
   min_sdk_android: 24
   adaptive_icon_background: "#2D3A2E"
   adaptive_icon_foreground: "assets/logo.png"
+
+flutter_native_splash:
+  color: "#2D3A2E"
+  image: assets/logo.png
+  android: true
+  ios: false
+  android_12:
+    color: "#2D3A2E"
+    image: assets/logo.png
