@@ -53,6 +53,18 @@ class Hallazgo {
   final String tipo; // 'fosil' o 'mineral'
   final List<EventoTrazabilidad> historialTrazabilidad;
 
+  /// Firma Ed25519 (base64) de los datos canónicos del hallazgo, generada
+  /// con la clave privada del descubridor al crearlo. Permite verificar
+  /// offline que el hallazgo no ha sido modificado desde su creación.
+  /// Null en hallazgos pre-Fase A o creados sin identidad.
+  final String? firmaDescubridor;
+
+  /// Clave pública Ed25519 (base64) del descubridor en el momento de
+  /// firmar. Va siempre acompañando a [firmaDescubridor] — se incluye en
+  /// el propio hallazgo (no se busca por id de usuario) para que la card
+  /// sea autocontenida al exportarla.
+  final String? clavePublicaDescubridor;
+
   Hallazgo({
     this.id,
     required this.fechaMs,
@@ -69,9 +81,18 @@ class Hallazgo {
     this.dipGrados,
     this.tipo = 'fosil',
     this.historialTrazabilidad = const [],
+    this.firmaDescubridor,
+    this.clavePublicaDescubridor,
   });
 
   bool get esMineral => tipo == 'mineral';
+
+  /// True si el hallazgo viene firmado criptográficamente por el descubridor.
+  bool get tieneFirma =>
+      firmaDescubridor != null &&
+      firmaDescubridor!.isNotEmpty &&
+      clavePublicaDescubridor != null &&
+      clavePublicaDescubridor!.isNotEmpty;
 
   String? get rutaFoto => rutasFotos.isEmpty ? null : rutasFotos.first;
 
@@ -94,6 +115,8 @@ class Hallazgo {
         'trazabilidad_json': historialTrazabilidad.isEmpty
             ? null
             : jsonEncode(historialTrazabilidad.map((e) => e.toJson()).toList()),
+        'firma_descubridor': firmaDescubridor,
+        'clave_publica_descubridor': clavePublicaDescubridor,
       };
 
   factory Hallazgo.fromMap(Map<String, Object?> mapa) {
@@ -125,6 +148,8 @@ class Hallazgo {
       dipGrados: (mapa['dip_grados'] as num?)?.toDouble(),
       tipo: (mapa['tipo'] as String?) ?? 'fosil',
       historialTrazabilidad: _parsearTrazabilidad(mapa['trazabilidad_json'] as String?),
+      firmaDescubridor: mapa['firma_descubridor'] as String?,
+      clavePublicaDescubridor: mapa['clave_publica_descubridor'] as String?,
     );
   }
 
@@ -150,6 +175,8 @@ class Hallazgo {
     double? dipGrados,
     String? tipo,
     List<EventoTrazabilidad>? historialTrazabilidad,
+    String? firmaDescubridor,
+    String? clavePublicaDescubridor,
   }) =>
       Hallazgo(
         id: id,
@@ -167,5 +194,7 @@ class Hallazgo {
         dipGrados: dipGrados ?? this.dipGrados,
         tipo: tipo ?? this.tipo,
         historialTrazabilidad: historialTrazabilidad ?? this.historialTrazabilidad,
+        firmaDescubridor: firmaDescubridor ?? this.firmaDescubridor,
+        clavePublicaDescubridor: clavePublicaDescubridor ?? this.clavePublicaDescubridor,
       );
 }

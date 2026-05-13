@@ -8,6 +8,7 @@ import '../datos/yacimientos_curados.dart';
 import '../servicios/cache_teselas.dart';
 import '../servicios/servicio_backup.dart';
 import '../servicios/geofencing.dart';
+import 'pantalla_identidad.dart';
 import 'pantalla_mapas_offline.dart';
 import 'pantalla_verificar_certificado.dart';
 import 'sheet_donaciones.dart';
@@ -275,6 +276,14 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
             ),
           ),
           SizedBox(height: 12),
+          OutlinedButton.icon(
+            icon: Icon(Icons.fingerprint),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PantallaIdentidad()),
+            ),
+            label: Text('Mi identidad criptográfica'),
+          ),
+          SizedBox(height: 8),
           OutlinedButton.icon(
             icon: Icon(Icons.verified),
             onPressed: () => Navigator.of(context).push(

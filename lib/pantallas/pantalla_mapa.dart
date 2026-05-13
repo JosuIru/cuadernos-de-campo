@@ -30,6 +30,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../servicios/tarjeta_imagen.dart';
 import '../servicios/certificado_hallazgo.dart';
+import '../servicios/identidad_descubridor.dart';
+import 'pantalla_identidad.dart';
 import '../datos/configuracion.dart';
 import '../widgets/dialogo_trazabilidad.dart';
 import 'pantalla_nuevo.dart';
@@ -628,6 +630,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
                             ),
                           ),
                         SizedBox(height: 12),
+                        _BadgeFirmaHallazgo(hallazgo: h),
+                        SizedBox(height: 8),
                         _filaHallazgo('Especie', h.especie.isEmpty ? '—' : h.especie),
                         _filaHallazgo('Edad', h.edad.isEmpty ? '—' : h.edad),
                         _filaHallazgo('Formación', h.formacion.isEmpty ? '—' : h.formacion),
@@ -1800,4 +1804,137 @@ class _MarcadorCentroAsistente extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Indicador del estado de firma de un hallazgo. Tres estados:
+///
+/// - **Verde "✓ Firmado por ti"**: el hallazgo tiene firma y la clave
+///   pública del firmante coincide con la de la app actual (= soy yo).
+/// - **Azul "↓ Firmado por otra persona"**: hay firma pero con clave
+///   distinta a la mía (= viene de un .fos-card importado).
+/// - **Gris "Sin firma criptográfica"**: hallazgo pre-Fase A o creado
+///   sin que el Keystore funcionara. Tap → abre Mi identidad para
+///   refirmarlo si el usuario quiere.
+///
+/// La verificación (cuadran firma + datos + clave pública) la hace
+/// IdentidadDescubridor.verificarFirma. Si la firma NO cuadra (datos
+/// modificados desde la creación) se renderiza en rojo "✗ Firma rota".
+class _BadgeFirmaHallazgo extends StatefulWidget {
+  final Hallazgo hallazgo;
+  const _BadgeFirmaHallazgo({required this.hallazgo});
+
+  @override
+  State<_BadgeFirmaHallazgo> createState() => _BadgeFirmaHallazgoState();
+}
+
+class _BadgeFirmaHallazgoState extends State<_BadgeFirmaHallazgo> {
+  Future<_EstadoFirma>? _futureEstado;
+
+  @override
+  void initState() {
+    super.initState();
+    _futureEstado = _evaluar();
+  }
+
+  Future<_EstadoFirma> _evaluar() async {
+    final h = widget.hallazgo;
+    if (!h.tieneFirma) {
+      return _EstadoFirma(tipo: _TipoFirma.sinFirma);
+    }
+    final miClavePublica = await IdentidadDescubridor.instancia.obtenerClavePublicaBase64();
+    final esMia = h.clavePublicaDescubridor == miClavePublica;
+    final nombreDescubridor = await Configuracion.obtenerNombreDescubridor();
+    final mensajeCanonico = IdentidadDescubridor.mensajeCanonicoHallazgo(h, nombreDescubridor);
+    final valida = await IdentidadDescubridor.instancia.verificarFirma(
+      mensajeCanonico: mensajeCanonico,
+      firmaBase64: h.firmaDescubridor!,
+      clavePublicaBase64: h.clavePublicaDescubridor!,
+    );
+    if (!valida) return _EstadoFirma(tipo: _TipoFirma.rota);
+    return _EstadoFirma(tipo: esMia ? _TipoFirma.miaValida : _TipoFirma.otraValida);
+  }
+
+  void _abrirIdentidad() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const PantallaIdentidad()),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<_EstadoFirma>(
+      future: _futureEstado,
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const SizedBox(height: 24);
+        }
+        final estado = snap.data!;
+        late Color colorFondo;
+        late Color colorTexto;
+        late IconData icono;
+        late String texto;
+        switch (estado.tipo) {
+          case _TipoFirma.miaValida:
+            colorFondo = Colors.green.shade50;
+            colorTexto = Colors.green.shade900;
+            icono = Icons.verified;
+            texto = '✓ Firmado por ti';
+            break;
+          case _TipoFirma.otraValida:
+            colorFondo = Colors.blue.shade50;
+            colorTexto = Colors.blue.shade900;
+            icono = Icons.south;
+            texto = 'Firmado por otra persona';
+            break;
+          case _TipoFirma.sinFirma:
+            colorFondo = Colors.grey.shade200;
+            colorTexto = Colors.grey.shade800;
+            icono = Icons.help_outline;
+            texto = 'Sin firma criptográfica';
+            break;
+          case _TipoFirma.rota:
+            colorFondo = Colors.red.shade50;
+            colorTexto = Colors.red.shade900;
+            icono = Icons.error_outline;
+            texto = '✗ Firma rota — los datos han sido modificados';
+            break;
+        }
+        return InkWell(
+          onTap: _abrirIdentidad,
+          borderRadius: BorderRadius.circular(6),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: colorFondo,
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: Row(
+              children: [
+                Icon(icono, size: 18, color: colorTexto),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    texto,
+                    style: TextStyle(
+                      color: colorTexto,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                Icon(Icons.chevron_right, size: 16, color: colorTexto),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+enum _TipoFirma { miaValida, otraValida, sinFirma, rota }
+
+class _EstadoFirma {
+  final _TipoFirma tipo;
+  _EstadoFirma({required this.tipo});
 }

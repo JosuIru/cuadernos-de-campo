@@ -9,6 +9,7 @@ import '../datos/base_datos.dart';
 import '../datos/configuracion.dart';
 import '../datos/datos_guia.dart';
 import '../modelos/hallazgo.dart';
+import '../servicios/identidad_descubridor.dart';
 import '../servicios/identificador_claude.dart';
 import '../servicios/servicio_geologia.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -337,7 +338,14 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         'tipo': _tipoHallazgo,
       });
     } else {
-      final hallazgo = Hallazgo(
+      // Firma criptográfica del descubridor (Fase A). Si el usuario aún no
+      // ha rellenado su nombre en Ajustes, la firma sigue valiendo: la clave
+      // pública es huella permanente. El nombre se incluye en el mensaje
+      // canónico aunque sea cadena vacía — la firma cuadra mientras no se
+      // cambie después. Si la generación falla por algún motivo (Keystore
+      // bloqueado, dispositivo sin almacenamiento seguro), guardamos el
+      // hallazgo sin firma en lugar de bloquear la captura en campo.
+      final hallazgoSinFirma = Hallazgo(
         fechaMs: DateTime.now().millisecondsSinceEpoch,
         latitud: lat,
         longitud: lon,
@@ -351,6 +359,24 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         strikeGrados: _strikeGrados,
         dipGrados: _dipGrados,
         tipo: _tipoHallazgo,
+      );
+      String? firma;
+      String? clavePublica;
+      try {
+        final nombreDescubridor = await Configuracion.obtenerNombreDescubridor();
+        final mensajeCanonico = IdentidadDescubridor.mensajeCanonicoHallazgo(
+          hallazgoSinFirma,
+          nombreDescubridor,
+        );
+        firma = await IdentidadDescubridor.instancia.firmar(mensajeCanonico);
+        clavePublica = await IdentidadDescubridor.instancia.obtenerClavePublicaBase64();
+      } catch (_) {
+        firma = null;
+        clavePublica = null;
+      }
+      final hallazgo = hallazgoSinFirma.copyWith(
+        firmaDescubridor: firma,
+        clavePublicaDescubridor: clavePublica,
       );
       await BaseDatosFosiles.instancia.guardarHallazgo(hallazgo);
     }

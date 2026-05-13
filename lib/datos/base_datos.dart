@@ -24,7 +24,7 @@ class BaseDatosFosiles {
       final ruta = path_lib.join(directorio.path, 'fosiles.db');
       _basedatos = await openDatabase(
         ruta,
-        version: 6,
+        version: 7,
         onCreate: (db, version) async {
           await db.execute('''
           CREATE TABLE hallazgos (
@@ -43,7 +43,9 @@ class BaseDatosFosiles {
             strike_grados REAL,
             dip_grados REAL,
             tipo TEXT NOT NULL DEFAULT 'fosil',
-            trazabilidad_json TEXT
+            trazabilidad_json TEXT,
+            firma_descubridor TEXT,
+            clave_publica_descubridor TEXT
           )
         ''');
           await db.execute('CREATE INDEX idx_hallazgos_fecha ON hallazgos (fecha_ms DESC)');
@@ -74,6 +76,14 @@ class BaseDatosFosiles {
           }
           if (viejo < 6) {
             await db.execute('ALTER TABLE hallazgos ADD COLUMN trazabilidad_json TEXT');
+          }
+          if (viejo < 7) {
+            // Fase A del compartir-certificar: identidad criptográfica del
+            // descubridor. Hallazgos preexistentes quedan sin firma — la app
+            // los marca como "sin firma" en la UI y permite re-firmarlos
+            // bajo demanda desde la ficha si el usuario quiere.
+            await db.execute('ALTER TABLE hallazgos ADD COLUMN firma_descubridor TEXT');
+            await db.execute('ALTER TABLE hallazgos ADD COLUMN clave_publica_descubridor TEXT');
           }
         },
       );
