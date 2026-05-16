@@ -2305,7 +2305,8 @@ class _SelloCertificacionAutoridadState
               color: Colors.amber.shade50,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: const Text('Verificando certificación…'),
+            child: Text('Verificando certificación…',
+                style: TextStyle(color: Colors.amber.shade900)),
           );
         }
         if (snap.data != true) {
@@ -2364,7 +2365,10 @@ class _SelloCertificacionAutoridadState
                   children: [
                     Text(
                       'Certificada por ${ultimaCert.nombreAutoridad}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: Color(0xFF5D4D00)),
                     ),
                     if (ultimaCert.colegiacion.isNotEmpty)
                       Text(

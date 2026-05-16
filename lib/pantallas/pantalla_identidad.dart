@@ -149,13 +149,19 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
                           const Icon(Icons.fingerprint, color: Colors.amber),
                           const SizedBox(width: 12),
                           Expanded(
+                            // Color explícito para que la huella sea
+                            // legible sobre amber.shade50 también en
+                            // dark mode (sin esto el Text heredaba
+                            // blanco — bug reportado en testeo
+                            // 2026-05-15).
                             child: Text(
                               _huellaCorta ?? '',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontFamily: 'monospace',
                                 fontSize: 16,
                                 fontWeight: FontWeight.bold,
                                 letterSpacing: 1.5,
+                                color: Colors.amber.shade900,
                               ),
                             ),
                           ),
@@ -173,11 +179,14 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(8),
+                          // SelectableText sin color heredaba el del
+                          // tema y en algunos modos quedaba ilegible.
                           child: SelectableText(
                             _clavePublicaBase64 ?? '',
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontFamily: 'monospace',
                               fontSize: 12,
+                              color: Theme.of(context).colorScheme.onSurface,
                             ),
                           ),
                         ),

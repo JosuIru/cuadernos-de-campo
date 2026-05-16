@@ -102,11 +102,12 @@ class _PantallaVerificarCertificadoState extends State<PantallaVerificarCertific
                   ),
                 ),
                 if (!_valido!)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 4),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
                     child: Text(
                       'El hash no coincide. El certificado ha sido alterado.',
-                      style: TextStyle(fontSize: 13),
+                      style: TextStyle(
+                          fontSize: 13, color: Colors.red.shade900),
                     ),
                   ),
               ]),

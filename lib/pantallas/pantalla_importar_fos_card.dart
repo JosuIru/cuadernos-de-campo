@@ -195,11 +195,11 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
             children: [
               const Icon(Icons.verified_user, color: Colors.amber),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Estás en Modo Experto. Esta card se procesa para revisión '
                   '— no entra en tu colección personal.',
-                  style: TextStyle(fontSize: 13),
+                  style: TextStyle(fontSize: 13, color: Colors.amber.shade900),
                 ),
               ),
             ],
@@ -347,7 +347,9 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Remitente', style: TextStyle(fontWeight: FontWeight.bold)),
+          const Text('Remitente',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 6),
           _fila('Nombre declarado', p.nombreRemitente.isEmpty ? '(sin rellenar)' : p.nombreRemitente),
           if (p.emailRemitente != null && p.emailRemitente!.isNotEmpty)
@@ -378,7 +380,9 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Hallazgo', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('Hallazgo',
+              style: TextStyle(
+                  fontWeight: FontWeight.bold, color: Colors.amber.shade900)),
           const SizedBox(height: 6),
           _fila('Especie', h.especie.isEmpty ? '—' : h.especie),
           _fila('Edad', h.edad.isEmpty ? '—' : h.edad),
@@ -409,9 +413,14 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
         children: [
           SizedBox(
             width: 110,
-            child: Text(etiqueta, style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            child: Text(etiqueta,
+                style:
+                    const TextStyle(fontSize: 13, color: Colors.black54)),
           ),
-          Expanded(child: Text(valor, style: const TextStyle(fontSize: 13))),
+          Expanded(
+              child: Text(valor,
+                  style:
+                      const TextStyle(fontSize: 13, color: Colors.black87))),
         ],
       ),
     );

@@ -120,22 +120,26 @@ class _PantallaCertificarState extends State<PantallaCertificar> {
               children: [
                 Text(
                   'Descubridor: ${widget.parseada.nombreRemitente}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.amber.shade900,
+                  ),
                 ),
                 if (widget.parseada.emailRemitente != null &&
                     widget.parseada.emailRemitente!.isNotEmpty)
                   Text(widget.parseada.emailRemitente!,
-                      style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                      style: TextStyle(
+                          fontSize: 12, color: Colors.amber.shade700)),
                 const SizedBox(height: 6),
                 Text(
                   'Coords: ${h.latitud.toStringAsFixed(widget.parseada.coordenadasDifuminadas ? 2 : 5)}, '
                   '${h.longitud.toStringAsFixed(widget.parseada.coordenadasDifuminadas ? 2 : 5)}'
                   '${widget.parseada.coordenadasDifuminadas ? "  (difuminadas)" : ""}',
-                  style: const TextStyle(fontSize: 12),
+                  style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
                 ),
                 Text(
                   'Fotos: ${widget.parseada.fotosJpeg.length}',
-                  style: const TextStyle(fontSize: 12),
+                  style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
                 ),
               ],
             ),

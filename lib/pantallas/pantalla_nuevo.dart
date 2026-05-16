@@ -216,7 +216,15 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                   },
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text('Confianza ${identificacion.confianza}', style: const TextStyle(fontSize: 12)),
+                child: Text('Confianza ${identificacion.confianza}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: switch (identificacion.confianza) {
+                        'alta' => Colors.green.shade900,
+                        'media' => Colors.amber.shade900,
+                        _ => Colors.red.shade900,
+                      },
+                    )),
               ),
               const SizedBox(height: 16),
               if (_bannerDiscrepanciaPeriodo(identificacion) != null) _bannerDiscrepanciaPeriodo(identificacion)!,
@@ -226,7 +234,11 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(color: Colors.blueGrey.shade100, borderRadius: BorderRadius.circular(4)),
-                    child: const Text('💎 Detectado como mineral', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    child: Text('💎 Detectado como mineral',
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.blueGrey.shade900)),
                   ),
                 ),
               if (identificacion.tamanoEstimado != null && identificacion.tamanoEstimado!.isNotEmpty)
@@ -794,9 +806,16 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Posible incoherencia geológica', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text('Posible incoherencia geológica',
+                    style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                        color: Colors.amber.shade900)),
                 const SizedBox(height: 2),
-                Text('Claude propone $nClaude pero el afloramiento IGME es $nIgme. Revisa la identificación o la posición.', style: const TextStyle(fontSize: 12)),
+                Text(
+                    'Claude propone $nClaude pero el afloramiento IGME es $nIgme. Revisa la identificación o la posición.',
+                    style: TextStyle(
+                        fontSize: 12, color: Colors.amber.shade900)),
               ],
             ),
           ),

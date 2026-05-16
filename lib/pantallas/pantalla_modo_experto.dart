@@ -106,9 +106,17 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
                 border: Border.all(color: Colors.amber.shade700),
                 borderRadius: BorderRadius.circular(8),
               ),
+              // Fondo amber.shade50 es claro fijo; sin un color
+              // explícito, en dark mode el SelectableText hereda
+              // blanco y queda blanco-en-blanco (bug reportado en
+              // testeo 2026-05-15).
               child: SelectableText(
                 codigo,
-                style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                style: TextStyle(
+                  fontFamily: 'monospace',
+                  fontSize: 12,
+                  color: Colors.amber.shade900,
+                ),
               ),
             ),
             const SizedBox(height: 8),
@@ -256,18 +264,22 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
+                  Text(
                     'Modo Experto activo',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.green.shade900,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     _nombreAutoridad,
-                    style: const TextStyle(fontSize: 14),
+                    style: TextStyle(fontSize: 14, color: Colors.green.shade900),
                   ),
                   if (_colegiacion.isNotEmpty)
                     Text(_colegiacion,
-                        style: const TextStyle(fontSize: 12, color: Colors.black54)),
+                        style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
                 ],
               ),
             ),
@@ -295,11 +307,12 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
                 Expanded(
                   child: Text(
                     _huella,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: 'monospace',
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.5,
+                      color: Colors.amber.shade900,
                     ),
                   ),
                 ),
