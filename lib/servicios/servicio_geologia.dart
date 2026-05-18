@@ -146,14 +146,33 @@ Future<void> _escribirCacheGeologia(String clave, ContextoGeologico ctx) async {
 
 /// Consulta el contexto geológico del IGME para [latitud]/[longitud] usando
 /// la [capa] que el usuario tiene activa en el mapa. Si no se pasa capa, va
-/// contra GEODE 50 (cobertura nacional, granularidad estratigráfica).
+/// contra GEODE 50.
+///
+/// Estrategia con fallback: probamos primero la capa activa (lo que el
+/// usuario tiene pintado y espera que cuadre con el punto). Si esa capa no
+/// devuelve nada — porque MAGNA tiene huecos de cobertura, o los servicios
+/// 1M solo cubren parcialmente, o el intérprete no entiende sus campos —
+/// caemos a GEODE 50, que es el continuo nacional y siempre devuelve
+/// alguna unidad estratigráfica.
 Future<ContextoGeologico?> consultarContextoGeologico(
   double latitud,
   double longitud, {
   CapaGeologicaWms? capa,
 }) async {
   final capaEfectiva = capa ?? capaGeologicaConsultaDefecto;
-  final clave = _claveGeologia(latitud, longitud, capaEfectiva);
+  final principal = await _consultarConCache(latitud, longitud, capaEfectiva);
+  if (principal != null) return principal;
+  // Fallback: si la capa activa no era GEODE, repreguntar contra GEODE.
+  if (capaEfectiva.urlBase == urlWmsIgmeGeode) return null;
+  return _consultarConCache(latitud, longitud, capaGeologicaConsultaDefecto);
+}
+
+Future<ContextoGeologico?> _consultarConCache(
+  double latitud,
+  double longitud,
+  CapaGeologicaWms capa,
+) async {
+  final clave = _claveGeologia(latitud, longitud, capa);
   // 1. Caché en memoria (incluye respuestas "sin datos" para no repreguntar)
   if (_CacheGeologiaMemoria.contiene(clave)) {
     return _CacheGeologiaMemoria.leer(clave, sentinel: true);
@@ -167,7 +186,7 @@ Future<ContextoGeologico?> consultarContextoGeologico(
   // 3. Red con reintentos
   const intentos = 3;
   for (var i = 0; i < intentos; i++) {
-    final resultado = await _intentarConsultarWms(latitud, longitud, capaEfectiva);
+    final resultado = await _intentarConsultarWms(latitud, longitud, capa);
     if (resultado.exitoEfectivo) {
       if (resultado.contexto != null) {
         await _escribirCacheGeologia(clave, resultado.contexto!);
@@ -251,7 +270,14 @@ ContextoGeologico interpretarPropiedadesGeode(Map<String, dynamic> propiedades) 
 
   final edadInferior = lookup(['Edad Inferior', 'EDAD_INFERIOR', 'EdadInferior']);
   final edadSuperior = lookup(['Edad Superior', 'EDAD_SUPERIOR', 'EdadSuperior']);
-  final descripcion = lookup(['Descripción Unidad Geológica', 'DESCRIPCION', 'Descripcion']);
+  // GEODE 50 expone "Descripción Unidad Geológica"; MAGNA 50 usa
+  // "descripción litológica" (minúsculas + tilde); los servicios 1M usan
+  // claves variadas (DESCRIPCION / Descripcion). Probamos todas.
+  final descripcion = lookup([
+    'Descripción Unidad Geológica', 'DESCRIPCION', 'Descripcion',
+    'descripción litológica', 'Descripción litológica',
+    'descripcion litologica',
+  ]);
   final formacion = lookup(['Formacion', 'FORMACION', 'Unidad', 'UNIDAD']);
   final litologia = lookup(['Litologia', 'LITOLOGIA', 'LITOLOGÍA']);
 
