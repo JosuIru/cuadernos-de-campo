@@ -23,15 +23,34 @@ class CapaGeologicaWms {
   final String nombre;
   final String urlBase;
   final List<String> capas;
-  const CapaGeologicaWms({required this.nombre, required this.urlBase, required this.capas});
+  /// Índice de capa que se interroga con WMS GetFeatureInfo al pinchar un
+  /// punto. En GEODE 50 la capa visual coloreada (`0` = Zonas) NO coincide
+  /// con la capa que lleva los atributos del estrato real (`1` = Recintos
+  /// geología); para que la respuesta cuadre con lo pintado, renderizamos
+  /// directamente Recintos y consultamos la misma. En MAGNA y los servicios
+  /// 1M la capa con datos es la `0`.
+  final int capaConsulta;
+  const CapaGeologicaWms({
+    required this.nombre,
+    required this.urlBase,
+    required this.capas,
+    this.capaConsulta = 0,
+  });
 }
 
 const List<CapaGeologicaWms> capasGeologicasWms = [
-  CapaGeologicaWms(nombre: 'MAGNA 50', urlBase: urlWmsIgmeMagna, capas: ['0']),
-  CapaGeologicaWms(nombre: 'GEODE 50', urlBase: urlWmsIgmeGeode, capas: ['0']),
-  CapaGeologicaWms(nombre: 'Edades 1M', urlBase: urlWmsIgmeEdades1M, capas: ['0']),
-  CapaGeologicaWms(nombre: 'Litologías 1M', urlBase: urlWmsIgmeLitologias1M, capas: ['0']),
+  CapaGeologicaWms(nombre: 'MAGNA 50', urlBase: urlWmsIgmeMagna, capas: ['0'], capaConsulta: 0),
+  CapaGeologicaWms(nombre: 'GEODE 50', urlBase: urlWmsIgmeGeode, capas: ['1'], capaConsulta: 1),
+  CapaGeologicaWms(nombre: 'Edades 1M', urlBase: urlWmsIgmeEdades1M, capas: ['0'], capaConsulta: 0),
+  CapaGeologicaWms(nombre: 'Litologías 1M', urlBase: urlWmsIgmeLitologias1M, capas: ['0'], capaConsulta: 0),
 ];
+
+/// Capa por defecto cuando se invoca la consulta sin que haya ninguna capa
+/// geológica activa en el mapa (p. ej. desde el formulario de Nuevo
+/// hallazgo). GEODE 50 es el continuo nacional con mejor cobertura y
+/// granularidad estratigráfica.
+CapaGeologicaWms get capaGeologicaConsultaDefecto =>
+    capasGeologicasWms.firstWhere((c) => c.nombre == 'GEODE 50');
 
 class ContextoGeologico {
   final String? edad;
@@ -50,8 +69,20 @@ class ContextoGeologico {
       };
 }
 
-String _claveGeologia(double latitud, double longitud) =>
-    '${latitud.toStringAsFixed(3)},${longitud.toStringAsFixed(3)}';
+/// Clave de cache para una respuesta IGME. Antes redondeaba a 3 decimales
+/// (≈111 m) y no incluía la capa consultada: dos puntos en estratos
+/// vecinos a menos de 111 m daban la misma respuesta, y cambiar de capa
+/// (GEODE→MAGNA→Edades) devolvía la respuesta cacheada de la capa
+/// anterior. Ahora la clave atrapa URL+índice y baja la granularidad a
+/// 4 decimales (≈11 m).
+String _claveGeologia(double latitud, double longitud, CapaGeologicaWms capa) =>
+    '${capa.urlBase}#${capa.capaConsulta}@'
+    '${latitud.toStringAsFixed(4)},${longitud.toStringAsFixed(4)}';
+
+/// Sanea la clave para usarla como nombre de archivo (la URL contiene `://`,
+/// `/`, `?` que rompen el path).
+String _nombreArchivoCache(String clave) =>
+    clave.replaceAll(RegExp(r'[^a-zA-Z0-9._@,#-]'), '_');
 
 /// Caché LRU en memoria de respuestas IGME ya consultadas (con su clave
 /// redondeada a 3 decimales ≈ 111 m). Evita el ida-y-vuelta al disco
@@ -82,7 +113,7 @@ class _CacheGeologiaMemoria {
 Future<ContextoGeologico?> _leerCacheGeologia(String clave) async {
   try {
     final dir = await getApplicationDocumentsDirectory();
-    final fichero = File(path_lib.join(dir.path, 'geologia_cache', '$clave.json'));
+    final fichero = File(path_lib.join(dir.path, 'geologia_cache', '${_nombreArchivoCache(clave)}.json'));
     if (await fichero.exists()) {
       final json = jsonDecode(await fichero.readAsString()) as Map<String, dynamic>;
       return ContextoGeologico(
@@ -102,7 +133,7 @@ Future<void> _escribirCacheGeologia(String clave, ContextoGeologico ctx) async {
     final dir = await getApplicationDocumentsDirectory();
     final subdir = Directory(path_lib.join(dir.path, 'geologia_cache'));
     if (!await subdir.exists()) await subdir.create(recursive: true);
-    final fichero = File(path_lib.join(subdir.path, '$clave.json'));
+    final fichero = File(path_lib.join(subdir.path, '${_nombreArchivoCache(clave)}.json'));
     await fichero.writeAsString(jsonEncode({
       'e': ctx.edad,
       'f': ctx.formacion,
@@ -113,8 +144,16 @@ Future<void> _escribirCacheGeologia(String clave, ContextoGeologico ctx) async {
   } catch (_) {}
 }
 
-Future<ContextoGeologico?> consultarContextoGeologico(double latitud, double longitud) async {
-  final clave = _claveGeologia(latitud, longitud);
+/// Consulta el contexto geológico del IGME para [latitud]/[longitud] usando
+/// la [capa] que el usuario tiene activa en el mapa. Si no se pasa capa, va
+/// contra GEODE 50 (cobertura nacional, granularidad estratigráfica).
+Future<ContextoGeologico?> consultarContextoGeologico(
+  double latitud,
+  double longitud, {
+  CapaGeologicaWms? capa,
+}) async {
+  final capaEfectiva = capa ?? capaGeologicaConsultaDefecto;
+  final clave = _claveGeologia(latitud, longitud, capaEfectiva);
   // 1. Caché en memoria (incluye respuestas "sin datos" para no repreguntar)
   if (_CacheGeologiaMemoria.contiene(clave)) {
     return _CacheGeologiaMemoria.leer(clave, sentinel: true);
@@ -128,7 +167,7 @@ Future<ContextoGeologico?> consultarContextoGeologico(double latitud, double lon
   // 3. Red con reintentos
   const intentos = 3;
   for (var i = 0; i < intentos; i++) {
-    final resultado = await _intentarConsultarGeode(latitud, longitud);
+    final resultado = await _intentarConsultarWms(latitud, longitud, capaEfectiva);
     if (resultado.exitoEfectivo) {
       if (resultado.contexto != null) {
         await _escribirCacheGeologia(clave, resultado.contexto!);
@@ -143,25 +182,30 @@ Future<ContextoGeologico?> consultarContextoGeologico(double latitud, double lon
   return null;
 }
 
-class _ResultadoConsultaGeode {
+class _ResultadoConsultaWms {
   final ContextoGeologico? contexto;
   final bool sinDatos;
   final bool fallo;
-  _ResultadoConsultaGeode.conContexto(this.contexto) : sinDatos = false, fallo = false;
-  _ResultadoConsultaGeode.sinDatosLegitimo() : contexto = null, sinDatos = true, fallo = false;
-  _ResultadoConsultaGeode.error() : contexto = null, sinDatos = false, fallo = true;
+  _ResultadoConsultaWms.conContexto(this.contexto) : sinDatos = false, fallo = false;
+  _ResultadoConsultaWms.sinDatosLegitimo() : contexto = null, sinDatos = true, fallo = false;
+  _ResultadoConsultaWms.error() : contexto = null, sinDatos = false, fallo = true;
   bool get exitoEfectivo => !fallo;
 }
 
-Future<_ResultadoConsultaGeode> _intentarConsultarGeode(double latitud, double longitud) async {
+Future<_ResultadoConsultaWms> _intentarConsultarWms(
+  double latitud,
+  double longitud,
+  CapaGeologicaWms capa,
+) async {
   final delta = 0.0005;
   final bbox = '${longitud - delta},${latitud - delta},${longitud + delta},${latitud + delta}';
+  final indiceCapa = capa.capaConsulta.toString();
   final params = <String, String>{
     'service': 'WMS',
     'version': '1.1.1',
     'request': 'GetFeatureInfo',
-    'layers': '1',
-    'query_layers': '1',
+    'layers': indiceCapa,
+    'query_layers': indiceCapa,
     'styles': '',
     'bbox': bbox,
     'srs': 'EPSG:4326',
@@ -173,22 +217,22 @@ Future<_ResultadoConsultaGeode> _intentarConsultarGeode(double latitud, double l
     'info_format': 'application/geo+json',
     'feature_count': '5',
   };
-  final uri = Uri.parse(urlWmsIgmeGeode).replace(queryParameters: params);
+  final uri = Uri.parse(capa.urlBase).replace(queryParameters: params);
   try {
     final respuesta = await http.get(uri).timeout(const Duration(seconds: 12));
     if (respuesta.statusCode >= 500 || respuesta.statusCode == 408 || respuesta.statusCode == 429) {
-      return _ResultadoConsultaGeode.error();
+      return _ResultadoConsultaWms.error();
     }
-    if (respuesta.statusCode != 200) return _ResultadoConsultaGeode.sinDatosLegitimo();
+    if (respuesta.statusCode != 200) return _ResultadoConsultaWms.sinDatosLegitimo();
     final cuerpo = utf8.decode(respuesta.bodyBytes);
-    if (!cuerpo.trim().startsWith('{')) return _ResultadoConsultaGeode.error();
+    if (!cuerpo.trim().startsWith('{')) return _ResultadoConsultaWms.error();
     final json = jsonDecode(cuerpo) as Map<String, dynamic>;
     final features = (json['features'] as List?) ?? const [];
-    if (features.isEmpty) return _ResultadoConsultaGeode.sinDatosLegitimo();
+    if (features.isEmpty) return _ResultadoConsultaWms.sinDatosLegitimo();
     final propiedades = (features.first['properties'] as Map).cast<String, dynamic>();
-    return _ResultadoConsultaGeode.conContexto(interpretarPropiedadesGeode(propiedades));
+    return _ResultadoConsultaWms.conContexto(interpretarPropiedadesGeode(propiedades));
   } catch (_) {
-    return _ResultadoConsultaGeode.error();
+    return _ResultadoConsultaWms.error();
   }
 }
 

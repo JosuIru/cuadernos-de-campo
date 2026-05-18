@@ -406,7 +406,11 @@ class _PantallaMapaState extends State<PantallaMapa> {
       contexto: _asistenteNotifier.value.contexto,
     );
     try {
-      final ctx = await consultarContextoGeologico(centro.latitude, centro.longitude);
+      final ctx = await consultarContextoGeologico(
+        centro.latitude,
+        centro.longitude,
+        capa: _capaGeologicaActual,
+      );
       if (!mounted || !_mostrarAsistente) return;
       _asistenteNotifier.value = _EstadoAsistente(cargando: false, contexto: ctx);
     } catch (_) {
@@ -1114,7 +1118,11 @@ class _PantallaMapaState extends State<PantallaMapa> {
   Future<({ContextoGeologico? geo, List<LugarInteresGeologico> ligs})> _consultarPunto(LatLng punto) async {
     final delta = 0.02;
     final results = await Future.wait([
-      consultarContextoGeologico(punto.latitude, punto.longitude),
+      consultarContextoGeologico(
+        punto.latitude,
+        punto.longitude,
+        capa: _capaGeologicaActual,
+      ),
       _mostrarLig
           ? buscarLigsEnExtension(
               sur: punto.latitude - delta,
