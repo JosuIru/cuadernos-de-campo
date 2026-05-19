@@ -417,7 +417,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             onPressed: _guardando ? null : _guardar,
             child: _guardando
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Guardar', style: TextStyle(color: Colors.white)),
+                : const Text('Guardar'),
           ),
         ],
       ),

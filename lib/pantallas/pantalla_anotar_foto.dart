@@ -122,8 +122,8 @@ class _PantallaAnotarFotoState extends State<PantallaAnotarFoto> {
           TextButton(
             onPressed: (_guardando || _imagenOriginal == null) ? null : _guardar,
             child: _guardando
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                : const Text('Guardar', style: TextStyle(color: Colors.white)),
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Guardar'),
           ),
         ],
       ),
