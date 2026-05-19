@@ -1,0 +1,108 @@
+name: fosiles_flutter
+description: "Cuaderno de campo de fósiles"
+publish_to: 'none'
+version: 1.0.14+15
+
+environment:
+  sdk: ^3.5.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+
+  # Mapa
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+  flutter_map_marker_cluster: ^1.4.0
+
+  # GPS y permisos
+  geolocator: 12.0.0
+  permission_handler: ^11.3.1
+  connectivity_plus: ^6.1.0
+
+  # Cámara y archivos
+  image_picker: ^1.1.2
+  path_provider: ^2.1.4
+  path: ^1.9.0
+
+  # Almacenamiento local
+  sqflite: ^2.3.3
+  shared_preferences: ^2.3.2
+
+  # HTTP
+  http: ^1.2.2
+
+  # Caché persistente de imágenes de red (galerías Wikipedia/iNaturalist)
+  cached_network_image: ^3.4.1
+
+  # Compartir y exportar
+  share_plus: ^10.0.2
+
+  # Plataforma compartida del monorepo
+  nuevo_ser_core:
+    path: ../../packages/nuevo_ser_core
+  archive: ^3.6.1
+
+  # Utilidades
+  intl: ^0.19.0
+  url_launcher: ^6.3.0
+  crypto: ^3.0.7
+
+  # Identidad criptográfica del descubridor (Fase A del compartir-certificar).
+  # Ed25519 vía `cryptography` para firmar cada hallazgo al crearlo, y la clave
+  # privada se persiste en el Android Keystore vía `flutter_secure_storage`.
+  cryptography: ^2.7.0
+  flutter_secure_storage: ^9.2.2
+
+  # Redimensionado de fotos al exportar .fos-card (Fase B). Reducimos a
+  # 1600 px lado mayor + JPEG q75 → ~400 KB por foto. Suficiente para
+  # identificación visual profesional (resolución equivalente a iNaturalist)
+  # y compatible con WhatsApp/email sin sufrir más recompresión.
+  image: ^4.2.0
+
+  # Recibir un .fos-card compartido desde WhatsApp/email/Drive (Fase B).
+  # El sistema operativo lanza Fósiles con un intent VIEW/SEND apuntando
+  # al archivo; este plugin lo expone como stream para que el orquestador
+  # abra la pantalla de import.
+  receive_sharing_intent: ^1.8.0
+
+  # Sensores (brújula y acelerómetro para medir orientación de estratos)
+  sensors_plus: ^6.0.1
+  flutter_compass: ^0.8.1
+
+  # Selector de ficheros (backup/restore, importar GPX)
+  file_picker: ^8.1.4
+
+  # Generación de PDF (informes de salida)
+  pdf: ^3.11.1
+  printing: ^5.13.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.14.1
+  # Genera el splash nativo Android para que el primer arranque no
+  # sea una pantalla en blanco.
+  flutter_native_splash: ^2.4.1
+
+flutter:
+  uses-material-design: true
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/icon/icon.png"
+  min_sdk_android: 24
+  adaptive_icon_background: "#2D3A2E"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+
+flutter_native_splash:
+  color: "#2D3A2E"
+  image: assets/icon/icon.png
+  android: true
+  ios: false
+  android_12:
+    color: "#2D3A2E"
+    image: assets/icon/icon.png
