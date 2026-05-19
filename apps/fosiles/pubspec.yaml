@@ -39,9 +39,14 @@ dependencies:
   # Compartir y exportar
   share_plus: ^10.0.2
 
-  # Plataforma compartida del monorepo
+  # Plataforma compartida — vive en el repo nuevo-ser/ (sibling).
+  # Asume que ambos repos están clonados como hermanos:
+  #   ~/Projects/games/nuevo-ser/
+  #   ~/Projects/games/cuadernos-de-campo/
+  # Si el sibling no existe, fija una ruta absoluta o publica el
+  # paquete como git dependency.
   nuevo_ser_core:
-    path: ../../packages/nuevo_ser_core
+    path: ../../../nuevo-ser/packages/nuevo_ser_core
   archive: ^3.6.1
 
   # Utilidades

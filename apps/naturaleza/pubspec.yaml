@@ -44,9 +44,14 @@ dependencies:
   url_launcher: ^6.3.0
   crypto: ^3.0.7
 
-  # Plataforma compartida del monorepo (gestor de fotos, PDF, UI)
+  # Plataforma compartida — vive en el repo nuevo-ser/ (sibling).
+  # Asume que ambos repos están clonados como hermanos:
+  #   ~/Projects/games/nuevo-ser/
+  #   ~/Projects/games/cuadernos-de-campo/
+  # Si el sibling no existe, fija una ruta absoluta o publica el
+  # paquete como git dependency.
   nuevo_ser_core:
-    path: ../../packages/nuevo_ser_core
+    path: ../../../nuevo-ser/packages/nuevo_ser_core
 
   # Sensores (brújula y acelerómetro para medir orientación de estratos)
   sensors_plus: ^6.0.1

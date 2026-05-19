@@ -1,0 +1,45 @@
+name: cuadernos_de_campo
+
+# Apps de operador para adulto aficionado (paleontología y naturaleza).
+# Separadas de `nuevo-ser/` (línea Kids + Solera comercial) en 2026-05.
+# Reutilizan `packages/nuevo_ser_core` del repo nuevo-ser por path
+# relativo asumiendo layout de clonado en hermanos.
+
+packages:
+  - apps/*
+
+command:
+  bootstrap:
+    runPubGetInParallel: true
+
+scripts:
+  analyze:
+    description: Análisis estático en cada paquete
+    exec:
+      concurrency: 1
+      failFast: false
+    run: flutter analyze
+
+  test:
+    description: Tests Flutter en cada paquete que tenga test/
+    exec:
+      concurrency: 1
+      failFast: false
+    run: flutter test
+    packageFilters:
+      dirExists:
+        - test
+
+  format:
+    description: Formato Dart sin escribir (--set-exit-if-changed)
+    exec:
+      concurrency: 1
+      failFast: false
+    run: dart format --set-exit-if-changed .
+
+  format-fix:
+    description: Formato Dart en sitio
+    exec:
+      concurrency: 1
+      failFast: false
+    run: dart format .

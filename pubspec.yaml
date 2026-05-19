@@ -1,0 +1,10 @@
+name: cuadernos_de_campo_workspace
+description: Workspace raíz de los cuadernos de campo (fósiles + naturaleza). No publicable; sirve para que Melos instale sus dependencias.
+version: 0.0.1
+publish_to: none
+
+environment:
+  sdk: ^3.5.0
+
+dev_dependencies:
+  melos: ^6.0.0

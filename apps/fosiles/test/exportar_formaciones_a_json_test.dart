@@ -46,8 +46,10 @@ void main() {
       });
     }
 
+    // El wp-plugin vive en el repo sibling `nuevo-ser/`. Asume el
+    // layout estándar de clonado en hermanos.
     final destino = File(
-      '../../wp-plugin/nuevo-ser-core/seeds/fosiles_formaciones.json',
+      '../../../nuevo-ser/wp-plugin/nuevo-ser-core/seeds/fosiles_formaciones.json',
     );
     await destino.parent.create(recursive: true);
     await destino.writeAsString(
