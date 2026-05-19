@@ -39,16 +39,356 @@ class FosilGuia {
 }
 
 const List<PeriodoGeologico> periodos = [
+  // ─── PRECÁMBRICO ──────────────────────────────────────
+  // Engloba Hadeano + Arcaico + Proterozoico. Para un aficionado
+  // ibérico no aporta valor desglosarlo: los afloramientos accesibles
+  // son escasos (núcleos de Ossa-Morena, Centro-Ibérica) y todos los
+  // fósiles plausibles son estromatolitos del Proterozoico tardío.
+  PeriodoGeologico(id: 'precambrico', nombre: 'Precámbrico', edadMa: '4567 – 541 Ma', color: Color(0xFFE6749E)),
+  // ─── PALEOZOICO ───────────────────────────────────────
+  PeriodoGeologico(id: 'cambrico', nombre: 'Cámbrico', edadMa: '541 – 485 Ma', color: Color(0xFFA8C593)),
+  PeriodoGeologico(id: 'ordovicico', nombre: 'Ordovícico', edadMa: '485 – 444 Ma', color: Color(0xFF53A47C)),
+  PeriodoGeologico(id: 'silurico', nombre: 'Silúrico', edadMa: '444 – 419 Ma', color: Color(0xFF99CFB0)),
+  PeriodoGeologico(id: 'devonico', nombre: 'Devónico', edadMa: '419 – 359 Ma', color: Color(0xFFCB8C5B)),
+  PeriodoGeologico(id: 'carbonifero', nombre: 'Carbonífero', edadMa: '359 – 299 Ma', color: Color(0xFF8FB9A8)),
+  PeriodoGeologico(id: 'permico', nombre: 'Pérmico', edadMa: '299 – 252 Ma', color: Color(0xFFE08766)),
+  // ─── MESOZOICO ────────────────────────────────────────
   PeriodoGeologico(id: 'triasico', nombre: 'Triásico', edadMa: '252 – 201 Ma', color: Color(0xFFA87F9C)),
   PeriodoGeologico(id: 'jurasico', nombre: 'Jurásico', edadMa: '201 – 145 Ma', color: Color(0xFF34B2C9)),
   PeriodoGeologico(id: 'cretacico-inferior', nombre: 'Cretácico Inferior (Urgoniano)', edadMa: '145 – 100 Ma', color: Color(0xFF7FC64E)),
   PeriodoGeologico(id: 'cretacico-superior', nombre: 'Cretácico Superior', edadMa: '100 – 66 Ma', color: Color(0xFFA6D84A)),
+  // ─── CENOZOICO ────────────────────────────────────────
   PeriodoGeologico(id: 'paleoceno-eoceno', nombre: 'Paleoceno – Eoceno', edadMa: '66 – 34 Ma', color: Color(0xFFFDB462)),
   PeriodoGeologico(id: 'oligoceno-mioceno', nombre: 'Oligoceno – Mioceno', edadMa: '34 – 5 Ma', color: Color(0xFFFFE45E)),
   PeriodoGeologico(id: 'cuaternario', nombre: 'Cuaternario', edadMa: '2,6 Ma – hoy', color: Color(0xFFFFF7C2)),
 ];
 
 const List<FosilGuia> fosilesGuia = [
+  // ─── PRECÁMBRICO ──────────────────────────────────────
+  FosilGuia(
+    id: 'estromatolitos',
+    nombre: 'Estromatolitos',
+    grupo: 'Cianobacterias formadoras de bioconstrucciones',
+    periodoId: 'precambrico',
+    descripcionCorta:
+        'Estructuras laminadas de carbonato producidas por tapices microbianos. Los fósiles más antiguos del registro: aparecen desde el Arcaico y abundan en el Proterozoico.',
+    distintivos: [
+      'Láminas concéntricas o columnares en sección',
+      'Formas en cúpula, columna o "domos" centimétricos a métricos',
+      'Roca carbonatada (caliza, dolomía) con bandeado fino',
+    ],
+    dondeEncontrar:
+        'Proterozoico de Ossa-Morena (Sierra de Córdoba) y de la Zona Centro-Ibérica (Salamanca). También en facies del Cámbrico inferior heredando la estructura.',
+    tituloWikipedia: 'Estromatolito',
+    ambientes: ['marino'],
+  ),
+
+  // ─── CÁMBRICO ─────────────────────────────────────────
+  FosilGuia(
+    id: 'paradoxides',
+    nombre: 'Paradoxides',
+    grupo: 'Trilobita (trilobites del Cámbrico Medio)',
+    periodoId: 'cambrico',
+    descripcionCorta:
+        'Trilobite emblemático del Cámbrico Medio ibérico, con cefalón ancho, mejillas con largas espinas genales y un pigidio diminuto.',
+    distintivos: [
+      'Cefalón semicircular con espinas genales largas',
+      'Tórax con muchos segmentos (15–20)',
+      'Pigidio pequeño respecto al cuerpo',
+      'Tamaño 5–25 cm',
+    ],
+    dondeEncontrar:
+        'Cámbrico Medio del Macizo Ibérico: Zona Centro-Ibérica (Sierra de la Demanda, La Codosera) y Ossa-Morena.',
+    tituloWikipedia: 'Paradoxides',
+    ambientes: ['marino'],
+  ),
+  FosilGuia(
+    id: 'arqueociatidos',
+    nombre: 'Arqueociátidos',
+    grupo: 'Archaeocyatha (esponjas calcáreas extintas)',
+    periodoId: 'cambrico',
+    descripcionCorta:
+        'Pequeños organismos calcáreos coniformes que formaron los primeros arrecifes del Fanerozoico (Cámbrico Inferior). Extinguidos antes del Cámbrico Medio.',
+    distintivos: [
+      'Forma de copa o cono de 2–10 cm',
+      'Dos paredes (interna y externa) concéntricas perforadas',
+      'Tabiques radiales entre ambas paredes',
+    ],
+    dondeEncontrar:
+        'Cámbrico Inferior de Sierra Morena, Cordillera Cantábrica y Sierra de la Demanda.',
+    tituloWikipedia: 'Archaeocyatha',
+    ambientes: ['marino'],
+  ),
+  FosilGuia(
+    id: 'lingulella',
+    nombre: 'Lingulella (braquiópodos linguliformes)',
+    grupo: 'Brachiopoda – Linguliformea',
+    periodoId: 'cambrico',
+    descripcionCorta:
+        'Braquiópodos primitivos de concha fosfática y forma alargada como una uña. Es uno de los pocos grupos que ha sobrevivido casi sin cambios hasta hoy.',
+    distintivos: [
+      'Concha alargada, fosfática (marrón oscura, brillante)',
+      'Tamaño 1–4 cm',
+      'Pedúnculo largo en vida (no se conserva)',
+    ],
+    dondeEncontrar:
+        'Pizarras y areniscas del Cámbrico-Ordovícico del Macizo Ibérico.',
+    tituloWikipedia: 'Lingulida',
+    ambientes: ['marino'],
+  ),
+
+  // ─── ORDOVÍCICO ──────────────────────────────────────
+  FosilGuia(
+    id: 'didymograptus',
+    nombre: 'Didymograptus',
+    grupo: 'Graptolithina (graptolitos)',
+    periodoId: 'ordovicico',
+    descripcionCorta:
+        'Graptolito planctónico con dos ramas que cuelgan en V o se sostienen como un "diapasón". Marcador estratigráfico del Ordovícico Inferior-Medio.',
+    distintivos: [
+      'Dos ramas con tecas (celdillas) dentadas',
+      'Aspecto de cinta serrada de 2–8 cm',
+      'Conservación habitual: aplastado, brillo grafitoso sobre pizarra',
+    ],
+    dondeEncontrar:
+        'Pizarras negras del Ordovícico del Macizo Ibérico (Sistema Central, Montes de Toledo, Sierra Morena) y Pirineos.',
+    tituloWikipedia: 'Didymograptus',
+    ambientes: ['marino'],
+  ),
+  FosilGuia(
+    id: 'asaphus-trilobite',
+    nombre: 'Asaphus / Calymene (trilobites del Ordovícico)',
+    grupo: 'Trilobita',
+    periodoId: 'ordovicico',
+    descripcionCorta:
+        'Trilobites de cuerpo ovalado, frecuentes en las pizarras y cuarcitas armoricanas del Macizo Ibérico.',
+    distintivos: [
+      'Cuerpo ovalado, segmentado en tres lóbulos',
+      'Cefalón y pigidio aproximadamente del mismo tamaño',
+      'A menudo enrollado en defensa (forma de "bolita")',
+      'Tamaño 3–10 cm',
+    ],
+    dondeEncontrar:
+        'Cuarcita Armoricana y pizarras del Ordovícico Inferior del Macizo Ibérico, Sierra Morena y Cordillera Cantábrica.',
+    tituloWikipedia: 'Asaphus',
+    ambientes: ['marino'],
+  ),
+  FosilGuia(
+    id: 'cruziana',
+    nombre: 'Cruziana (rastros de trilobites)',
+    grupo: 'Icnofósil – huellas de locomoción',
+    periodoId: 'ordovicico',
+    descripcionCorta:
+        'No es el animal, sino la huella que dejaba al excavar/arrastrarse sobre el sedimento. Muy abundante en cuarcitas paleozoicas ibéricas.',
+    distintivos: [
+      'Dos surcos paralelos con marcas en "espina de pez"',
+      'Anchura 2–10 cm',
+      'Aparece como relieve en la base de capas de arenisca',
+    ],
+    dondeEncontrar:
+        'Cuarcita Armoricana (Ordovícico Inferior) del Macizo Ibérico, especialmente Sierra Morena y Montes de Toledo.',
+    tituloWikipedia: 'Cruziana',
+    ambientes: ['marino'],
+  ),
+
+  // ─── SILÚRICO ────────────────────────────────────────
+  FosilGuia(
+    id: 'monograptus',
+    nombre: 'Monograptus',
+    grupo: 'Graptolithina',
+    periodoId: 'silurico',
+    descripcionCorta:
+        'Graptolito de una sola rama recta o ligeramente curvada con tecas en un solo lado. Marcador clásico del Silúrico.',
+    distintivos: [
+      'Una sola rama de 2–10 cm',
+      'Tecas (celdillas) escalonadas como sierra',
+      'Brillo grafitoso sobre pizarra negra',
+    ],
+    dondeEncontrar:
+        'Pizarras negras del Silúrico de los Pirineos, Cordillera Cantábrica y Sierra Morena.',
+    tituloWikipedia: 'Monograptus',
+    ambientes: ['marino'],
+  ),
+  FosilGuia(
+    id: 'orthoceras',
+    nombre: 'Orthoceras (nautiloideos de concha recta)',
+    grupo: 'Cephalopoda – Nautiloidea',
+    periodoId: 'silurico',
+    descripcionCorta:
+        'Cefalópodos con concha cónica recta, no enrollada. Predadores marinos abundantes en el Paleozoico medio. Los enrollados (ammonites) son posteriores.',
+    distintivos: [
+      'Concha cónica recta, segmentada por tabiques',
+      'Sifúnculo central visible en sección pulida',
+      'Tamaño 5–60 cm (en Iberia, normalmente 10–20 cm)',
+    ],
+    dondeEncontrar:
+        'Calizas griotte del Silúrico-Devónico de Pirineos y Cordillera Cantábrica.',
+    tituloWikipedia: 'Orthoceras',
+    ambientes: ['marino'],
+  ),
+
+  // ─── DEVÓNICO ────────────────────────────────────────
+  FosilGuia(
+    id: 'phacops',
+    nombre: 'Phacops',
+    grupo: 'Trilobita',
+    periodoId: 'devonico',
+    descripcionCorta:
+        'Trilobite del Devónico de ojos compuestos muy prominentes y conservación tridimensional excelente. Considerado el "trilobite de manual".',
+    distintivos: [
+      'Ojos esquizocroales grandes y prominentes',
+      'Cefalón abultado en forma de yelmo',
+      'Frecuentemente enrollado',
+      'Tamaño 3–8 cm',
+    ],
+    dondeEncontrar:
+        'Devónico de la Cordillera Cantábrica (Asturias, "Devónico Asturiano"), Pirineos y Sierra Morena.',
+    tituloWikipedia: 'Phacops',
+    ambientes: ['marino'],
+  ),
+  FosilGuia(
+    id: 'spirifer',
+    nombre: 'Spirifer',
+    grupo: 'Brachiopoda – Spiriferida',
+    periodoId: 'devonico',
+    descripcionCorta:
+        'Braquiópodo de concha biconvexa con "alas" laterales muy pronunciadas. Uno de los fósiles guía del Devónico-Carbonífero.',
+    distintivos: [
+      'Concha en forma de mariposa, con dos alas laterales',
+      'Charnela larga y recta',
+      'Costillas radiales finas',
+      'Tamaño 2–8 cm',
+    ],
+    dondeEncontrar:
+        'Devónico-Carbonífero de la Cordillera Cantábrica, Pirineos y Sierra Morena.',
+    tituloWikipedia: 'Spirifer',
+    ambientes: ['marino'],
+  ),
+  FosilGuia(
+    id: 'favosites',
+    nombre: 'Favosites (coral "miel de panal")',
+    grupo: 'Anthozoa – Tabulata',
+    periodoId: 'devonico',
+    descripcionCorta:
+        'Coral colonial extinto que forma masas con coralitos prismáticos pegados como las celdas de un panal de abejas.',
+    distintivos: [
+      'Sección poligonal hexagonal regular (1–3 mm)',
+      'Coralitos paralelos, tabiques transversales internos',
+      'Color a menudo blanco-crema sobre matriz oscura',
+    ],
+    dondeEncontrar:
+        'Calizas devónicas de la Cordillera Cantábrica y Pirineos.',
+    tituloWikipedia: 'Favosites',
+    ambientes: ['marino'],
+  ),
+
+  // ─── CARBONÍFERO ─────────────────────────────────────
+  FosilGuia(
+    id: 'goniatites',
+    nombre: 'Goniatites',
+    grupo: 'Ammonoidea (ancestros de los ammonites)',
+    periodoId: 'carbonifero',
+    descripcionCorta:
+        'Cefalópodos con concha enrollada y suturas en zigzag simples (con lóbulos puntiagudos pero sin las arabescas de los ammonites mesozoicos).',
+    distintivos: [
+      'Concha discoidal de 2–10 cm',
+      'Suturas en zigzag angular, no rizado',
+      'Ombligo estrecho o ancho según la especie',
+    ],
+    dondeEncontrar:
+        'Carbonífero marino de la Cordillera Cantábrica (Asturias, "calizas con Goniatites") y Pirineos.',
+    tituloWikipedia: 'Goniatites',
+    ambientes: ['marino'],
+  ),
+  FosilGuia(
+    id: 'calamites',
+    nombre: 'Calamites (equisetales gigantes)',
+    grupo: 'Pteridófita – Equisetales arborescentes',
+    periodoId: 'carbonifero',
+    descripcionCorta:
+        'Plantas vasculares arborescentes (hasta 20 m) emparentadas con los equisetos actuales. Compusieron los bosques carboníferos junto a licopodios.',
+    distintivos: [
+      'Tallos huecos con nudos visibles',
+      'Acanaladuras longitudinales muy marcadas',
+      'Verticilos de hojas finas en cada nudo',
+      'A menudo conservados como molde interno',
+    ],
+    dondeEncontrar:
+        'Cuenca Carbonífera Central Asturiana (capas de carbón) y otras cuencas carboníferas ibéricas.',
+    tituloWikipedia: 'Calamites',
+    ambientes: ['continental', 'fluvial'],
+  ),
+  FosilGuia(
+    id: 'lepidodendron',
+    nombre: 'Lepidodendron (licopodio gigante)',
+    grupo: 'Lycopsida – Lepidodendrales',
+    periodoId: 'carbonifero',
+    descripcionCorta:
+        'Árboles gigantes (hasta 30 m) extintos. La corteza presenta cicatrices romboidales muy características dejadas por las hojas caídas.',
+    distintivos: [
+      'Cicatrices foliares romboidales/aplanadas en patrón regular',
+      'Tronco de hasta varios metros conservado',
+      'Aspecto de "piel de cocodrilo" estilizada',
+    ],
+    dondeEncontrar:
+        'Cuencas carboníferas continentales: Asturias, Sierra Morena (carbonífero de Peñarroya-Pueblonuevo) y Pirineos.',
+    tituloWikipedia: 'Lepidodendron',
+    ambientes: ['continental', 'fluvial'],
+  ),
+  FosilGuia(
+    id: 'fusulinidos',
+    nombre: 'Fusulínidos',
+    grupo: 'Foraminifera – Fusulinida',
+    periodoId: 'carbonifero',
+    descripcionCorta:
+        'Foraminíferos grandes (1–10 mm) con concha en forma de grano de trigo. Marcadores estratigráficos del Carbonífero-Pérmico marino.',
+    distintivos: [
+      'Forma fusiforme, como un grano de trigo o arroz',
+      'Tamaño 1 mm – 1 cm (visibles a simple vista)',
+      'Aparecen en sección en calizas como elipses con tabiques internos',
+    ],
+    dondeEncontrar:
+        'Calizas del Carbonífero Superior y Pérmico de la Cordillera Cantábrica y Pirineos.',
+    tituloWikipedia: 'Fusulinida',
+    ambientes: ['marino'],
+  ),
+
+  // ─── PÉRMICO ─────────────────────────────────────────
+  FosilGuia(
+    id: 'walchia',
+    nombre: 'Walchia (conífera primitiva)',
+    grupo: 'Coniferopsida – Voltziales',
+    periodoId: 'permico',
+    descripcionCorta:
+        'Una de las primeras coníferas. Ramas con hojas en escama dispuestas en espiral, comunes en las facies continentales rojas del Pérmico.',
+    distintivos: [
+      'Ramillas con hojas en escama pequeñas y triangulares',
+      'Patrón en espiral, no aplanado en un plano (a diferencia de las araucarias actuales)',
+      'Conservación como impresión carbonosa sobre arenisca/limolita roja',
+    ],
+    dondeEncontrar:
+        'Pérmico continental de los Pirineos (cuenca de Anayet, Cadí) y del Sistema Ibérico.',
+    tituloWikipedia: 'Walchia',
+    ambientes: ['continental', 'fluvial'],
+  ),
+  FosilGuia(
+    id: 'productus',
+    nombre: 'Productus',
+    grupo: 'Brachiopoda – Productida',
+    periodoId: 'permico',
+    descripcionCorta:
+        'Braquiópodo de concha cóncavo-convexa muy abundante en el Carbonífero-Pérmico. Una valva curvada como casquete, la otra plana.',
+    distintivos: [
+      'Concha de 2–8 cm, costillas radiales gruesas',
+      'Una valva curvada como concha de almeja, la otra casi plana',
+      'A veces con espinas (Productida sensu stricto)',
+    ],
+    dondeEncontrar:
+        'Carbonífero-Pérmico marino de la Cordillera Cantábrica y Pirineos.',
+    tituloWikipedia: 'Productida',
+    ambientes: ['marino'],
+  ),
+
   // ─── TRIÁSICO ─────────────────────────────────────────
   FosilGuia(
     id: 'ceratites',
@@ -908,12 +1248,28 @@ String _normalizar(String texto) {
 }
 
 const _palabrasClavePorPeriodo = <(String, List<String>)>[
+  // Orden: las más específicas primero. Cuando una edad encaja con
+  // varios patrones (ej. 'Cretácico' matchea tanto -inferior como
+  // -superior), se devuelve el primero — por eso `cretacico-superior`
+  // como fallback genérico va al final.
   ('cretacico-superior', ['cretacico superior', 'maastrichtiense', 'campaniense', 'santoniense', 'coniaciense', 'turoniense', 'cenomaniense', 'senoniense']),
   ('cretacico-inferior', ['cretacico inferior', 'urgoniano', 'urgon', 'aptiense', 'albiense', 'barremiense', 'hauteriviense', 'valanginiense', 'berriasiense', 'neocomiense']),
   ('paleoceno-eoceno', ['paleoceno', 'eoceno', 'daniense', 'thanetiense', 'ilerdiense', 'cuisiense', 'luteciense', 'bartoniense', 'priaboniense', 'ypresiense']),
   ('oligoceno-mioceno', ['oligoceno', 'mioceno', 'rupeliense', 'chatiense', 'aquitaniense', 'burdigaliense', 'langhiense', 'serravaliense', 'tortoniense', 'messiniense', 'agenian', 'ageniense', 'rambliense', 'aragoniense', 'vallesiense', 'turoliense']),
   ('jurasico', ['jurasico', 'lias ', 'liasico', 'dogger', 'malm', 'hettangiense', 'sinemuriense', 'pliensbachiense', 'toarciense', 'aaleniense', 'bajociense', 'bathoniense', 'caloviense', 'oxfordiense', 'kimmeridgiense', 'tithoniense', 'portlandiense']),
   ('triasico', ['triasico', 'muschelkalk', 'keuper', 'buntsandstein', 'anisiense', 'ladiniense', 'carniense', 'noriense', 'rhaetiense']),
+  // ─── Paleozoico ─── pisos de la Tabla Cronoestratigráfica
+  // Internacional (ICS), nomenclatura castellana habitual en los
+  // mapas MAGNA del IGME. Se incluye `precambrico` con sus eónicos
+  // legibles (proterozoico/arcaico/hadeano), suficiente para que el
+  // asistente clasifique afloramientos de Ossa-Morena o Centro-Ibérica.
+  ('permico', ['permico', 'cisuraliense', 'guadalupiense', 'lopingiense', 'asseliense', 'sakmariense', 'artinskiense', 'kunguriense', 'roadiense', 'wordiense', 'capitaniense', 'wuchiapingiense', 'changhsingiense', 'autuniense', 'saxoniense', 'thuringiense']),
+  ('carbonifero', ['carbonifero', 'mississippiense', 'pennsylvaniense', 'tournaisiense', 'viseense', 'serpukhoviense', 'bashkiriense', 'moscoviense', 'kasimoviense', 'gzheliense', 'namuriense', 'westfaliense', 'vesfaliense', 'estefaniense', 'stephaniense']),
+  ('devonico', ['devonico', 'lochkoviense', 'pragiense', 'emsiense', 'eifeliense', 'givetiense', 'frasniense', 'famenniense']),
+  ('silurico', ['silurico', 'llandoveriense', 'wenlockiense', 'ludloviense', 'pridoliense', 'rhuddaniense', 'aeroniense', 'telychiense', 'sheinwoodiense', 'homeriense', 'gorstiense', 'ludfordiense']),
+  ('ordovicico', ['ordovicico', 'tremadociense', 'flociense', 'dapingiense', 'darriwiliense', 'sandbiense', 'katiense', 'hirnantiense', 'arenigiense', 'llanvirniense', 'caradociense', 'ashgilliense']),
+  ('cambrico', ['cambrico', 'fortuniense', 'terreneuviense', 'serie 2', 'miaolingiense', 'wuliuense', 'drumiense', 'guzhangiense', 'paibiense', 'jiangshaniense']),
+  ('precambrico', ['precambrico', 'proterozoico', 'neoproterozoico', 'mesoproterozoico', 'paleoproterozoico', 'arcaico', 'arqueozoico', 'hadeano', 'ediacarense', 'criogenico', 'toniano', 'esteniense', 'estatheriense', 'oroseniense', 'riasiense', 'sideriense']),
   ('cuaternario', ['cuaternario', 'holoceno', 'pleistoceno', 'plioceno', 'rusciniense', 'villafranquiense', 'villafranchiense', 'gelasiense', 'calabriense']),
   ('cretacico-superior', ['cretacico']),
 ];
