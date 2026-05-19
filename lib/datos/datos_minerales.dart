@@ -810,18 +810,191 @@ String _normalizarTextoMineral(String texto) {
       .replaceAll('ñ', 'n');
 }
 
+/// Identifica el grupo litológico dominante de un texto de litología
+/// (caliza/dolomía, granito/granitoide, basalto/gabro, esquisto/gneis,
+/// arcilla/marga/arenisca, evaporita). Devuelve `null` si no se reconoce.
+///
+/// Nota: las palabras se buscan ya normalizadas (sin acentos, minúsculas).
+String? _grupoLitologico(String textoLitologiaNormalizado) {
+  if (textoLitologiaNormalizado.isEmpty) return null;
+
+  // Evaporitas: van primero porque "yeso" y "sal" son inequívocos y
+  // pueden aparecer junto a "caliza" en margas yesíferas.
+  const palabrasEvaporiticas = [
+    'evaporita', 'yeso', 'yesifera', 'halita', 'anhidrita',
+  ];
+  if (palabrasEvaporiticas.any(textoLitologiaNormalizado.contains) ||
+      textoLitologiaNormalizado.endsWith(' sal') ||
+      textoLitologiaNormalizado.contains(' sal ')) {
+    return 'evaporitico';
+  }
+
+  // Ígneas plutónicas ácidas / pegmatitas / migmatitas.
+  const palabrasGraniticas = [
+    'granito', 'granitoide', 'pegmatita', 'monzonita', 'sienita',
+    'aplita', 'leucogranito', 'granodiorit',
+  ];
+  if (palabrasGraniticas.any(textoLitologiaNormalizado.contains)) {
+    return 'granitico';
+  }
+
+  // Ígneas básicas/ultrabásicas y volcánicas.
+  const palabrasBasalticas = [
+    'basalto', 'gabro', 'diabasa', 'ofita', 'peridotit',
+    'andesita', 'riolita', 'dacita', 'traquita', 'dolerit',
+    'piroxenit', 'serpentinit',
+  ];
+  if (palabrasBasalticas.any(textoLitologiaNormalizado.contains)) {
+    return 'basaltico';
+  }
+
+  // Metamórficas regionales (excepto mármol y cuarcita que se tratan
+  // aparte porque su mineralogía es más restringida).
+  if (textoLitologiaNormalizado.contains('marmol')) return 'marmol';
+  if (textoLitologiaNormalizado.contains('cuarcita')) return 'cuarcita';
+  const palabrasMetamorficas = [
+    'esquisto', 'gneis', 'pizarra', 'micacit', 'corneana',
+    'anfibolit', 'eclogit', 'migmatit', 'filita',
+  ];
+  if (palabrasMetamorficas.any(textoLitologiaNormalizado.contains)) {
+    return 'metamorfico';
+  }
+
+  // Carbonatos sedimentarios: caliza, marga, dolomía, calcarenita, creta.
+  const palabrasCarbonaticas = [
+    'caliza', 'marga', 'calcarenit', 'creta', 'dolomia',
+    'biocalcarenit', 'calcilutit', 'biomicrit',
+  ];
+  if (palabrasCarbonaticas.any(textoLitologiaNormalizado.contains)) {
+    return 'carbonatico';
+  }
+
+  // Siliciclásticas detríticas: arenisca, lutita, arcilla, limolita…
+  const palabrasSiliciclasticas = [
+    'arenisca', 'lutita', 'limolita', 'arcilla', 'conglomerado',
+    'argilita', 'pelita',
+  ];
+  if (palabrasSiliciclasticas.any(textoLitologiaNormalizado.contains)) {
+    return 'siliciclastico';
+  }
+
+  return null;
+}
+
+/// Minerales esperables por grupo litológico, ordenados de más
+/// característico a accesorio. Solo se incluyen IDs que ya existen
+/// en `mineralesGuia`; si añades minerales nuevos al catálogo,
+/// inclúyelos aquí donde corresponda.
+const Map<String, List<String>> _mineralesPorGrupoLitologico = {
+  // Granitos, granitoides, pegmatitas: cuarzo + feldespatos + micas,
+  // accesorios pegmatíticos.
+  'granitico': [
+    'cuarzo', 'feldespato-potasico', 'plagioclasa', 'moscovita', 'biotita',
+    'hornblenda', 'turmalina', 'granate', 'berilo', 'topacio', 'apatito',
+    'caolinita', // producto de alteración común
+  ],
+  // Calizas, dolomías, margas, calcarenitas, cretas.
+  'carbonatico': [
+    'calcita', 'dolomita', 'aragonito', 'calcedonia', 'pirita', 'marcasita',
+    'yeso', 'baritina', 'fluorita',
+  ],
+  // Mármol: caliza metamorfizada — calcita y dolomita predominan,
+  // accesorios de contacto.
+  'marmol': [
+    'calcita', 'dolomita', 'grafito', 'talco', 'moscovita', 'apatito',
+  ],
+  // Basaltos, gabros, peridotitas, diabasas, ofitas.
+  'basaltico': [
+    'olivino', 'augita', 'plagioclasa', 'magnetita', 'hornblenda',
+    'amatista', 'agata', 'opalo', 'calcedonia', // amígdalas y geodas
+  ],
+  // Esquistos, gneises, pizarras: metamórficos regionales.
+  'metamorfico': [
+    'moscovita', 'biotita', 'granate', 'cuarzo', 'grafito', 'talco',
+    'hornblenda', 'turmalina',
+  ],
+  // Cuarcita: prácticamente cuarzo + accesorios.
+  'cuarcita': [
+    'cuarzo', 'moscovita', 'hematites',
+  ],
+  // Arcillas, lutitas, margas, areniscas: cuarzo + carbonatos +
+  // óxidos + sulfuros autigénicos + arcillas y yesos secundarios.
+  'siliciclastico': [
+    'cuarzo', 'calcita', 'hematites', 'limonita', 'pirita', 'marcasita',
+    'goethita', 'yeso', 'caolinita', 'siderita',
+  ],
+  // Evaporitas: yeso, halita, sales asociadas.
+  'evaporitico': [
+    'yeso', 'selenita', 'halita', 'anhidrita', 'celestina', 'baritina',
+    'azufre', 'calcita',
+  ],
+};
+
+/// Conjunto de grupos cuya mineralogía no depende de la edad/formación:
+/// rocas ígneas, metamórficas y mármol. Cuando la litología cae en uno
+/// de estos, NO se mezclan minerales sugeridos por la edad.
+const Set<String> _gruposIndependientesDeEdad = {
+  'granitico',
+  'basaltico',
+  'metamorfico',
+  'marmol',
+  'cuarcita',
+};
+
+const int _maxMineralesSugeridos = 14;
+
 List<MineralGuia> mineralesProbablesEnContexto({String? edad, String? formacion, String? litologia}) {
-  final partes = [edad, formacion, litologia].whereType<String>().where((s) => s.isNotEmpty).join(' ');
-  if (partes.isEmpty) return const [];
-  final texto = _normalizarTextoMineral(partes);
-  final encontrados = <MineralGuia>[];
-  for (final m in mineralesGuia) {
-    final palabras = _palabrasClavePorMineral[m.id] ?? const [];
-    if (palabras.any((p) => texto.contains(_normalizarTextoMineral(p)))) {
-      encontrados.add(m);
+  final litologiaNormalizada = litologia == null
+      ? ''
+      : _normalizarTextoMineral(litologia);
+  final grupo = _grupoLitologico(litologiaNormalizada);
+
+  // Lista ordenada: primero los del grupo litológico (orden de relevancia
+  // declarado en el mapa), después los que añade el matching por edad/
+  // formación, salvo que el grupo sea ígneo o metamórfico (en ese caso
+  // ignoramos edad/formación, que no aportan información mineralógica).
+  final candidatos = <MineralGuia>[];
+  final idsYaIncluidos = <String>{};
+
+  if (grupo != null) {
+    final idsGrupo = _mineralesPorGrupoLitologico[grupo] ?? const <String>[];
+    for (final idMineral in idsGrupo) {
+      final mineral = buscarMineralPorId(idMineral);
+      if (mineral != null && idsYaIncluidos.add(mineral.id)) {
+        candidatos.add(mineral);
+      }
     }
   }
-  return encontrados;
+
+  // Si la litología no encaja en un grupo conocido, o si el grupo SÍ
+  // permite que edad/formación añadan accesorios sedimentarios
+  // (carbonáticos, siliciclásticos, evaporíticos), aplicamos el
+  // matching antiguo por palabras clave.
+  final permiteFallbackPorEdad =
+      grupo == null || !_gruposIndependientesDeEdad.contains(grupo);
+  if (permiteFallbackPorEdad) {
+    final partes = [edad, formacion, litologia]
+        .whereType<String>()
+        .where((s) => s.isNotEmpty)
+        .join(' ');
+    if (partes.isNotEmpty) {
+      final textoCompletoNormalizado = _normalizarTextoMineral(partes);
+      for (final mineral in mineralesGuia) {
+        if (idsYaIncluidos.contains(mineral.id)) continue;
+        final palabras = _palabrasClavePorMineral[mineral.id] ?? const [];
+        if (palabras.any((p) => textoCompletoNormalizado
+            .contains(_normalizarTextoMineral(p)))) {
+          candidatos.add(mineral);
+          idsYaIncluidos.add(mineral.id);
+        }
+      }
+    }
+  }
+
+  if (candidatos.length > _maxMineralesSugeridos) {
+    return candidatos.sublist(0, _maxMineralesSugeridos);
+  }
+  return candidatos;
 }
 
 ClaseMineralStrunz? buscarClaseMineral(String id) {

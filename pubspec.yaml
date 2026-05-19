@@ -1,7 +1,7 @@
 name: fosiles_flutter
-description: "Cuaderno de campo de fósiles para Euskal Herria"
+description: "Cuaderno de campo de fósiles"
 publish_to: 'none'
-version: 1.0.5+6
+version: 1.0.13+14
 
 environment:
   sdk: ^3.5.0
@@ -14,6 +14,7 @@ dependencies:
   # Mapa
   flutter_map: ^7.0.2
   latlong2: ^0.9.1
+  flutter_map_marker_cluster: ^1.4.0
 
   # GPS y permisos
   geolocator: 12.0.0

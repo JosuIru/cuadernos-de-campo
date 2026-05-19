@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 class YacimientoCurado {
   final String id;
   final String nombre;
@@ -216,3 +218,54 @@ const List<YacimientoCurado> yacimientosCurados = [
     emoji: '⛰️',
   ),
 ];
+
+/// Distancia ortodrómica en kilómetros entre dos puntos dados por
+/// latitud/longitud en grados decimales. Fórmula de haversine con radio
+/// medio de la Tierra de 6371 km.
+double distanciaKm(
+  double latitudOrigen,
+  double longitudOrigen,
+  double latitudDestino,
+  double longitudDestino,
+) {
+  const double radioTierraKm = 6371.0;
+  final double latitudOrigenRad = latitudOrigen * math.pi / 180.0;
+  final double latitudDestinoRad = latitudDestino * math.pi / 180.0;
+  final double diferenciaLatitudRad =
+      (latitudDestino - latitudOrigen) * math.pi / 180.0;
+  final double diferenciaLongitudRad =
+      (longitudDestino - longitudOrigen) * math.pi / 180.0;
+  final double terminoHaversine =
+      math.sin(diferenciaLatitudRad / 2) * math.sin(diferenciaLatitudRad / 2) +
+          math.cos(latitudOrigenRad) *
+              math.cos(latitudDestinoRad) *
+              math.sin(diferenciaLongitudRad / 2) *
+              math.sin(diferenciaLongitudRad / 2);
+  final double arcoCentral = 2 *
+      math.atan2(math.sqrt(terminoHaversine), math.sqrt(1 - terminoHaversine));
+  return radioTierraKm * arcoCentral;
+}
+
+/// Yacimientos curados a menos de [radioKm] del punto dado, ordenados de
+/// más cercano a más lejano. Cada entrada lleva el yacimiento y la
+/// distancia exacta en km para poder pintarla en la UI.
+List<({YacimientoCurado yac, double distanciaKm})> yacimientosCercanos(
+  double latitud,
+  double longitud, {
+  double radioKm = 5,
+}) {
+  final List<({YacimientoCurado yac, double distanciaKm})> cercanos = [];
+  for (final yacimiento in yacimientosCurados) {
+    final double distancia = distanciaKm(
+      latitud,
+      longitud,
+      yacimiento.latitud,
+      yacimiento.longitud,
+    );
+    if (distancia <= radioKm) {
+      cercanos.add((yac: yacimiento, distanciaKm: distancia));
+    }
+  }
+  cercanos.sort((a, b) => a.distanciaKm.compareTo(b.distanciaKm));
+  return cercanos;
+}

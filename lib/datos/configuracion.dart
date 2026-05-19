@@ -91,4 +91,18 @@ class Configuracion {
     final nombre = await obtenerNombreDescubridor();
     return nombre.isNotEmpty;
   }
+
+  // ─── Onboarding (mini-tour de primer arranque) ─────────
+
+  static const String _claveOnboardingVisto = 'ha_visto_onboarding_v1';
+
+  static Future<bool> haVistoOnboarding() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_claveOnboardingVisto) ?? false;
+  }
+
+  static Future<void> marcarOnboardingVisto() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_claveOnboardingVisto, true);
+  }
 }

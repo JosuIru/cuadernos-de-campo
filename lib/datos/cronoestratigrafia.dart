@@ -1,5 +1,5 @@
 // Tabla cronoestratigráfica simplificada (ICS v2023) en millones de años (Ma).
-// Cubre principalmente Mesozoico–Cenozoico, los pisos relevantes para Euskal Herria.
+// Cubre principalmente Mesozoico–Cenozoico, los pisos relevantes para la península ibérica.
 
 class RangoMa {
   final double inicioMa;

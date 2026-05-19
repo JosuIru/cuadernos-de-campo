@@ -4,6 +4,8 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_marker_cluster/flutter_map_marker_cluster.dart';
+import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:geolocator/geolocator.dart';
@@ -23,6 +25,7 @@ import '../datos/datos_minerales.dart';
 import '../datos/cronoestratigrafia.dart';
 import '../datos/base_datos.dart';
 import '../datos/yacimientos_curados.dart';
+import '../datos/formacion_a_fosiles.dart';
 import '../modelos/hallazgo.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path_lib;
@@ -42,7 +45,7 @@ import '../utiles/permisos_gps.dart' show asegurarPermisoUbicacion, asegurarPerm
 typedef CallbackPedirNuevoHallazgo = void Function({double? latitud, double? longitud});
 typedef CallbackSeleccionarFosilGuia = void Function(String idFosil);
 
-const _centroEuskalHerria = LatLng(43.05, -2.45);
+const _centroInicialMapa = LatLng(43.05, -2.45);
 const _zoomInicial = 9.0;
 
 enum _ModoMapa { ver, marcarPunto, explorarGeologia }
@@ -82,7 +85,17 @@ const String urlPlantillaHillshade =
 class PantallaMapa extends StatefulWidget {
   final CallbackPedirNuevoHallazgo alPedirNuevoHallazgo;
   final CallbackSeleccionarFosilGuia alSeleccionarFosilGuia;
-  PantallaMapa({super.key, required this.alPedirNuevoHallazgo, required this.alSeleccionarFosilGuia});
+  /// Notifier opcional que main puede actualizar para pedir centrar el
+  /// mapa en unas coords. Lo usa el botón "Ver en el mapa" de la ficha
+  /// del hallazgo en la pestaña Lista: main escribe la LatLng aquí y
+  /// salta a la pestaña Mapa; este widget lo escucha y anima la cámara.
+  final ValueNotifier<LatLng?>? destinoMapaNotifier;
+  PantallaMapa({
+    super.key,
+    required this.alPedirNuevoHallazgo,
+    required this.alSeleccionarFosilGuia,
+    this.destinoMapaNotifier,
+  });
 
   @override
   State<PantallaMapa> createState() => _PantallaMapaState();
@@ -147,6 +160,17 @@ class _PantallaMapaState extends State<PantallaMapa> {
   List<Marker> _markersMonumentosCache = const [];
   List<Marker> _markersYacimientosCache = const [];
   List<CircleMarker> _circulosCalorCache = const [];
+
+  // Polígono resaltado: cuando el usuario consulta un punto en modo
+  // "Explorar geología" y la respuesta es de GEODE (la única capa que
+  // expone `OBJECTID` en sus propiedades), pedimos al endpoint ArcGIS
+  // REST la geometría del recinto y la pintamos sobre el mapa como un
+  // highlight semitransparente amarillo. Se reemplaza al consultar
+  // otro punto y se borra al cerrar la ficha geológica. Si el punto
+  // pertenece a otra capa (MAGNA / 1M) o no trae OBJECTID, se queda
+  // vacío en silencio — esos servicios no devuelven geometría con el
+  // mismo patrón.
+  List<Polygon> _poligonoResaltadoCache = const [];
   final List<CuevaOSM> _cuevasVisibles = [];
   final Set<String> _idsCuevasYaPintadas = {};
   final List<MonumentoArqueologico> _monumentosVisibles = [];
@@ -197,6 +221,21 @@ class _PantallaMapaState extends State<PantallaMapa> {
         if (_mostrarAsistente && !_cargandoAsistente) _actualizarAsistenteCentro();
       });
     });
+    // Suscripción al notifier de "ir a estas coords" — lo emite main
+    // cuando el usuario pulsa "Ver en el mapa" en la ficha de un
+    // hallazgo desde la pestaña Lista. Movemos la cámara con zoom 16.
+    widget.destinoMapaNotifier?.addListener(_alPedirDestinoMapa);
+  }
+
+  void _alPedirDestinoMapa() {
+    final destino = widget.destinoMapaNotifier?.value;
+    if (destino == null || !mounted) return;
+    _controladorMapa.move(destino, 16);
+    // Reseteamos el notifier a null tras consumir el destino para que
+    // la próxima vez que el usuario pulse "Ver en el mapa" sobre el
+    // MISMO hallazgo, el listener vuelva a dispararse (un ValueNotifier
+    // no notifica si el valor nuevo es igual al antiguo).
+    widget.destinoMapaNotifier?.value = null;
   }
 
   @override
@@ -206,6 +245,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
     _subEventosMapa?.cancel();
     _subConexion?.cancel();
     _debounceMovimiento?.cancel();
+    widget.destinoMapaNotifier?.removeListener(_alPedirDestinoMapa);
     _ubicacionNotifier.dispose();
     _tickTrack.dispose();
     _asistenteNotifier.dispose();
@@ -404,21 +444,57 @@ class _PantallaMapaState extends State<PantallaMapa> {
     _asistenteNotifier.value = _EstadoAsistente(
       cargando: true,
       contexto: _asistenteNotifier.value.contexto,
+      contextoSugerencias: _asistenteNotifier.value.contextoSugerencias,
+      latitudConsultada: centro.latitude,
+      longitudConsultada: centro.longitude,
     );
     try {
-      final ctx = await consultarContextoGeologico(
-        centro.latitude,
-        centro.longitude,
-        capa: _capaGeologicaActual,
-      );
+      // Display: la capa activa. Sugerencias: siempre GEODE (más rica),
+      // para que cambiar de capa no haga aparecer/desaparecer fósiles. Si
+      // la activa YA es GEODE (o no hay capa, lo que en el servicio cae a
+      // GEODE como default), una sola HTTP.
+      final activaEsGeode = _capaGeologicaActual == null ||
+          _capaGeologicaActual!.urlBase == urlWmsIgmeGeode;
+      final futuros = activaEsGeode
+          ? [
+              consultarContextoGeologico(
+                centro.latitude,
+                centro.longitude,
+                capa: _capaGeologicaActual,
+              )
+            ]
+          : [
+              consultarContextoGeologico(
+                centro.latitude,
+                centro.longitude,
+                capa: _capaGeologicaActual,
+              ),
+              consultarContextoGeologico(
+                centro.latitude,
+                centro.longitude,
+                capa: capaGeologicaConsultaDefecto,
+              ),
+            ];
+      final resultados = await Future.wait(futuros);
+      final ctxDisplay = resultados[0];
+      final ctxSugerencias = resultados.length > 1 ? resultados[1] : ctxDisplay;
       if (!mounted || !_mostrarAsistente) return;
-      _asistenteNotifier.value = _EstadoAsistente(cargando: false, contexto: ctx);
+      _asistenteNotifier.value = _EstadoAsistente(
+        cargando: false,
+        contexto: ctxDisplay,
+        contextoSugerencias: ctxSugerencias,
+        latitudConsultada: centro.latitude,
+        longitudConsultada: centro.longitude,
+      );
     } catch (_) {
       // silencio: si falla, simplemente no actualizamos
       if (mounted) {
         _asistenteNotifier.value = _EstadoAsistente(
           cargando: false,
           contexto: _asistenteNotifier.value.contexto,
+          contextoSugerencias: _asistenteNotifier.value.contextoSugerencias,
+          latitudConsultada: centro.latitude,
+          longitudConsultada: centro.longitude,
         );
       }
     }
@@ -1115,28 +1191,156 @@ class _PantallaMapaState extends State<PantallaMapa> {
     );
   }
 
-  Future<({ContextoGeologico? geo, List<LugarInteresGeologico> ligs})> _consultarPunto(LatLng punto) async {
+  Future<({ContextoGeologico? geo, ContextoGeologico? geoSugerencias, List<LugarInteresGeologico> ligs})> _consultarPunto(LatLng punto) async {
     final delta = 0.02;
+    // Display: lo que sabe la capa que el usuario tiene activa de este
+    // punto (puede ser parcial — MAGNA solo da litología, Edades 1M solo
+    // da período, etc.). Sugerencias: SIEMPRE GEODE 50, para que los
+    // fósiles/minerales no cambien arbitrariamente al alternar capas. Si
+    // la activa ya era GEODE evitamos la HTTP duplicada.
+    final activaEsGeode = _capaGeologicaActual == null ||
+        _capaGeologicaActual!.urlBase == urlWmsIgmeGeode;
+    final consultaDisplay = consultarContextoGeologico(
+      punto.latitude,
+      punto.longitude,
+      capa: _capaGeologicaActual,
+    );
+    final consultaSugerencias = activaEsGeode
+        ? consultaDisplay
+        : consultarContextoGeologico(
+            punto.latitude,
+            punto.longitude,
+            capa: capaGeologicaConsultaDefecto,
+          );
+    final consultaLigs = _mostrarLig
+        ? buscarLigsEnExtension(
+            sur: punto.latitude - delta,
+            norte: punto.latitude + delta,
+            oeste: punto.longitude - delta,
+            este: punto.longitude + delta,
+          )
+        : Future.value(<LugarInteresGeologico>[]);
     final results = await Future.wait([
-      consultarContextoGeologico(
-        punto.latitude,
-        punto.longitude,
-        capa: _capaGeologicaActual,
-      ),
-      _mostrarLig
-          ? buscarLigsEnExtension(
-              sur: punto.latitude - delta,
-              norte: punto.latitude + delta,
-              oeste: punto.longitude - delta,
-              este: punto.longitude + delta,
-            )
-          : Future.value(<LugarInteresGeologico>[]),
+      consultaDisplay,
+      consultaSugerencias,
+      consultaLigs,
     ]);
-    return (geo: results[0] as ContextoGeologico?, ligs: results[1] as List<LugarInteresGeologico>);
+    return (
+      geo: results[0] as ContextoGeologico?,
+      geoSugerencias: results[1] as ContextoGeologico?,
+      ligs: results[2] as List<LugarInteresGeologico>,
+    );
+  }
+
+  /// Pide al endpoint ArcGIS REST de GEODE 50 la geometría del recinto
+  /// con OBJECTID dado, y la convierte en una lista de polígonos para
+  /// `flutter_map`. La respuesta es GeoJSON con `features[0].geometry`
+  /// que puede ser `Polygon` (lista de anillos) o `MultiPolygon` (lista
+  /// de listas de anillos). Devuelve lista vacía si la HTTP falla o si
+  /// la geometría no llega. No lanza — el contorno es "nice to have".
+  Future<List<Polygon>> _pedirGeometriaRecintoGeode(int objectid) async {
+    final uri = Uri.parse(
+      'https://mapas.igme.es/gis/rest/services/Cartografia_Geologica/'
+      'IGME_Geode_50/MapServer/1/query',
+    ).replace(queryParameters: {
+      'where': 'OBJECTID=$objectid',
+      'outFields': 'OBJECTID',
+      'returnGeometry': 'true',
+      'outSR': '4326',
+      'f': 'geojson',
+    });
+    try {
+      final respuesta = await http.get(uri).timeout(const Duration(seconds: 8));
+      if (respuesta.statusCode != 200) return const [];
+      final dynamic decodificado = jsonDecode(respuesta.body);
+      if (decodificado is! Map) return const [];
+      final features = decodificado['features'];
+      if (features is! List || features.isEmpty) return const [];
+      final geometria = (features.first as Map)['geometry'];
+      if (geometria is! Map) return const [];
+      final tipoGeometria = geometria['type'];
+      final coordenadas = geometria['coordinates'];
+      if (coordenadas is! List) return const [];
+
+      // GeoJSON: Polygon = lista de anillos (cada anillo lista de [lon,
+      // lat]). MultiPolygon = lista de Polygons. Pintamos cada anillo
+      // exterior como un Polygon de flutter_map; los anillos interiores
+      // (huecos) se ignoran — en este caso de uso son rarísimos.
+      final poligonos = <Polygon>[];
+      List<LatLng> anilloACamino(List<dynamic> anillo) => anillo
+          .whereType<List<dynamic>>()
+          .where((par) => par.length >= 2)
+          .map((par) => LatLng(
+                (par[1] as num).toDouble(),
+                (par[0] as num).toDouble(),
+              ))
+          .toList();
+      void agregarPolygon(List<dynamic> anillos) {
+        if (anillos.isEmpty) return;
+        final puntosExterior = anilloACamino(anillos.first as List<dynamic>);
+        if (puntosExterior.length < 3) return;
+        poligonos.add(Polygon(
+          points: puntosExterior,
+          color: const Color.fromRGBO(255, 235, 59, 0.25),
+          borderColor: const Color(0xFFFFC107),
+          borderStrokeWidth: 2,
+        ));
+      }
+      if (tipoGeometria == 'Polygon') {
+        agregarPolygon(coordenadas);
+      } else if (tipoGeometria == 'MultiPolygon') {
+        for (final poligonoCrudo in coordenadas) {
+          if (poligonoCrudo is List) agregarPolygon(poligonoCrudo);
+        }
+      }
+      return poligonos;
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  /// Extrae el OBJECTID del `crudo` de GEODE 50 si está presente. Las
+  /// claves van en mayúsculas en MapServer pero por seguridad probamos
+  /// también minúsculas. Devuelve null si no aparece (cualquier capa
+  /// distinta de GEODE).
+  int? _extraerObjectIdDeCrudo(Map<String, dynamic>? crudo) {
+    if (crudo == null) return null;
+    for (final clave in crudo.keys) {
+      if (clave.toLowerCase() == 'objectid') {
+        final valor = crudo[clave];
+        if (valor is int) return valor;
+        if (valor is num) return valor.toInt();
+        if (valor is String) return int.tryParse(valor);
+      }
+    }
+    return null;
   }
 
   Future<void> _mostrarFichaGeologia(LatLng punto) async {
     final futuro = _consultarPunto(punto);
+    // En paralelo: cuando llegue el contexto, si trae OBJECTID lo
+    // pasamos al endpoint REST para resaltar el recinto. Cualquier
+    // polígono previo se borra ya (el usuario está consultando otro
+    // punto). Si la consulta no devuelve OBJECTID (MAGNA/1M) el cache
+    // se queda vacío y no se pinta nada.
+    if (_poligonoResaltadoCache.isNotEmpty) {
+      setState(() => _poligonoResaltadoCache = const []);
+    }
+    () async {
+      final datos = await futuro;
+      // El polígono se busca preferentemente sobre el contexto de
+      // sugerencias (GEODE), que es el único que trae OBJECTID con
+      // certeza; si la capa activa ya era GEODE, ambos contextos son
+      // el mismo objeto y da igual cuál se mire.
+      final contextoConObjectid =
+          datos.geoSugerencias ?? datos.geo;
+      final objectid =
+          _extraerObjectIdDeCrudo(contextoConObjectid?.crudo);
+      if (objectid == null) return;
+      final poligonos = await _pedirGeometriaRecintoGeode(objectid);
+      if (!mounted || poligonos.isEmpty) return;
+      setState(() => _poligonoResaltadoCache = poligonos);
+    }();
     if (!mounted) return;
     showModalBottomSheet<void>(
       context: context,
@@ -1148,15 +1352,18 @@ class _PantallaMapaState extends State<PantallaMapa> {
           initialChildSize: 0.55,
           maxChildSize: 0.9,
           minChildSize: 0.3,
-          builder: (_, scrollController) => FutureBuilder<({ContextoGeologico? geo, List<LugarInteresGeologico> ligs})>(
+          builder: (_, scrollController) => FutureBuilder<({ContextoGeologico? geo, ContextoGeologico? geoSugerencias, List<LugarInteresGeologico> ligs})>(
             future: futuro,
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
               }
               final contexto = snapshot.data?.geo;
+              // Sugerencias: GEODE siempre (más rica); fallback al
+              // contexto de display si GEODE tampoco devolvió nada.
+              final contextoSug = snapshot.data?.geoSugerencias ?? contexto;
               final ligs = snapshot.data?.ligs ?? const <LugarInteresGeologico>[];
-              if (contexto == null && ligs.isEmpty) {
+              if (contexto == null && contextoSug == null && ligs.isEmpty) {
                 return ListView(
                   controller: scrollController,
                   padding: const EdgeInsets.all(16),
@@ -1167,14 +1374,33 @@ class _PantallaMapaState extends State<PantallaMapa> {
                   ],
                 );
               }
-              final periodoId = inferirPeriodoDesdeEdad(contexto?.edad);
+              // Período derivado de GEODE para que la sugerencia sea
+              // consistente entre capas. La cabecera (más abajo) sigue
+              // mostrando la edad/formación/litología que devolvió la
+              // capa activa para el display.
+              final periodoId = inferirPeriodoDesdeEdad(contextoSug?.edad);
               final periodo = periodoId != null ? buscarPeriodo(periodoId) : null;
-              final fosiles = periodoId != null ? fosilesPorPeriodo(periodoId).take(6).toList() : <FosilGuia>[];
+              final ambientesContexto = ambientesProbablesPorLitologia(contextoSug?.litologia);
+              // Si la formación que devuelve GEODE está en el catálogo
+              // curado, las sugerencias de fósiles se ciñen a esa
+              // formación (típicamente 3-6 IDs muy específicos). Si no
+              // está catalogada, caemos a período + ambiente (más
+              // genérico).
+              final formacionCatalogada = buscarFormacionEnTexto(contextoSug?.formacion);
+              final fosiles = formacionCatalogada != null
+                  ? fosilesPorFormacion(formacionCatalogada).take(6).toList()
+                  : (periodoId != null
+                      ? fosilesPorPeriodoYAmbiente(periodoId, ambientesContexto).take(6).toList()
+                      : <FosilGuia>[]);
               final minerales = mineralesProbablesEnContexto(
-                edad: contexto?.edad,
-                formacion: contexto?.formacion,
-                litologia: contexto?.litologia,
+                edad: contextoSug?.edad,
+                formacion: contextoSug?.formacion,
+                litologia: contextoSug?.litologia,
               ).take(6).toList();
+              final yacimientosProximos = yacimientosCercanos(
+                punto.latitude,
+                punto.longitude,
+              );
               return ListView(
                 controller: scrollController,
                 padding: const EdgeInsets.all(16),
@@ -1204,6 +1430,26 @@ class _PantallaMapaState extends State<PantallaMapa> {
                               style: TextStyle(fontSize: 11),
                             ),
                             onTap: () => _mostrarFichaLig(lig),
+                          ),
+                        )),
+                  ],
+                  if (yacimientosProximos.isNotEmpty) ...[
+                    SizedBox(height: 16),
+                    Text('Yacimientos curados cercanos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    SizedBox(height: 6),
+                    ...yacimientosProximos.take(5).map((entrada) => Card(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          child: ListTile(
+                            leading: CircleAvatar(child: Text(entrada.yac.emoji)),
+                            title: Text(
+                              '${entrada.yac.nombre}  ·  ${_formatearDistanciaKm(entrada.distanciaKm)}',
+                              style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            ),
+                            subtitle: Text(entrada.yac.tituloEdad, style: TextStyle(fontSize: 11)),
+                            onTap: () {
+                              Navigator.of(sheetContext).pop();
+                              _mostrarFichaYacimiento(entrada.yac);
+                            },
                           ),
                         )),
                   ],
@@ -1264,7 +1510,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
           ),
         );
       },
-    );
+    ).whenComplete(() {
+      // Al cerrar la ficha geológica borramos el polígono resaltado.
+      // El usuario ya no está consultando ese recinto; mantenerlo
+      // pintado mientras navega genera distracción visual.
+      if (!mounted) return;
+      if (_poligonoResaltadoCache.isEmpty) return;
+      setState(() => _poligonoResaltadoCache = const []);
+    });
   }
 
   void _mostrarFichaLig(LugarInteresGeologico lig) {
@@ -1301,6 +1554,16 @@ class _PantallaMapaState extends State<PantallaMapa> {
         ),
       ),
     );
+  }
+
+  /// Formato adulto para una distancia en km: "a 2,3 km" con un decimal
+  /// cuando es menor de 10 km, y entero "a 12 km" a partir de ahí. Coma
+  /// decimal por consistencia con el resto de la UI castellana.
+  static String _formatearDistanciaKm(double distancia) {
+    if (distancia < 10) {
+      return 'a ${distancia.toStringAsFixed(1).replaceAll('.', ',')} km';
+    }
+    return 'a ${distancia.toStringAsFixed(0)} km';
   }
 
   Widget _filaGeo(String clave, String valor) => Padding(
@@ -1352,11 +1615,26 @@ class _PantallaMapaState extends State<PantallaMapa> {
     _circulosCalorCache = const [];
     _markersHallazgosCache = List.generate(visibles.length, (i) {
       final h = visibles[i];
-      final periodoId = inferirPeriodoDesdeEdad(h.edad);
-      final color = periodoId != null ? buscarPeriodo(periodoId)?.color : null;
       final esMineral = h.esMineral;
-      final icono = esMineral ? Icons.diamond : Icons.location_on;
-      final colorIcono = color ?? (esMineral ? const Color(0xFF2E5C8A) : const Color(0xFFB54A2A));
+      // Fósil: icono `bug_report` (huesos) sobre fondo del color del
+      // período inferido por la edad — fallback al verde-oliva de la app
+      // si la edad no permite inferir período. Mineral: `diamond` sobre
+      // blueGrey neutro (los minerales no se ordenan cronológicamente en
+      // la guía como sí hacen los fósiles, así que el color del período
+      // no aporta semántica útil para mineralogía).
+      final IconData iconoMarker;
+      final Color colorFondoMarker;
+      if (esMineral) {
+        iconoMarker = Icons.diamond;
+        colorFondoMarker = Colors.blueGrey.shade300;
+      } else {
+        iconoMarker = Icons.bug_report;
+        final periodoIdFosil = inferirPeriodoDesdeEdad(h.edad);
+        final colorPeriodoFosil = periodoIdFosil != null
+            ? buscarPeriodo(periodoIdFosil)?.color
+            : null;
+        colorFondoMarker = colorPeriodoFosil ?? const Color(0xFFB54A2A);
+      }
       return Marker(
         point: LatLng(h.latitud, h.longitud),
         width: 44,
@@ -1365,12 +1643,13 @@ class _PantallaMapaState extends State<PantallaMapa> {
           onTap: () => _mostrarFichaHallazgo(visibles, i),
           child: Container(
             padding: const EdgeInsets.all(4),
-            decoration: const BoxDecoration(
-              color: Colors.white,
+            decoration: BoxDecoration(
+              color: colorFondoMarker,
               shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 3)],
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 3)],
             ),
-            child: Icon(icono, color: colorIcono, size: esMineral ? 24 : 28),
+            child: Icon(iconoMarker, color: Colors.white, size: esMineral ? 24 : 28),
           ),
         ),
       );
@@ -1471,12 +1750,38 @@ class _PantallaMapaState extends State<PantallaMapa> {
               }
             }),
             itemBuilder: (_) => [
-              PopupMenuItem(value: '__off__', child: Text('Sin geología' + (_capaGeologicaActual == null ? ' ✓' : ''))),
+              PopupMenuItem(
+                value: '__off__',
+                child: Text('Sin geología' + (_capaGeologicaActual == null ? ' ✓' : '')),
+              ),
               PopupMenuDivider(),
-              ...capasGeologicasWms.map((c) => PopupMenuItem(
-                    value: c.nombre,
-                    child: Text(c.nombre + (c.nombre == _capaGeologicaActual?.nombre ? ' ✓' : '')),
-                  )),
+              ...capasGeologicasWms.map((c) {
+                final activa = c.nombre == _capaGeologicaActual?.nombre;
+                return PopupMenuItem(
+                  value: c.nombre,
+                  height: 72,
+                  child: SizedBox(
+                    width: 280,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          c.nombre + (activa ? ' ✓' : ''),
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          c.descripcion,
+                          style: const TextStyle(fontSize: 11, color: Colors.black54, height: 1.2),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }),
             ],
           ),
           IconButton(
@@ -1557,7 +1862,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
             child: FlutterMap(
             mapController: _controladorMapa,
             options: MapOptions(
-              initialCenter: _centroEuskalHerria,
+              initialCenter: _centroInicialMapa,
               initialZoom: _zoomInicial,
               minZoom: 6,
               maxZoom: 18,
@@ -1655,8 +1960,53 @@ class _PantallaMapaState extends State<PantallaMapa> {
                   ]);
                 },
               ),
+              // Contorno del recinto geológico consultado: se pinta
+              // DESPUÉS de las capas WMS (para no quedar tapado por el
+              // color de GEODE) y ANTES de los markers (para no tapar
+              // las chinchetas de hallazgos). Vacío salvo durante la
+              // consulta de geología en modo "Explorar geología".
+              if (_poligonoResaltadoCache.isNotEmpty)
+                PolygonLayer(polygons: _poligonoResaltadoCache),
               if (_circulosCalorCache.isNotEmpty) CircleLayer(circles: _circulosCalorCache),
-              if (_markersHallazgosCache.isNotEmpty) MarkerLayer(markers: _markersHallazgosCache),
+              // Hallazgos propios: agrupados en clústers (sólo ellos, no
+              // las cuevas/megalitos/yacimientos curados). En zoom alto
+              // (>14) cada hallazgo se ve suelto; al alejarse, los
+              // markers próximos se funden en un círculo verde con el
+              // número de hallazgos. Sin polígono del convex hull —
+              // distrae más que ayuda a leer el mapa.
+              if (_markersHallazgosCache.isNotEmpty)
+                MarkerClusterLayerWidget(
+                  options: MarkerClusterLayerOptions(
+                    maxClusterRadius: 45,
+                    disableClusteringAtZoom: 14,
+                    size: const Size(44, 44),
+                    markers: _markersHallazgosCache,
+                    polygonOptions: const PolygonOptions(
+                      borderColor: Colors.transparent,
+                      color: Colors.transparent,
+                      borderStrokeWidth: 0,
+                    ),
+                    builder: (context, marcadoresAgrupados) => Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF5E7D3A),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 2),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 3),
+                        ],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${marcadoresAgrupados.length}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               if (_markersCuevasCache.isNotEmpty) MarkerLayer(markers: _markersCuevasCache),
               if (_markersMonumentosCache.isNotEmpty) MarkerLayer(markers: _markersMonumentosCache),
               if (_markersYacimientosCache.isNotEmpty) MarkerLayer(markers: _markersYacimientosCache),
@@ -1710,7 +2060,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
             ),
           if (_hallazgos.isNotEmpty)
             Positioned(
-              top: 8,
+              // Cuando hay un modo activo (Marcar punto / Explorar
+              // geología), el banner "Toca el mapa..." se posiciona en
+              // top:8. Antes los chips de período compartían top:8 y se
+              // pisaban con el banner — el resumen de fósiles tapaba el
+              // aviso del filtro activo. Ahora bajamos los chips a 56
+              // (debajo del banner) cuando hay modo, y dejamos top:8 en
+              // modo normal para no perder espacio del mapa.
+              top: _modo != _ModoMapa.ver ? 56 : 8,
               left: 8,
               right: 8,
               child: SingleChildScrollView(
@@ -1762,17 +2119,48 @@ class _PantallaMapaState extends State<PantallaMapa> {
     );
   }
 
+  /// Resumen de una línea para la cabecera del panel asistente. Antes
+  /// solo se mostraba `edad`, pero capas como MAGNA o Litologías 1M
+  /// devuelven litología sin edad: el panel decía "Sin datos" aunque sí
+  /// había información. Ahora cogemos el primer campo útil disponible.
+  String? _resumenAsistente(ContextoGeologico? ctx) {
+    if (ctx == null) return null;
+    return ctx.edad ?? ctx.litologia ?? ctx.formacion ?? ctx.zona;
+  }
+
   Widget _panelAsistente(_EstadoAsistente estado) {
     final ctx = estado.contexto;
+    // Para las sugerencias usamos siempre los datos de GEODE (cartografía
+    // más rica): así los fósiles y minerales no cambian arbitrariamente
+    // al alternar entre capas. Fallback al ctx de display por si GEODE
+    // tampoco devolvió nada.
+    final ctxSug = estado.contextoSugerencias ?? ctx;
     final cargando = estado.cargando;
-    final periodoId = inferirPeriodoDesdeEdad(ctx?.edad);
+    final periodoId = inferirPeriodoDesdeEdad(ctxSug?.edad);
     final periodo = periodoId != null ? buscarPeriodo(periodoId) : null;
-    final fosiles = periodoId != null ? fosilesPorPeriodo(periodoId).take(4).toList() : <FosilGuia>[];
+    final ambientesContexto = ambientesProbablesPorLitologia(ctxSug?.litologia);
+    final formacionCatalogada = buscarFormacionEnTexto(ctxSug?.formacion);
+    final fosiles = formacionCatalogada != null
+        ? fosilesPorFormacion(formacionCatalogada).take(4).toList()
+        : (periodoId != null
+            ? fosilesPorPeriodoYAmbiente(periodoId, ambientesContexto).take(4).toList()
+            : <FosilGuia>[]);
     final minerales = mineralesProbablesEnContexto(
-      edad: ctx?.edad,
-      formacion: ctx?.formacion,
-      litologia: ctx?.litologia,
+      edad: ctxSug?.edad,
+      formacion: ctxSug?.formacion,
+      litologia: ctxSug?.litologia,
     ).take(4).toList();
+    // Yacimientos curados a <5 km del punto consultado, tope a dos
+    // chips. Si la pista geológica no aporta fósiles ni minerales (a
+    // veces el IGME no responde) el chip del yacimiento puede ser el
+    // único contenido útil del panel.
+    final yacimientosProximos = (estado.latitudConsultada != null &&
+            estado.longitudConsultada != null)
+        ? yacimientosCercanos(
+            estado.latitudConsultada!,
+            estado.longitudConsultada!,
+          ).take(2).toList()
+        : const <({YacimientoCurado yac, double distanciaKm})>[];
     final esquema = Theme.of(context).colorScheme;
     return Material(
       elevation: 6,
@@ -1784,6 +2172,40 @@ class _PantallaMapaState extends State<PantallaMapa> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Aviso de sin conexión: el asistente IGME es un GetFeatureInfo
+            // contra mapas.igme.es, así que sin red no hay datos. Sin este
+            // chip el panel decía "Sin datos del IGME en el centro del
+            // mapa" y el usuario se quedaba pensando que el IGME no tenía
+            // cobertura en ese punto, cuando en realidad estaba offline.
+            if (!_conectado)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: Colors.red.shade300),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.cloud_off, size: 14, color: Colors.red.shade700),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          'El asistente IGME necesita conexión',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Colors.red.shade700,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             Row(children: [
               Icon(Icons.assistant, size: 18, color: esquema.primary),
               SizedBox(width: 6),
@@ -1791,7 +2213,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 child: Text(
                   cargando
                       ? 'Consultando IGME…'
-                      : (ctx?.edad ?? 'Sin datos del IGME en el centro del mapa'),
+                      : (_resumenAsistente(ctx) ?? 'Sin datos del IGME en el centro del mapa'),
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: esquema.onSurface),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1814,7 +2236,9 @@ class _PantallaMapaState extends State<PantallaMapa> {
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF2D3A2E))),
                 ),
               ),
-            if (fosiles.isNotEmpty || minerales.isNotEmpty)
+            if (fosiles.isNotEmpty ||
+                minerales.isNotEmpty ||
+                yacimientosProximos.isNotEmpty)
               SizedBox(
                 height: 56,
                 child: ListView(
@@ -1836,6 +2260,19 @@ class _PantallaMapaState extends State<PantallaMapa> {
                           avatar: Text('💎'),
                           label: Text(m.nombre, style: TextStyle(fontSize: 11)),
                           onPressed: () => abrirDetalleMineral(context, m.id),
+                        ),
+                      ),
+                    for (final entradaYacimiento in yacimientosProximos)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ActionChip(
+                          avatar: Icon(Icons.museum, size: 14),
+                          label: Text(
+                            '${_formatearDistanciaKm(entradaYacimiento.distanciaKm)} · ${entradaYacimiento.yac.nombre}',
+                            style: TextStyle(fontSize: 11),
+                          ),
+                          onPressed: () =>
+                              _mostrarFichaYacimiento(entradaYacimiento.yac),
                         ),
                       ),
                   ],
@@ -2268,10 +2705,30 @@ class _EstadoFirma {
 
 /// Estado inmutable del asistente IGME. Va dentro de un ValueNotifier
 /// para que el panel asistente se reconstruya sin tocar el FlutterMap.
+/// Guarda también las coordenadas consultadas para poder cruzar otras
+/// fuentes locales (yacimientos curados cercanos, etc.) sin re-tocar el
+/// controlador del mapa.
 class _EstadoAsistente {
   final bool cargando;
+  /// Datos de la capa que el usuario tiene pintada en el mapa. Se usa
+  /// para el título y la edad/litología que aparecen en la cabecera del
+  /// panel — el usuario espera ver lo que esa capa SABE de ese punto.
   final ContextoGeologico? contexto;
-  const _EstadoAsistente({required this.cargando, required this.contexto});
+  /// Datos siempre desde GEODE 50 (cartografía más rica). Se usa para
+  /// alimentar el matching de fósiles, formaciones y minerales — así las
+  /// sugerencias no cambian de pronto al alternar capas y se mantienen
+  /// específicas aunque la activa sea MAGNA o un 1M. Si la capa activa
+  /// ya era GEODE, apunta al mismo objeto que [contexto].
+  final ContextoGeologico? contextoSugerencias;
+  final double? latitudConsultada;
+  final double? longitudConsultada;
+  const _EstadoAsistente({
+    required this.cargando,
+    required this.contexto,
+    this.contextoSugerencias,
+    this.latitudConsultada,
+    this.longitudConsultada,
+  });
 }
 
 /// Sello dorado con info de la(s) autoridad(es) que certificaron este

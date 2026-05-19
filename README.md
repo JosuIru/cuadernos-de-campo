@@ -1,6 +1,6 @@
 # fosiles_flutter
 
-Cuaderno de campo de fósiles para Euskal Herria
+Cuaderno de campo de fósiles
 
 ## Getting Started
 

@@ -18,7 +18,12 @@ import 'pantalla_estadisticas.dart';
 import 'pantalla_nuevo.dart';
 
 class PantallaLista extends StatefulWidget {
-  PantallaLista({super.key});
+  /// Callback opcional para pedir centrar el mapa en las coords de un
+  /// hallazgo. Si se pasa, la ficha del hallazgo muestra un botón "Ver en
+  /// el mapa" que cierra la ficha, salta a la pestaña de mapa y centra la
+  /// vista sobre el punto. Cuando es null, el botón no aparece.
+  final void Function(double latitud, double longitud)? alVerEnMapa;
+  PantallaLista({super.key, this.alVerEnMapa});
 
   @override
   State<PantallaLista> createState() => _PantallaListaState();
@@ -77,166 +82,217 @@ class _PantallaListaState extends State<PantallaLista> {
       _aplicarFiltros(_hallazgos.where(_esCompartido));
 
 
-  Future<void> _abrirDetalle(Hallazgo hallazgo) async {
+  Future<void> _abrirDetalle(List<Hallazgo> listaVisible, int indiceInicial) async {
+    if (listaVisible.isEmpty) return;
+    final inicialAcotado = indiceInicial.clamp(0, listaVisible.length - 1);
+    final controladorFichas = PageController(initialPage: inicialAcotado);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (sheetContext) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: 0.85,
-        maxChildSize: 0.95,
-        minChildSize: 0.4,
-        builder: (_, scrollController) => SingleChildScrollView(
-          controller: scrollController,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (hallazgo.rutasFotos.isNotEmpty)
-                SizedBox(
-                  height: 240,
-                  child: PageView.builder(
-                    itemCount: hallazgo.rutasFotos.length,
-                    itemBuilder: (_, i) => Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            // cacheWidth: 1600 → decodificación tope a
-                            // 1600 px ancho. Suficiente para llenar la
-                            // ficha aun en tablet, y evita decodificar
-                            // 12 MP de RAM por foto.
-                            child: Image.file(
-                              File(hallazgo.rutasFotos[i]),
-                              height: 240,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                              cacheWidth: 1600,
-                            ),
-                          ),
-                          if (hallazgo.rutasFotos.length > 1)
-                            Positioned(
-                              right: 8,
-                              bottom: 8,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
-                                child: Text('${i + 1} / ${hallazgo.rutasFotos.length}', style: TextStyle(color: Colors.white, fontSize: 11)),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              SizedBox(height: 12),
-              _filaDetalle('Especie', hallazgo.especie.isEmpty ? '—' : hallazgo.especie),
-              _filaDetalle('Edad', hallazgo.edad.isEmpty ? '—' : hallazgo.edad),
-              _filaDetalle('Formación', hallazgo.formacion.isEmpty ? '—' : hallazgo.formacion),
-              _filaDetalle('Fecha', DateFormat('dd MMM yyyy HH:mm', 'es_ES').format(DateTime.fromMillisecondsSinceEpoch(hallazgo.fechaMs))),
-              _filaDetalle('Coordenadas', '${hallazgo.latitud.toStringAsFixed(5)}, ${hallazgo.longitud.toStringAsFixed(5)}${hallazgo.precision != null ? " (±${hallazgo.precision!.round()} m)" : ""}'),
-              if (hallazgo.strikeGrados != null && hallazgo.dipGrados != null)
-                _filaDetalle('Estrato', '${hallazgo.strikeGrados!.toStringAsFixed(0)}° / ${hallazgo.dipGrados!.toStringAsFixed(0)}°'),
-              _filaDetalle('Notas', hallazgo.notas.isEmpty ? '—' : hallazgo.notas),
-              SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: Icon(Icons.edit_outlined),
-                      onPressed: () async {
-                        Navigator.of(sheetContext).pop();
-                        final actualizado = await Navigator.of(context).push<bool>(
-                          MaterialPageRoute(builder: (_) => PantallaNuevoHallazgo(hallazgoExistente: hallazgo)),
-                        );
-                        if (actualizado == true) _cargar();
-                      },
-                      label: Text(SoleraL10n.t('editar')),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () async {
-                        final confirmar = await _confirmar(context, '¿Borrar este hallazgo?');
-                        if (confirmar != true) return;
-                        await BaseDatosFosiles.instancia.borrarHallazgo(hallazgo.id!);
-                        if (!mounted) return;
-                        Navigator.of(sheetContext).pop();
-                        _cargar();
-                      },
-                      label: Text('Borrar', style: TextStyle(color: Colors.red)),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      icon: Icon(Icons.share),
-                      onPressed: () => _compartir(hallazgo),
-                      label: Text('Compartir texto'),
-                    ),
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: FilledButton.icon(
-                      icon: Icon(Icons.image),
-                      onPressed: () => _compartirComoTarjeta(hallazgo),
-                      label: Text('Tarjeta'),
-                    ),
-                  ),
-                ],
-              ),
-              SizedBox(height: 8),
-              OutlinedButton.icon(
-                icon: Icon(Icons.verified_user),
-                onPressed: () => _compartirCertificado(hallazgo),
-                label: Text('Certificado verificable'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: Size(double.infinity, 40),
-                ),
-              ),
-              SizedBox(height: 16),
-              if (hallazgo.historialTrazabilidad.isNotEmpty) ...[
-                Text('Historial de trazabilidad',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                SizedBox(height: 6),
-                ...hallazgo.historialTrazabilidad.map(tarjetaEventoTrazabilidad),
-                SizedBox(height: 8),
-              ],
-              OutlinedButton.icon(
-                icon: Icon(Icons.add),
-                onPressed: () async {
-                  final nombre = await Configuracion.obtenerNombreDescubridor();
-                  if (!mounted) return;
-                  final anadido = await mostrarDialogoAnadirTrazabilidad(
-                      context, hallazgo, nombre);
-                  if (anadido) {
-                    _cargar();
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Evento añadido al historial.')),
-                      );
-                    }
-                  }
-                },
-                label: Text(hallazgo.historialTrazabilidad.isEmpty
-                    ? 'Añadir trazabilidad'
-                    : 'Añadir evento'),
-                style: OutlinedButton.styleFrom(
-                  minimumSize: Size(double.infinity, 40),
-                ),
-              ),
-            ],
+      builder: (sheetContext) => FractionallySizedBox(
+        heightFactor: 0.9,
+        // PageView horizontal entre fichas: arrastra izquierda/derecha
+        // sobre cualquier parte del cuerpo (texto, botones, trazabilidad)
+        // para saltar al hallazgo anterior/siguiente. El carrousel de
+        // fotos lleva su propio PageView dentro y captura el gesto solo
+        // en su área, así que swipe sobre las fotos avanza fotos sin
+        // tocar la navegación entre fichas. La lista que se navega es la
+        // que el usuario ve (con su filtro de búsqueda y pestaña), no el
+        // catálogo completo.
+        child: PageView.builder(
+          controller: controladorFichas,
+          itemCount: listaVisible.length,
+          itemBuilder: (_, indice) => SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: _contenidoFichaHallazgo(
+              sheetContext: sheetContext,
+              hallazgo: listaVisible[indice],
+              indiceEnLista: indice,
+              total: listaVisible.length,
+            ),
           ),
         ),
       ),
+    );
+    controladorFichas.dispose();
+  }
+
+  Widget _contenidoFichaHallazgo({
+    required BuildContext sheetContext,
+    required Hallazgo hallazgo,
+    required int indiceEnLista,
+    required int total,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (total > 1)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Text(
+              '${indiceEnLista + 1} / $total · desliza ← → para cambiar',
+              style: const TextStyle(fontSize: 11, color: Colors.black54),
+            ),
+          ),
+        if (hallazgo.rutasFotos.isNotEmpty)
+          SizedBox(
+            height: 240,
+            child: PageView.builder(
+              itemCount: hallazgo.rutasFotos.length,
+              itemBuilder: (_, i) => Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                child: Stack(
+                  children: [
+                    GestureDetector(
+                      onTap: () => _abrirVisorFotos(context, hallazgo.rutasFotos, i),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        // cacheWidth: 1600 → decodificación tope a
+                        // 1600 px ancho. Suficiente para llenar la
+                        // ficha aun en tablet, y evita decodificar
+                        // 12 MP de RAM por foto.
+                        child: Image.file(
+                          File(hallazgo.rutasFotos[i]),
+                          height: 240,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          cacheWidth: 1600,
+                        ),
+                      ),
+                    ),
+                    if (hallazgo.rutasFotos.length > 1)
+                      Positioned(
+                        right: 8,
+                        bottom: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: Colors.black54, borderRadius: BorderRadius.circular(12)),
+                          child: Text('${i + 1} / ${hallazgo.rutasFotos.length}', style: TextStyle(color: Colors.white, fontSize: 11)),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        SizedBox(height: 12),
+        _filaDetalle('Especie', hallazgo.especie.isEmpty ? '—' : hallazgo.especie),
+        _filaDetalle('Edad', hallazgo.edad.isEmpty ? '—' : hallazgo.edad),
+        _filaDetalle('Formación', hallazgo.formacion.isEmpty ? '—' : hallazgo.formacion),
+        _filaDetalle('Fecha', DateFormat('dd MMM yyyy HH:mm', 'es_ES').format(DateTime.fromMillisecondsSinceEpoch(hallazgo.fechaMs))),
+        _filaDetalle('Coordenadas', '${hallazgo.latitud.toStringAsFixed(5)}, ${hallazgo.longitud.toStringAsFixed(5)}${hallazgo.precision != null ? " (±${hallazgo.precision!.round()} m)" : ""}'),
+        if (hallazgo.strikeGrados != null && hallazgo.dipGrados != null)
+          _filaDetalle('Estrato', '${hallazgo.strikeGrados!.toStringAsFixed(0)}° / ${hallazgo.dipGrados!.toStringAsFixed(0)}°'),
+        _filaDetalle('Notas', hallazgo.notas.isEmpty ? '—' : hallazgo.notas),
+        SizedBox(height: 16),
+        if (widget.alVerEnMapa != null) ...[
+          FilledButton.tonalIcon(
+            icon: Icon(Icons.map_outlined),
+            onPressed: () {
+              Navigator.of(sheetContext).pop();
+              widget.alVerEnMapa!(hallazgo.latitud, hallazgo.longitud);
+            },
+            label: Text('Ver en el mapa'),
+            style: FilledButton.styleFrom(
+              minimumSize: Size(double.infinity, 40),
+            ),
+          ),
+          SizedBox(height: 8),
+        ],
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: Icon(Icons.edit_outlined),
+                onPressed: () async {
+                  Navigator.of(sheetContext).pop();
+                  final actualizado = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(builder: (_) => PantallaNuevoHallazgo(hallazgoExistente: hallazgo)),
+                  );
+                  if (actualizado == true) _cargar();
+                },
+                label: Text(SoleraL10n.t('editar')),
+              ),
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: Icon(Icons.delete_outline, color: Colors.red),
+                onPressed: () async {
+                  final confirmar = await _confirmar(context, '¿Borrar este hallazgo?');
+                  if (confirmar != true) return;
+                  await BaseDatosFosiles.instancia.borrarHallazgo(hallazgo.id!);
+                  if (!mounted) return;
+                  Navigator.of(sheetContext).pop();
+                  _cargar();
+                },
+                label: Text('Borrar', style: TextStyle(color: Colors.red)),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                icon: Icon(Icons.share),
+                onPressed: () => _compartir(hallazgo),
+                label: Text('Compartir texto'),
+              ),
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              child: FilledButton.icon(
+                icon: Icon(Icons.image),
+                onPressed: () => _compartirComoTarjeta(hallazgo),
+                label: Text('Tarjeta'),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: 8),
+        OutlinedButton.icon(
+          icon: Icon(Icons.verified_user),
+          onPressed: () => _compartirCertificado(hallazgo),
+          label: Text('Certificado verificable'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: Size(double.infinity, 40),
+          ),
+        ),
+        SizedBox(height: 16),
+        if (hallazgo.historialTrazabilidad.isNotEmpty) ...[
+          Text('Historial de trazabilidad',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          SizedBox(height: 6),
+          ...hallazgo.historialTrazabilidad.map(tarjetaEventoTrazabilidad),
+          SizedBox(height: 8),
+        ],
+        OutlinedButton.icon(
+          icon: Icon(Icons.add),
+          onPressed: () async {
+            final nombre = await Configuracion.obtenerNombreDescubridor();
+            if (!mounted) return;
+            final anadido = await mostrarDialogoAnadirTrazabilidad(
+                context, hallazgo, nombre);
+            if (anadido) {
+              _cargar();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Evento añadido al historial.')),
+                );
+              }
+            }
+          },
+          label: Text(hallazgo.historialTrazabilidad.isEmpty
+              ? 'Añadir trazabilidad'
+              : 'Añadir evento'),
+          style: OutlinedButton.styleFrom(
+            minimumSize: Size(double.infinity, 40),
+          ),
+        ),
+      ],
     );
   }
 
@@ -482,20 +538,28 @@ class _PantallaListaState extends State<PantallaLista> {
               .format(DateTime.fromMillisecondsSinceEpoch(h.fechaMs));
           return ListTile(
             leading: h.rutaFoto != null
-                ? ClipRRect(
-                    borderRadius: BorderRadius.circular(6),
-                    // cacheWidth fuerza a Flutter a decodificar la foto a
-                    // 96 px de ancho (densidad 2x para pantallas hi-dpi)
-                    // en lugar de a su resolución original (típicamente
-                    // 4000+ px). Sin esto, una lista con 100 hallazgos de
-                    // cámara consume varios GB de RAM por miniatura.
-                    child: Image.file(
-                      File(h.rutaFoto!),
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                      cacheWidth: 96,
-                      cacheHeight: 96,
+                // GestureDetector envuelve la miniatura y captura el tap
+                // ANTES de que el ListTile lo reciba, así pulsar la foto
+                // abre el visor a pantalla completa en vez de la ficha.
+                // Para abrir la ficha se pulsa cualquier otro punto de la
+                // tile.
+                ? GestureDetector(
+                    onTap: () => _abrirVisorFotos(context, h.rutasFotos, 0),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      // cacheWidth fuerza a Flutter a decodificar la foto a
+                      // 96 px de ancho (densidad 2x para pantallas hi-dpi)
+                      // en lugar de a su resolución original (típicamente
+                      // 4000+ px). Sin esto, una lista con 100 hallazgos de
+                      // cámara consume varios GB de RAM por miniatura.
+                      child: Image.file(
+                        File(h.rutaFoto!),
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        cacheWidth: 96,
+                        cacheHeight: 96,
+                      ),
                     ),
                   )
                 : const CircleAvatar(child: Icon(Icons.image_not_supported)),
@@ -521,9 +585,84 @@ class _PantallaListaState extends State<PantallaLista> {
               '${h.latitud.toStringAsFixed(4)}, ${h.longitud.toStringAsFixed(4)}',
             ),
             isThreeLine: true,
-            onTap: () => _abrirDetalle(h),
+            onTap: () => _abrirDetalle(lista, i),
           );
         },
+      ),
+    );
+  }
+}
+
+/// Abre un visor a pantalla completa con las fotos del hallazgo. Permite
+/// pinch-zoom (hasta 6x), swipe entre fotos cuando hay más de una y un
+/// botón de cerrar. Pensado para que el usuario pueda mirar el detalle
+/// fino de una foto sin ir a la galería del sistema.
+void _abrirVisorFotos(BuildContext context, List<String> rutasFotos, int indiceInicial) {
+  if (rutasFotos.isEmpty) return;
+  Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => _VisorFotosFullscreen(
+        rutasFotos: rutasFotos,
+        indiceInicial: indiceInicial.clamp(0, rutasFotos.length - 1),
+      ),
+    ),
+  );
+}
+
+class _VisorFotosFullscreen extends StatefulWidget {
+  final List<String> rutasFotos;
+  final int indiceInicial;
+  const _VisorFotosFullscreen({required this.rutasFotos, required this.indiceInicial});
+
+  @override
+  State<_VisorFotosFullscreen> createState() => _VisorFotosFullscreenState();
+}
+
+class _VisorFotosFullscreenState extends State<_VisorFotosFullscreen> {
+  late final PageController _controladorPagina;
+  late int _indiceActual;
+
+  @override
+  void initState() {
+    super.initState();
+    _indiceActual = widget.indiceInicial;
+    _controladorPagina = PageController(initialPage: widget.indiceInicial);
+  }
+
+  @override
+  void dispose() {
+    _controladorPagina.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hayVarias = widget.rutasFotos.length > 1;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: hayVarias
+            ? Text('${_indiceActual + 1} / ${widget.rutasFotos.length}')
+            : null,
+      ),
+      body: PageView.builder(
+        controller: _controladorPagina,
+        itemCount: widget.rutasFotos.length,
+        onPageChanged: (i) => setState(() => _indiceActual = i),
+        itemBuilder: (_, i) => InteractiveViewer(
+          minScale: 1.0,
+          maxScale: 6.0,
+          child: Center(
+            child: Image.file(
+              File(widget.rutasFotos[i]),
+              fit: BoxFit.contain,
+            ),
+          ),
+        ),
       ),
     );
   }

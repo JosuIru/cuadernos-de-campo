@@ -5,12 +5,14 @@ import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:share_plus/share_plus.dart';
 import '../datos/configuracion.dart';
 import '../datos/yacimientos_curados.dart';
+import '../servicios/servicio_geologia.dart';
 import '../servicios/cache_teselas.dart';
 import '../servicios/servicio_backup.dart';
 import '../servicios/geofencing.dart';
 import 'pantalla_identidad.dart';
 import 'pantalla_mapas_offline.dart';
 import 'pantalla_modo_experto.dart';
+import 'pantalla_onboarding.dart';
 import 'pantalla_verificar_certificado.dart';
 import 'sheet_donaciones.dart';
 
@@ -412,13 +414,139 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
           ),
           SizedBox(height: 32),
           
-          Text('Sobre la app', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text('Sobre la app', style: Theme.of(context).textTheme.titleLarge),
           SizedBox(height: 8),
           Text(
-            'Fósiles — Cuaderno de campo. Versión Flutter para Android.\n\n'
-            'Datos geológicos: IGME (MAGNA 50 / GEODE 50). Mapa base: OpenStreetMap, ESRI, OpenTopoMap. '
-            'Cuevas: OpenStreetMap (Overpass). Imágenes y descripciones complementarias: Wikipedia (CC-BY-SA).',
-            style: TextStyle(fontSize: 13, color: Colors.grey),
+            'Cuaderno de campo de fósiles para adulto aficionado. Anota '
+            'hallazgos georreferenciados con foto, edad, formación, '
+            'strike/dip del estrato; consulta el contexto geológico del '
+            'IGME en el punto donde pinches; y guarda una guía local de '
+            'fósiles y minerales por período.',
+            style: TextStyle(fontSize: 13),
+          ),
+          SizedBox(height: 12),
+          OutlinedButton.icon(
+            icon: Icon(Icons.help_outline),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                fullscreenDialog: true,
+                builder: (_) => const PantallaOnboarding(
+                  marcarComoVistoAlSalir: false,
+                ),
+              ),
+            ),
+            label: Text('Ver tour de presentación'),
+          ),
+          SizedBox(height: 16),
+
+          Text('Capas geológicas del mapa',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          SizedBox(height: 6),
+          Text(
+            'En la barra superior del mapa, el icono 🌍 abre el desplegable '
+            'de capas geológicas del IGME. La app arranca con la primera '
+            'de la lista (GEODE 50). Para qué sirve cada una:',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+          ),
+          SizedBox(height: 10),
+          ...capasGeologicasWms.map((capa) => Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '• ${capa.nombre}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12, top: 2),
+                      child: Text(
+                        capa.descripcion,
+                        style: const TextStyle(fontSize: 12, height: 1.3),
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+          SizedBox(height: 8),
+          Text(
+            'Las sugerencias de fósiles y minerales del asistente y del '
+            'explorador SIEMPRE consultan GEODE 50 internamente, sin '
+            'importar qué capa esté pintada — así cambiar de capa visual '
+            'no hace bailar la lista de fósiles probables.',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
+          ),
+          SizedBox(height: 16),
+
+          Text('Otras capas y filtros',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          SizedBox(height: 6),
+          Text(
+            '• ⭐ LIG — Lugares de Interés Geológico declarados por el IGME.\n'
+            '• ⛰️ Relieve sombreado (hillshade) para ver topografía.\n'
+            '• 🦇 Cuevas (OpenStreetMap, requiere zoom ≥ 10).\n'
+            '• 🗿 Megalitos y monumentos arqueológicos (OSM, zoom ≥ 9).\n'
+            '• 🏛️ Yacimientos curados — selección manual con fichas, '
+            'aparecen también como pista de "yacimientos cercanos" cuando '
+            'pinchas a menos de 5 km.',
+            style: TextStyle(fontSize: 12, height: 1.5),
+          ),
+          SizedBox(height: 16),
+
+          Text('Sugerencias de fósiles y minerales',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          SizedBox(height: 6),
+          Text(
+            'Al pinchar un punto (modo Explorar geología) o con el '
+            'asistente activado en el centro del mapa, la app cruza la '
+            'respuesta del IGME con sus catálogos locales:\n\n'
+            '• Si la formación que devuelve GEODE coincide con el catálogo '
+            'de formaciones ibéricas, se sugieren los fósiles '
+            'característicos de esa formación (sello PENDIENTE_VALIDACION '
+            'paleontológica hasta auditoría de comité científico).\n'
+            '• Si no, se sugieren fósiles del período inferido y filtrados '
+            'por el ambiente sedimentario probable de la litología '
+            '(p. ej. granito o basalto → sin fósiles; caliza → marinos).\n'
+            '• Los minerales se ponderan por litología: cada grupo '
+            '(granítico, carbonático, basáltico, evaporítico, metamórfico…) '
+            'tiene su propio set probable.',
+            style: TextStyle(fontSize: 12, height: 1.4),
+          ),
+          SizedBox(height: 16),
+
+          Text('Funcionalidades clave',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          SizedBox(height: 6),
+          Text(
+            '• Hallazgo georreferenciado con foto, edad, formación, '
+            'strike/dip, notas y trazabilidad.\n'
+            '• Mapa con capas IGME, hillshade, LIG, cuevas, megalitos y '
+            'yacimientos curados.\n'
+            '• Asistente geológico en el centro del mapa al panear.\n'
+            '• Mapas offline descargables por bbox + zoom.\n'
+            '• Guía local de fósiles y minerales por período.\n'
+            '• Estadísticas y línea del tiempo.\n'
+            '• Quiz de identificación.\n'
+            '• Chat de IA paleontológica (requiere API key personal).\n'
+            '• Exportar hallazgo como tarjeta de imagen o certificado '
+            'verificable cripto-firmado.\n'
+            '• Importar .fos-card de otra persona y certificar cadena '
+            '(Modo Experto).\n'
+            '• Backup y restauración completa de la base de datos.',
+            style: TextStyle(fontSize: 12, height: 1.4),
+          ),
+          SizedBox(height: 16),
+
+          Text('Datos y fuentes',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          SizedBox(height: 6),
+          Text(
+            'Datos geológicos: IGME (GEODE 50, MAGNA 50, Edades 1M, '
+            'Litologías 1M, IELIG). Mapa base: OpenStreetMap, ESRI, '
+            'OpenTopoMap. Cuevas y megalitos: OpenStreetMap (Overpass). '
+            'Imágenes y descripciones complementarias: Wikipedia '
+            '(CC-BY-SA). Versión Flutter para Android.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
         ],
       ),

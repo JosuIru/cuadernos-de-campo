@@ -20,6 +20,11 @@ class FosilGuia {
   final List<String> distintivos;
   final String dondeEncontrar;
   final String tituloWikipedia;
+  /// Ambientes sedimentarios donde es plausible encontrar este fósil.
+  /// Valores válidos: 'marino', 'continental', 'fluvial', 'lacustre',
+  /// 'eolico', 'transicional' (deltas, estuarios). Por defecto 'marino'
+  /// porque la mayoría del catálogo son fósiles marinos.
+  final List<String> ambientes;
   const FosilGuia({
     required this.id,
     required this.nombre,
@@ -29,6 +34,7 @@ class FosilGuia {
     required this.distintivos,
     required this.dondeEncontrar,
     required this.tituloWikipedia,
+    this.ambientes = const ['marino'],
   });
 }
 
@@ -63,6 +69,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Yeso fibroso (selenita)', 'Arcillas rojas y verdes', 'Halita en algunas zonas'],
     dondeEncontrar: 'Diapiros triásicos de la Rioja Alavesa, Maeztu y Estella (Salinas de Añana).',
     tituloWikipedia: 'Keuper',
+    ambientes: ['marino', 'lacustre'], // evaporitas: lagunas marinas restringidas o lagos endorreicos
   ),
   FosilGuia(
     id: 'encrinus',
@@ -83,6 +90,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Tallos huecos con nudos visibles', 'Verticilos de hojas en cada nudo', 'Acanaladuras longitudinales finas'],
     dondeEncontrar: 'Niveles continentales del Triásico-Jurásico (zonas con facies Keuper o Wealdiense).',
     tituloWikipedia: 'Equisetum',
+    ambientes: ['continental', 'fluvial', 'lacustre'],
   ),
 
   // ─── JURÁSICO ────────────────────────────────────────
@@ -255,6 +263,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Dientes de borde aserrado curvados', 'Vértebras grandes', 'Huellas tridáctilas grandes (icnitas)'],
     dondeEncontrar: 'Jurásico Superior continental; restos esporádicos en Europa.',
     tituloWikipedia: 'Megalosaurus',
+    ambientes: ['continental'],
   ),
 
   // ─── CRETÁCICO INFERIOR ─────────────────────────────
@@ -342,6 +351,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Huellas tridáctilas grandes (30–60 cm)', 'Dedos con falanges marcadas', 'Suelen aparecer alineadas formando rastros'],
     dondeEncontrar: 'Yacimientos de icnitas en La Rioja y Burgos, prolongables a Bizkaia oriental.',
     tituloWikipedia: 'Iguanodon',
+    ambientes: ['continental', 'fluvial', 'lacustre'], // icnitas en facies Wealdiense fluvio-lacustres
   ),
   FosilGuia(
     id: 'crioceratites',
@@ -382,6 +392,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Resina amarilla-ambarina semitransparente', 'A veces con burbujas, fragmentos vegetales o insectos', 'Fluorescente bajo UV'],
     dondeEncontrar: 'Cretácico Inferior de Peñacerrada (Álava), Moraza (Burgos) y otras cuencas albienses.',
     tituloWikipedia: 'Amber',
+    ambientes: ['transicional', 'continental'], // paleobosques cercanos a costa, deltas/estuarios
   ),
   FosilGuia(
     id: 'ginkgo',
@@ -392,6 +403,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Hojas en abanico con nervios paralelos dicotómicos', 'Lámina hendida', 'Frecuentes en facies continentales'],
     dondeEncontrar: 'Wealdiense del Cretácico Inferior continental (Cameros, La Rioja).',
     tituloWikipedia: 'Ginkgo',
+    ambientes: ['continental', 'fluvial', 'lacustre'],
   ),
 
   // ─── CRETÁCICO SUPERIOR ─────────────────────────────
@@ -648,6 +660,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Concha enrollada espiralada', 'A veces conserva nácar', 'Tamaños variables'],
     dondeEncontrar: 'Cuencas continentales del Mioceno de la Rioja Alavesa y Nafarroa.',
     tituloWikipedia: 'Gastropoda',
+    ambientes: ['marino', 'continental', 'lacustre'],
   ),
   FosilGuia(
     id: 'ostras-mioceno',
@@ -678,6 +691,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Esmalte brillante', 'Coronas con relieve', 'Hueso poroso'],
     dondeEncontrar: 'Yacimientos miocenos del Bardenas y Rioja.',
     tituloWikipedia: 'Mammalia',
+    ambientes: ['continental', 'fluvial', 'lacustre'],
   ),
   FosilGuia(
     id: 'anchitherium',
@@ -688,6 +702,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Molares con coronas bajas', 'Tres dedos visibles en la huella', 'Tamaño de poni pequeño'],
     dondeEncontrar: 'Yacimientos del Mioceno inferior de la Rioja Alavesa.',
     tituloWikipedia: 'Anchitherium',
+    ambientes: ['continental', 'fluvial', 'lacustre'],
   ),
   FosilGuia(
     id: 'hipparion',
@@ -698,6 +713,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Molares con esmalte plegado', 'Tres dedos (los laterales no tocan suelo)', 'Tamaño de poni'],
     dondeEncontrar: 'Mioceno superior de las Bardenas y Rioja Alavesa.',
     tituloWikipedia: 'Hipparion',
+    ambientes: ['continental', 'fluvial', 'lacustre'],
   ),
   FosilGuia(
     id: 'mastodon',
@@ -711,6 +727,7 @@ const List<FosilGuia> fosilesGuia = [
     // el género taxonómico se redacta como 'Mammut'. La galería
     // estaba sacando fotos del grupo de música.
     tituloWikipedia: 'Mammut',
+    ambientes: ['continental', 'fluvial', 'lacustre'],
   ),
   FosilGuia(
     id: 'aequipecten-opercularis',
@@ -743,6 +760,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Cráneo masivo, frente alta', 'Caninos pequeños', 'Molares anchos'],
     dondeEncontrar: 'Cuevas de Bizkaia (Santimamiñe, Arrikrutz), Aralar.',
     tituloWikipedia: 'Ursus_spelaeus',
+    ambientes: ['continental'],
   ),
   FosilGuia(
     id: 'megaloceros',
@@ -753,6 +771,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Astas palmeadas masivas', 'Hueso poroso', 'Tamaño grande'],
     dondeEncontrar: 'Hallazgos esporádicos en yacimientos de cuevas pleistocenas.',
     tituloWikipedia: 'Megaloceros',
+    ambientes: ['continental'],
   ),
   FosilGuia(
     id: 'huesos-cuaternario',
@@ -763,6 +782,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Hueso poroso', 'Mineralización parcial', 'Frecuente en cuevas con sedimento rojizo'],
     dondeEncontrar: 'Cuevas kársticas de Bizkaia, Nafarroa e Iparralde.',
     tituloWikipedia: 'Mammuthus',
+    ambientes: ['continental'],
   ),
   FosilGuia(
     id: 'glycymeris',
@@ -783,6 +803,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Molares en placas paralelas de esmalte', 'Defensas curvadas en espiral', 'Hueso compacto pesado'],
     dondeEncontrar: 'Yacimientos pleistocenos de cuevas y depósitos kársticos.',
     tituloWikipedia: 'Mammuthus_primigenius',
+    ambientes: ['continental'],
   ),
   FosilGuia(
     id: 'bison-priscus',
@@ -793,6 +814,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Cuernos grandes proyectados lateralmente', 'Cráneo con frente ancha', 'Dientes molares hipsodontos'],
     dondeEncontrar: 'Cuevas con arte rupestre (Santimamiñe) y yacimientos kársticos.',
     tituloWikipedia: 'Bison_priscus',
+    ambientes: ['continental'],
   ),
   FosilGuia(
     id: 'panthera-spelaea',
@@ -803,6 +825,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Cráneo grande con caninos cónicos', 'Mayor que el león actual', 'Restos en sedimentos de cueva'],
     dondeEncontrar: 'Hallazgos en cuevas pleistocenas (Aralar, Bizkaia).',
     tituloWikipedia: 'Panthera_spelaea',
+    ambientes: ['continental'],
   ),
   FosilGuia(
     id: 'crocuta',
@@ -813,6 +836,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Premolares masivos para romper hueso', 'Cráneo robusto', 'Coprolitos blancos en cuevas'],
     dondeEncontrar: 'Cuevas pleistocenas de Bizkaia y Aralar.',
     tituloWikipedia: 'Crocuta',
+    ambientes: ['continental'],
   ),
   FosilGuia(
     id: 'coelodonta',
@@ -823,6 +847,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Molares de coronas altas', 'Vértebras y costillas masivas', 'A veces se conservan cuernos queratinizados'],
     dondeEncontrar: 'Yacimientos pleistocenos en cuevas vasco-cantábricas.',
     tituloWikipedia: 'Coelodonta',
+    ambientes: ['continental'],
   ),
   FosilGuia(
     id: 'rangifer',
@@ -833,6 +858,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Astas ramificadas con palas', 'Dientes molares hipsodontos', 'Hueso compacto'],
     dondeEncontrar: 'Cuevas magdalenienses con fauna fría (Iparralde, Aralar).',
     tituloWikipedia: 'Rangifer',
+    ambientes: ['continental'],
   ),
   FosilGuia(
     id: 'cervus',
@@ -843,6 +869,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Astas ramificadas no palmeadas', 'Dientes molares en cresta', 'Hueso fresco poco mineralizado'],
     dondeEncontrar: 'Cuevas con fauna pleistocena y holocena en toda EH.',
     tituloWikipedia: 'Cervus',
+    ambientes: ['continental'],
   ),
   FosilGuia(
     id: 'bos-primigenius',
@@ -853,6 +880,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Cuernos grandes en lira', 'Cráneo robusto', 'Dientes molares hipsodontos'],
     dondeEncontrar: 'Yacimientos del Pleistoceno final y Holoceno en cuevas.',
     tituloWikipedia: 'Bos_primigenius',
+    ambientes: ['continental'],
   ),
   FosilGuia(
     id: 'capra-pyrenaica',
@@ -863,6 +891,7 @@ const List<FosilGuia> fosilesGuia = [
     distintivos: ['Cuernos curvados', 'Huesos esbeltos adaptados al monte', 'Dientes molares hipsodontos'],
     dondeEncontrar: 'Cuevas y abrigos del Pirineo navarro y montes vasco-cantábricos.',
     tituloWikipedia: 'Capra_pyrenaica',
+    ambientes: ['continental'],
   ),
 ];
 
@@ -907,6 +936,131 @@ PeriodoGeologico? buscarPeriodo(String id) {
 
 List<FosilGuia> fosilesPorPeriodo(String periodoId) =>
     fosilesGuia.where((f) => f.periodoId == periodoId).toList();
+
+/// Devuelve la lista de ambientes sedimentarios plausibles para una
+/// litología dada, en castellano y minúsculas (normalizado).
+///
+/// Si la litología es ígnea o metamórfica, devuelve `[]` para indicar
+/// que **no hay ambiente sedimentario** y por tanto no debe sugerirse
+/// ningún fósil.
+///
+/// Si no se reconoce, también devuelve `[]` (no se asume): es mejor
+/// callar que sugerir ammonites en un granito.
+List<String> ambientesProbablesPorLitologia(String? litologia) {
+  if (litologia == null) return const [];
+  final textoNormalizado = _normalizar(litologia.trim());
+  if (textoNormalizado.isEmpty) return const [];
+
+  // Rocas ígneas y metamórficas: sin ambiente sedimentario → sin fósiles.
+  const palabrasIgneasMetamorficas = [
+    'granito',
+    'granitoide',
+    'gneis',
+    'esquisto',
+    'pizarra',
+    'basalto',
+    'andesita',
+    'riolita',
+    'dacita',
+    'traquita',
+    'gabro',
+    'diorita',
+    'monzonita',
+    'sienita',
+    'diabasa',
+    'ofita',
+    'peridotit', // peridotita
+    'serpentinit',
+    'marmol',
+    'cuarcita',
+    'migmatit',
+    'corneana',
+    'anfibolit',
+    'eclogit',
+  ];
+  for (final palabra in palabrasIgneasMetamorficas) {
+    if (textoNormalizado.contains(palabra)) return const [];
+  }
+
+  // Evaporitas: lagunas marinas restringidas o lagos endorreicos.
+  const palabrasEvaporiticas = ['evaporita', 'yeso', 'halita', 'sal '];
+  if (textoNormalizado.contains('evaporita') ||
+      textoNormalizado.endsWith(' sal') ||
+      palabrasEvaporiticas.any((p) => textoNormalizado.contains(p))) {
+    return const ['marino', 'lacustre'];
+  }
+
+  // Arenas eólicas / dunares.
+  if (textoNormalizado.contains('duna') ||
+      textoNormalizado.contains('eolic')) {
+    return const ['eolico'];
+  }
+
+  // Aluviales y fluviales explícitos.
+  if (textoNormalizado.contains('aluvi') ||
+      textoNormalizado.contains('fluvial') ||
+      textoNormalizado.contains('gravas de rio') ||
+      textoNormalizado.contains('gravas fluvi') ||
+      textoNormalizado.contains('terraza fluvi')) {
+    return const ['fluvial', 'continental'];
+  }
+
+  // Turbas, lacustres, lignitos.
+  if (textoNormalizado.contains('turba') ||
+      textoNormalizado.contains('lacustre') ||
+      textoNormalizado.contains('lignito')) {
+    return const ['lacustre', 'continental'];
+  }
+
+  // Carbonatos marinos: caliza, marga, dolomía sedimentaria, calcarenita, creta.
+  // Importante: 'dolomita' como mineral en filón no implica ambiente
+  // marino, pero 'dolomia' como roca sí.
+  const palabrasMarinasCarbonaticas = [
+    'caliza',
+    'marga',
+    'calcarenit',
+    'creta',
+    'dolomia',
+    'calcilutit',
+    'biocalcarenit',
+    'biomicrit',
+    'wackestone',
+    'packstone',
+    'grainstone',
+    'mudstone calc',
+  ];
+  if (palabrasMarinasCarbonaticas.any((p) => textoNormalizado.contains(p))) {
+    return const ['marino'];
+  }
+
+  // Areniscas, lutitas, limolitas sin pista de medio: ambiguo entre
+  // marino somero y continental.
+  const palabrasSiliciclasticasAmbiguas = [
+    'arenisca',
+    'lutita',
+    'limolita',
+    'conglomerado',
+    'arcilla',
+  ];
+  if (palabrasSiliciclasticasAmbiguas.any((p) => textoNormalizado.contains(p))) {
+    return const ['marino', 'continental'];
+  }
+
+  // No se reconoce: no asumimos.
+  return const [];
+}
+
+/// Devuelve los fósiles plausibles para un período dado filtrando por
+/// los ambientes sedimentarios indicados. Si `ambientes` viene vacía,
+/// devuelve `[]` (caso típico: roca ígnea o metamórfica).
+List<FosilGuia> fosilesPorPeriodoYAmbiente(
+    String periodoId, List<String> ambientes) {
+  if (ambientes.isEmpty) return const [];
+  return fosilesGuia.where((f) {
+    if (f.periodoId != periodoId) return false;
+    return f.ambientes.any((a) => ambientes.contains(a));
+  }).toList();
+}
 
 FosilGuia? buscarFosilPorId(String id) {
   for (final f in fosilesGuia) {

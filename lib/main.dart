@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
+import 'package:latlong2/latlong.dart';
 import 'pantallas/pantalla_inicio.dart';
 import 'pantallas/pantalla_mapa.dart';
 import 'pantallas/pantalla_lista.dart';
@@ -11,10 +12,12 @@ import 'pantallas/pantalla_nuevo.dart';
 import 'pantallas/pantalla_guia.dart';
 import 'pantallas/pantalla_ajustes.dart';
 import 'pantallas/pantalla_importar_fos_card.dart';
+import 'pantallas/pantalla_onboarding.dart';
 import 'servicios/grabador_track.dart';
 import 'servicios/estado_conexion.dart';
 import 'servicios/auto_backup.dart';
 import 'datos/base_datos.dart';
+import 'datos/configuracion.dart';
 import 'datos/datos_guia.dart';
 
 void _inicializarAccesosDirectos() {
@@ -117,6 +120,23 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   int contadorRefrescoLista = 0;
   int contadorRefrescoMapa = 0;
   StreamSubscription<List<SharedMediaFile>>? _suscripcionShare;
+  /// Coordenadas a las que la pestaña Mapa debe saltar la próxima vez que
+  /// se construye. Lo setea `_verHallazgoEnMapa` cuando el usuario pulsa
+  /// "Ver en el mapa" en la ficha de un hallazgo de la pestaña Lista; la
+  /// pestaña Mapa lo escucha y mueve la cámara.
+  final ValueNotifier<LatLng?> _destinoMapaNotifier = ValueNotifier(null);
+
+  void _verHallazgoEnMapa(double latitud, double longitud) {
+    setState(() {
+      _indicesVisitados.add(1);
+      indiceVistaActual = 1;
+    });
+    // El postFrame asegura que la pestaña Mapa ya está construida (la
+    // primera visita es cuando se construye) antes de pedirle el move.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _destinoMapaNotifier.value = LatLng(latitud, longitud);
+    });
+  }
 
   // IndexedStack construye TODOS los hijos al primer frame: arrancando la app
   // se inicializaba el mapa con sus GPS streams, tile layers WMS, etc. aunque
@@ -137,11 +157,25 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         ReceiveSharingIntent.instance.reset();
       }
     });
+
+    // Mini-tour de primer arranque: si el usuario nunca lo ha visto, lo
+    // abrimos como diálogo a pantalla completa una vez montado el árbol.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final yaVisto = await Configuracion.haVistoOnboarding();
+      if (yaVisto || !mounted) return;
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => const PantallaOnboarding(),
+        ),
+      );
+    });
   }
 
   @override
   void dispose() {
     _suscripcionShare?.cancel();
+    _destinoMapaNotifier.dispose();
     super.dispose();
   }
 
@@ -211,9 +245,13 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           alPedirNuevoHallazgo: ({double? latitud, double? longitud}) =>
               irANuevoHallazgo(latitudPredefinida: latitud, longitudPredefinida: longitud),
           alSeleccionarFosilGuia: (idFosil) => abrirDetalleFosilGuia(context, idFosil),
+          destinoMapaNotifier: _destinoMapaNotifier,
         );
       case 2:
-        return PantallaLista(key: ValueKey(contadorRefrescoLista));
+        return PantallaLista(
+          key: ValueKey(contadorRefrescoLista),
+          alVerEnMapa: _verHallazgoEnMapa,
+        );
       case 4:
         return const PantallaGuia();
       case 5:

@@ -6,7 +6,7 @@ import '../servicios/cache_teselas.dart';
 import '../servicios/precache_teselas.dart';
 import '../servicios/servicio_geologia.dart';
 
-const _centroEuskalHerria = LatLng(43.05, -2.45);
+const _centroInicialMapa = LatLng(43.05, -2.45);
 const _zoomInicialPantalla = 9.0;
 
 class PantallaMapasOffline extends StatefulWidget {
@@ -119,7 +119,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
             child: FlutterMap(
               mapController: _controladorMapa,
               options: MapOptions(
-                initialCenter: _centroEuskalHerria,
+                initialCenter: _centroInicialMapa,
                 initialZoom: _zoomInicialPantalla,
                 minZoom: 6,
                 maxZoom: 18,

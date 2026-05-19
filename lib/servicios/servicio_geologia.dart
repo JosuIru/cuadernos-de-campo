@@ -21,28 +21,63 @@ const urlWmsIgmeLig =
 
 class CapaGeologicaWms {
   final String nombre;
+  /// Frase corta que explica qué pinta esta capa y para qué sirve.
+  /// Aparece bajo el nombre en el desplegable de capas del mapa y en la
+  /// sección "Sobre la app" en Ajustes, para que el usuario sepa qué
+  /// está pintando sin tener que ir probando.
+  final String descripcion;
   final String urlBase;
   final List<String> capas;
-  /// Índice de capa que se interroga con WMS GetFeatureInfo al pinchar un
-  /// punto. En GEODE 50 la capa visual coloreada (`0` = Zonas) NO coincide
-  /// con la capa que lleva los atributos del estrato real (`1` = Recintos
-  /// geología); para que la respuesta cuadre con lo pintado, renderizamos
-  /// directamente Recintos y consultamos la misma. En MAGNA y los servicios
-  /// 1M la capa con datos es la `0`.
-  final int capaConsulta;
+  /// Índices de capas que se interrogan con WMS GetFeatureInfo al pinchar
+  /// un punto. En GEODE 50 la capa visual coloreada (`0` = Zonas) NO
+  /// coincide con la capa que lleva los atributos del estrato real
+  /// (`1` = Recintos geología); además la capa `3` (Cuaternario -
+  /// Recintos) añade detalle del depósito (aluvial, coluvial, glaciar,
+  /// eólico, kárstico) cuando hay cobertura cuaternaria. Para que la
+  /// respuesta cuadre con lo pintado renderizamos Recintos y consultamos
+  /// ambas capas a la vez; la respuesta multi-feature se fusiona dando
+  /// prioridad a las capas más específicas (Cuaternario gana sobre
+  /// Recintos generales). En MAGNA y los servicios 1M la capa con datos
+  /// es la `0`.
+  final List<int> capasConsulta;
   const CapaGeologicaWms({
     required this.nombre,
+    required this.descripcion,
     required this.urlBase,
     required this.capas,
-    this.capaConsulta = 0,
+    this.capasConsulta = const [0],
   });
 }
 
 const List<CapaGeologicaWms> capasGeologicasWms = [
-  CapaGeologicaWms(nombre: 'MAGNA 50', urlBase: urlWmsIgmeMagna, capas: ['0'], capaConsulta: 0),
-  CapaGeologicaWms(nombre: 'GEODE 50', urlBase: urlWmsIgmeGeode, capas: ['1'], capaConsulta: 1),
-  CapaGeologicaWms(nombre: 'Edades 1M', urlBase: urlWmsIgmeEdades1M, capas: ['0'], capaConsulta: 0),
-  CapaGeologicaWms(nombre: 'Litologías 1M', urlBase: urlWmsIgmeLitologias1M, capas: ['0'], capaConsulta: 0),
+  CapaGeologicaWms(
+    nombre: 'GEODE 50',
+    descripcion: 'Recomendada · continuo geológico nacional. Cada polígono lleva edad, formación y litología; lo que ves y lo que la app sugiere para fósiles van siempre coordinados.',
+    urlBase: urlWmsIgmeGeode,
+    capas: ['1'],
+    capasConsulta: [1, 3],
+  ),
+  CapaGeologicaWms(
+    nombre: 'MAGNA 50',
+    descripcion: 'Color por litología (tipo de roca: caliza, arcilla, granito…). Máximo detalle 1:50.000. Útil para "qué tipo de roca piso", NO para ver edades de un vistazo.',
+    urlBase: urlWmsIgmeMagna,
+    capas: ['0'],
+    capasConsulta: [0],
+  ),
+  CapaGeologicaWms(
+    nombre: 'Edades 1M',
+    descripcion: 'Color directo por edad geológica (era/período). Lo mejor para ver eras de un vistazo. Resolución 1:1.000.000 — más baja, sirve para escala regional.',
+    urlBase: urlWmsIgmeEdades1M,
+    capas: ['0'],
+    capasConsulta: [0],
+  ),
+  CapaGeologicaWms(
+    nombre: 'Litologías 1M',
+    descripcion: 'Litología general (versión simplificada de MAGNA). Resolución 1:1.000.000. Para escala regional cuando MAGNA está demasiado denso.',
+    urlBase: urlWmsIgmeLitologias1M,
+    capas: ['0'],
+    capasConsulta: [0],
+  ),
 ];
 
 /// Capa por defecto cuando se invoca la consulta sin que haya ninguna capa
@@ -76,7 +111,7 @@ class ContextoGeologico {
 /// anterior. Ahora la clave atrapa URL+índice y baja la granularidad a
 /// 4 decimales (≈11 m).
 String _claveGeologia(double latitud, double longitud, CapaGeologicaWms capa) =>
-    '${capa.urlBase}#${capa.capaConsulta}@'
+    '${capa.urlBase}#${capa.capasConsulta.join('-')}@'
     '${latitud.toStringAsFixed(4)},${longitud.toStringAsFixed(4)}';
 
 /// Sanea la clave para usarla como nombre de archivo (la URL contiene `://`,
@@ -218,13 +253,17 @@ Future<_ResultadoConsultaWms> _intentarConsultarWms(
 ) async {
   final delta = 0.0005;
   final bbox = '${longitud - delta},${latitud - delta},${longitud + delta},${latitud + delta}';
-  final indiceCapa = capa.capaConsulta.toString();
+  final indicesCapasComoCsv = capa.capasConsulta.join(',');
+  // feature_count debe poder devolver al menos 1 feature por capa
+  // consultada (más algún solapamiento). 5 era suficiente para una sola
+  // capa; con multi-capa lo subimos a 5 por capa para no quedarnos cortos.
+  final featureCountEfectivo = (capa.capasConsulta.length * 5).toString();
   final params = <String, String>{
     'service': 'WMS',
     'version': '1.1.1',
     'request': 'GetFeatureInfo',
-    'layers': indiceCapa,
-    'query_layers': indiceCapa,
+    'layers': indicesCapasComoCsv,
+    'query_layers': indicesCapasComoCsv,
     'styles': '',
     'bbox': bbox,
     'srs': 'EPSG:4326',
@@ -234,7 +273,7 @@ Future<_ResultadoConsultaWms> _intentarConsultarWms(
     'y': '50',
     'format': 'image/png',
     'info_format': 'application/geo+json',
-    'feature_count': '5',
+    'feature_count': featureCountEfectivo,
   };
   final uri = Uri.parse(capa.urlBase).replace(queryParameters: params);
   try {
@@ -248,11 +287,71 @@ Future<_ResultadoConsultaWms> _intentarConsultarWms(
     final json = jsonDecode(cuerpo) as Map<String, dynamic>;
     final features = (json['features'] as List?) ?? const [];
     if (features.isEmpty) return _ResultadoConsultaWms.sinDatosLegitimo();
-    final propiedades = (features.first['properties'] as Map).cast<String, dynamic>();
-    return _ResultadoConsultaWms.conContexto(interpretarPropiedadesGeode(propiedades));
+    // Multi-capa: la respuesta puede traer una feature por capa que
+    // coincide en el pixel consultado. Ordenamos por especificidad
+    // (índice de capa más alto = más específico; en GEODE 50 la capa 3
+    // = Cuaternario - Recintos tiene mayor detalle que la 1 = Recintos
+    // generales) y fusionamos sus propiedades dando prioridad a la más
+    // específica.
+    final listaPropiedades = features
+        .where((f) => f is Map && f['properties'] is Map)
+        .map((f) {
+          final mapa = f as Map;
+          final props = (mapa['properties'] as Map).cast<String, dynamic>();
+          // Esri devuelve `layerName` (string) en cada feature. Si no
+          // viene, intentamos extraer el índice de un eventual `layerId`;
+          // si no, asumimos índice 0.
+          final nombreCapa = (mapa['layerName'] as String?)?.trim();
+          final indiceCapaFeature = _emparejarIndiceCapa(
+            nombreCapa: nombreCapa,
+            capasDeclaradas: capa.capasConsulta,
+            indiceLayerId: mapa['layerId'] is num ? (mapa['layerId'] as num).toInt() : null,
+          );
+          return _FeaturePorCapa(indice: indiceCapaFeature, propiedades: props, layerName: nombreCapa);
+        })
+        .toList();
+    if (listaPropiedades.isEmpty) return _ResultadoConsultaWms.sinDatosLegitimo();
+    // Orden ascendente: la última en aplicar (= más específica) sobrescribe.
+    listaPropiedades.sort((a, b) => a.indice.compareTo(b.indice));
+    final propiedadesFusionadas = <String, dynamic>{};
+    for (final feature in listaPropiedades) {
+      propiedadesFusionadas.addAll(feature.propiedades);
+    }
+    return _ResultadoConsultaWms.conContexto(interpretarPropiedadesGeode(propiedadesFusionadas));
   } catch (_) {
     return _ResultadoConsultaWms.error();
   }
+}
+
+/// Empareja una feature con el índice numérico de su capa para poder
+/// ordenarlas por especificidad. Esri WMS suele devolver `layerName` (p. ej.
+/// "Recintos geología" o "Cuaternario - Recintos"); si la respuesta declara
+/// `layerId` lo usamos directo. Si no podemos identificar la capa, asumimos
+/// el primer índice declarado (= menos específico) para no perder la
+/// feature pero tampoco sobrescribir lo bueno.
+int _emparejarIndiceCapa({
+  required String? nombreCapa,
+  required List<int> capasDeclaradas,
+  int? indiceLayerId,
+}) {
+  if (indiceLayerId != null && capasDeclaradas.contains(indiceLayerId)) {
+    return indiceLayerId;
+  }
+  if (nombreCapa != null) {
+    final nombreNormalizado = nombreCapa.toLowerCase();
+    // Heurística: si el nombre incluye "cuaternario" lo tratamos como capa 3
+    // de GEODE 50 (Cuaternario - Recintos). Aporta detalle de depósito.
+    if (nombreNormalizado.contains('cuaternario')) return 3;
+    if (nombreNormalizado.contains('recintos')) return 1;
+  }
+  return capasDeclaradas.first;
+}
+
+class _FeaturePorCapa {
+  final int indice;
+  final Map<String, dynamic> propiedades;
+  final String? layerName;
+  _FeaturePorCapa({required this.indice, required this.propiedades, this.layerName});
 }
 
 ContextoGeologico interpretarPropiedadesGeode(Map<String, dynamic> propiedades) {
@@ -270,6 +369,12 @@ ContextoGeologico interpretarPropiedadesGeode(Map<String, dynamic> propiedades) 
 
   final edadInferior = lookup(['Edad Inferior', 'EDAD_INFERIOR', 'EdadInferior']);
   final edadSuperior = lookup(['Edad Superior', 'EDAD_SUPERIOR', 'EdadSuperior']);
+  // Edades 1M no expone Edad Inferior/Superior, sino "Sistema" (= Período:
+  // Cuaternario, Cretácico…) y "Eon-Era" como menos específico. Sin esto
+  // Edades 1M devolvía polígono pero el intérprete sacaba edad=null y el
+  // panel del asistente decía "Sin datos".
+  final sistema1M = lookup(['Sistema', 'SISTEMA']);
+  final eonEra1M = lookup(['Eon-Era', 'EON-ERA', 'Eon Era']);
   // GEODE 50 expone "Descripción Unidad Geológica"; MAGNA 50 usa
   // "descripción litológica" (minúsculas + tilde); los servicios 1M usan
   // claves variadas (DESCRIPCION / Descripcion). Probamos todas.
@@ -285,7 +390,7 @@ ContextoGeologico interpretarPropiedadesGeode(Map<String, dynamic> propiedades) 
   if (edadInferior != null && edadSuperior != null && edadInferior != edadSuperior) {
     edad = '$edadInferior – $edadSuperior';
   } else {
-    edad = edadSuperior ?? edadInferior;
+    edad = edadSuperior ?? edadInferior ?? sistema1M ?? eonEra1M;
   }
 
   return ContextoGeologico(

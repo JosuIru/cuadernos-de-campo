@@ -4,7 +4,7 @@ Cerebro persistente del proyecto. Se lee al inicio de cada sesión.
 
 ## Encuadre
 
-App **del operador** (Josu), no de la línea Kids. Cuaderno de campo de fósiles para Euskal Herria orientado a **adulto aficionado**: anota hallazgos georreferenciados con foto, edad, formación, strike/dip de la capa, marca tracks GPS, consulta yacimientos curados y una guía de identificación.
+App **del operador** (Josu), no de la línea Kids. Cuaderno de campo de fósiles orientado a **adulto aficionado**: anota hallazgos georreferenciados con foto, edad, formación, strike/dip de la capa, marca tracks GPS, consulta yacimientos curados y una guía de identificación. Cobertura cartográfica IGME nacional.
 
 Vivía en `~/Projects/fosiles-flutter/`. Se trae al monorepo `nuevo-ser/` para **reutilizar plataforma compartida** (`nuevo_ser_core`: storage cifrado, gestor de perfiles, sync, mapas offline cuando se extraigan al core). Mantiene su voz y su audiencia — no se mezcla con las apps Kids.
 
