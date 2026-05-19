@@ -72,6 +72,339 @@ const String _selloPendiente = ' · PENDIENTE_VALIDACION_PALEONTOLOGICA';
 /// bibliografía accesible), seguido de Sistema Ibérico, Cordillera
 /// Bética y Cuenca del Ebro.
 const List<CatalogoFormacion> formacionesIbericas = [
+  // ═══════════════ PRECÁMBRICO ════════════════════════════════════════
+
+  CatalogoFormacion(
+    id: 'precambrico-ossa-morena',
+    patronesNombre: [
+      'serie negra',
+      'precambrico ossa-morena',
+      'neoproterozoico',
+      'ediacarense',
+    ],
+    periodoId: 'precambrico',
+    ambientePrincipal: 'marino-plataforma',
+    fosilesIds: [
+      'estromatolitos',
+    ],
+    descripcionCorta:
+        'Serie Negra del Neoproterozoico tardío en la zona de Ossa-Morena: pizarras, grauvacas y niveles carbonatados con estromatolitos como única evidencia paleontológica plausible para aficionado.',
+    regiones: [
+      'Macizo Ibérico (Ossa-Morena)',
+      'Sierra Morena',
+    ],
+    fuente:
+        'IGME, MAGNA hojas de Córdoba y Sierra Morena · Liñán & Quesada 1990$_selloPendiente',
+  ),
+
+  // ═══════════════ CÁMBRICO ═══════════════════════════════════════════
+
+  CatalogoFormacion(
+    id: 'calizas-pedroche-cambrico',
+    patronesNombre: [
+      'calizas de pedroche',
+      'cambrico inferior carbonatado',
+      'caliza con arqueociatos',
+      'caliza arqueociatos',
+    ],
+    periodoId: 'cambrico',
+    ambientePrincipal: 'marino-arrecifal',
+    fosilesIds: [
+      'arqueociatidos',
+      'estromatolitos',
+      'lingulella',
+    ],
+    descripcionCorta:
+        'Calizas y dolomías del Cámbrico Inferior con bioconstrucciones de arqueociátidos: los primeros arrecifes del Fanerozoico ibérico (zona de Pedroches y equivalentes).',
+    regiones: [
+      'Sierra Morena (Pedroches)',
+      'Cordillera Cantábrica',
+      'Sierra de la Demanda',
+    ],
+    fuente:
+        'IGME, MAGNA hojas Cabeza del Buey, Cardeña · Perejón 1984$_selloPendiente',
+  ),
+
+  CatalogoFormacion(
+    id: 'pizarras-cambrico-demanda',
+    patronesNombre: [
+      'pizarras de paradoxides',
+      'cambrico medio',
+      'pizarras cambricas',
+      'serie del cambrico medio-superior',
+    ],
+    periodoId: 'cambrico',
+    ambientePrincipal: 'marino-plataforma',
+    fosilesIds: [
+      'paradoxides',
+      'lingulella',
+    ],
+    descripcionCorta:
+        'Pizarras del Cámbrico Medio con trilobites Paradoxides — el "fósil de Iberia paleozoica" por antonomasia para aficionado.',
+    regiones: [
+      'Macizo Ibérico (Zona Centro-Ibérica)',
+      'Sierra de la Demanda',
+      'Sierra Morena',
+    ],
+    fuente:
+        'IGME, MAGNA Sierra de la Demanda · Liñán et al. 2002$_selloPendiente',
+  ),
+
+  // ═══════════════ ORDOVÍCICO ═════════════════════════════════════════
+
+  CatalogoFormacion(
+    id: 'cuarcita-armoricana',
+    patronesNombre: [
+      'cuarcita armoricana',
+      'cuarcitas armoricanas',
+      'arenig',
+      'arenigiense',
+      'ordovicico inferior',
+    ],
+    periodoId: 'ordovicico',
+    ambientePrincipal: 'marino-plataforma',
+    fosilesIds: [
+      'cruziana',
+      'lingulella',
+    ],
+    descripcionCorta:
+        'Areniscas y cuarcitas blancas del Ordovícico Inferior, durísimas, que arman las crestas de toda Iberia paleozoica. Famosas por los rastros Cruziana (huellas de trilobites) en las superficies de capa.',
+    regiones: [
+      'Macizo Ibérico',
+      'Sierra Morena',
+      'Sistema Central',
+      'Montes de Toledo',
+      'Cordillera Cantábrica',
+    ],
+    fuente:
+        'IGME, MAGNA varias hojas del Macizo Ibérico · Gutiérrez-Marco et al. 2002$_selloPendiente',
+  ),
+
+  CatalogoFormacion(
+    id: 'pizarras-ordovicico-asaphus',
+    patronesNombre: [
+      'pizarras de cantera',
+      'pizarras de asaphus',
+      'ordovicico medio',
+      'llanvirniense',
+      'darriwiliense',
+      'caradoc',
+    ],
+    periodoId: 'ordovicico',
+    ambientePrincipal: 'marino-plataforma',
+    fosilesIds: [
+      'asaphus-trilobite',
+      'didymograptus',
+      'lingulella',
+    ],
+    descripcionCorta:
+        'Pizarras oscuras del Ordovícico Medio sobre la Cuarcita Armoricana, ricas en trilobites Asaphus/Calymene y graptolitos del género Didymograptus.',
+    regiones: [
+      'Sistema Central',
+      'Montes de Toledo',
+      'Sierra Morena',
+      'Macizo Ibérico',
+    ],
+    fuente:
+        'IGME, MAGNA Sistema Central y Montes de Toledo · Gutiérrez-Marco & Bernárdez 2003$_selloPendiente',
+  ),
+
+  // ═══════════════ SILÚRICO ═══════════════════════════════════════════
+
+  CatalogoFormacion(
+    id: 'pizarras-graptoliticas-silurico',
+    patronesNombre: [
+      'pizarras graptoliticas',
+      'pizarras negras silurico',
+      'silurico graptolitico',
+      'llandoveriense',
+      'wenlockiense',
+      'ludloviense',
+    ],
+    periodoId: 'silurico',
+    ambientePrincipal: 'marino-pelagico',
+    fosilesIds: [
+      'monograptus',
+      'orthoceras',
+    ],
+    descripcionCorta:
+        'Pizarras negras y ampelitas del Silúrico con graptolitos (Monograptus) — facies anóxica de cuenca pelágica. Marcadora estratigráfica clave del Paleozoico medio ibérico.',
+    regiones: [
+      'Pirineos',
+      'Cordillera Cantábrica',
+      'Sierra Morena',
+      'Macizo Ibérico',
+    ],
+    fuente:
+        'IGME, MAGNA Pirineos centrales · Gutiérrez-Marco & Štorch 1998$_selloPendiente',
+  ),
+
+  // ═══════════════ DEVÓNICO ═══════════════════════════════════════════
+
+  CatalogoFormacion(
+    id: 'caliza-griotte-devonica',
+    patronesNombre: [
+      'caliza griotte',
+      'calizas griotte',
+      'griotte',
+      'devonico superior',
+      'famenniense',
+    ],
+    periodoId: 'devonico',
+    ambientePrincipal: 'marino-pelagico',
+    fosilesIds: [
+      'orthoceras',
+      'goniatites',
+    ],
+    descripcionCorta:
+        'Calizas nodulosas rojas del Devónico Superior, con cefalópodos (orthoceras, goniatites primitivos). Facies de umbral pelágico característica de los Pirineos y la Cordillera Cantábrica.',
+    regiones: [
+      'Pirineos',
+      'Cordillera Cantábrica',
+    ],
+    fuente:
+        'IGME, MAGNA Pirineos · García-López & Sanz-López 2002$_selloPendiente',
+  ),
+
+  CatalogoFormacion(
+    id: 'devonico-asturiano-corales',
+    patronesNombre: [
+      'devonico asturiano',
+      'caliza de candas',
+      'caliza de moniello',
+      'devonico inferior asturiano',
+      'eifeliense',
+      'givetiense',
+    ],
+    periodoId: 'devonico',
+    ambientePrincipal: 'marino-arrecifal',
+    fosilesIds: [
+      'favosites',
+      'phacops',
+      'spirifer',
+    ],
+    descripcionCorta:
+        'Calizas devónicas de la Cordillera Cantábrica con corales coloniales (Favosites tipo "miel de panal"), trilobites Phacops y braquiópodos Spirifer. Costa asturiana entre Candás y Luanco.',
+    regiones: [
+      'Cordillera Cantábrica',
+      'Asturias',
+    ],
+    fuente:
+        'IGME, MAGNA hojas de Avilés y Gijón · García-Alcalde 1996$_selloPendiente',
+  ),
+
+  // ═══════════════ CARBONÍFERO ════════════════════════════════════════
+
+  CatalogoFormacion(
+    id: 'caliza-de-montana',
+    patronesNombre: [
+      'caliza de montaña',
+      'caliza de montana',
+      'calizas masivas carboniferas',
+      'carbonifero inferior marino',
+      'viseense',
+      'serpukhoviense',
+    ],
+    periodoId: 'carbonifero',
+    ambientePrincipal: 'marino-plataforma',
+    fosilesIds: [
+      'fusulinidos',
+      'goniatites',
+      'productus',
+      'spirifer',
+    ],
+    descripcionCorta:
+        '"Caliza de Montaña": calizas masivas del Carbonífero Inferior-Medio que arman los grandes macizos kársticos de la Cordillera Cantábrica (Picos de Europa). Ricas en fusulínidos y goniatites.',
+    regiones: [
+      'Cordillera Cantábrica',
+      'Picos de Europa',
+      'Pirineos',
+    ],
+    fuente:
+        'IGME, MAGNA Picos de Europa · Sánchez de Posada et al. 1999$_selloPendiente',
+  ),
+
+  CatalogoFormacion(
+    id: 'carbon-asturiano',
+    patronesNombre: [
+      'cuenca carbonifera central asturiana',
+      'capas con carbon',
+      'westfaliense',
+      'vesfaliense',
+      'estefaniense',
+      'stephaniense',
+      'carbonifero continental',
+    ],
+    periodoId: 'carbonifero',
+    ambientePrincipal: 'continental-fluvial',
+    fosilesIds: [
+      'calamites',
+      'lepidodendron',
+      'equisetum',
+    ],
+    descripcionCorta:
+        'Cuenca Carbonífera Central Asturiana: alternancia de areniscas, pizarras y capas de carbón con flora carbonífera (calamites, lepidodendron, sigillarias).',
+    regiones: [
+      'Cordillera Cantábrica',
+      'Asturias',
+    ],
+    fuente:
+        'IGME, MAGNA hojas Mieres y Oviedo · Wagner 1971$_selloPendiente',
+  ),
+
+  CatalogoFormacion(
+    id: 'culm-carbonifero',
+    patronesNombre: [
+      'culm',
+      'facies culm',
+      'flysch carbonifero',
+      'carbonifero del macizo iberico',
+      'carbonifero turbiditico',
+    ],
+    periodoId: 'carbonifero',
+    ambientePrincipal: 'flysch',
+    fosilesIds: [
+      'goniatites',
+    ],
+    descripcionCorta:
+        'Facies Culm: turbiditas (areniscas-pizarras alternantes) del Carbonífero del Macizo Ibérico. Contenido fósil escaso pero a veces aparecen goniatites en niveles pelágicos intercalados.',
+    regiones: [
+      'Macizo Ibérico',
+      'Sierra Morena',
+      'Pirineos',
+    ],
+    fuente:
+        'IGME, MAGNA Sierra Morena central · Rodríguez & Pérez-Estaún 1986$_selloPendiente',
+  ),
+
+  // ═══════════════ PÉRMICO ════════════════════════════════════════════
+
+  CatalogoFormacion(
+    id: 'permico-continental-pirineos',
+    patronesNombre: [
+      'permico continental',
+      'autuniense',
+      'saxoniense',
+      'thuringiense',
+      'permico pirenaico',
+      'cuenca de anayet',
+    ],
+    periodoId: 'permico',
+    ambientePrincipal: 'continental-fluvial',
+    fosilesIds: [
+      'walchia',
+      'calamites',
+    ],
+    descripcionCorta:
+        'Series rojas continentales del Pérmico de las cuencas pirenaicas (Anayet, Cadí) con coníferas primitivas (Walchia) y restos de equisetales sobre limolitas rojas.',
+    regiones: [
+      'Pirineos',
+      'Cordillera Ibérica (cuencas pérmicas)',
+    ],
+    fuente:
+        'IGME, MAGNA Pirineos centrales · Gisbert 1983 · Broutin et al. 1988$_selloPendiente',
+  ),
+
   // ═══════════════ TRIÁSICO ═══════════════════════════════════════════
 
   CatalogoFormacion(
