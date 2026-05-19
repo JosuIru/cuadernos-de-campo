@@ -10,6 +10,8 @@ import 'package:latlong2/latlong.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl, LaunchMode;
+import '../comunidad/feature_flag_comunidad.dart';
+import '../comunidad/pantalla_fotos_comunidad.dart';
 import '../servicios/servicio_geologia.dart';
 import '../servicios/servicio_cuevas.dart';
 import '../servicios/servicio_arqueologia.dart';
@@ -1501,6 +1503,24 @@ class _PantallaMapaState extends State<PantallaMapa> {
                             abrirDetalleMineral(context, m.id);
                           },
                         )),
+                  ],
+                  if (kFeatureComunidadHabilitada &&
+                      formacionCatalogada != null) ...[
+                    SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      icon: Icon(Icons.public),
+                      label: Text(
+                        'Fotos de la comunidad en ${formacionCatalogada.id}',
+                      ),
+                      onPressed: () {
+                        Navigator.of(sheetContext).pop();
+                        Navigator.of(context).push(MaterialPageRoute<void>(
+                          builder: (_) => PantallaFotosComunidad(
+                            formacionCodigo: formacionCatalogada.id,
+                          ),
+                        ));
+                      },
+                    ),
                   ],
                   SizedBox(height: 12),
                   Text('Fuente: IGME GEODE 50', style: TextStyle(fontSize: 11, color: Colors.grey[600])),

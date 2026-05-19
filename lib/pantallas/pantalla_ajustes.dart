@@ -3,6 +3,8 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:share_plus/share_plus.dart';
+import '../comunidad/cliente_comunidad.dart';
+import '../comunidad/feature_flag_comunidad.dart';
 import '../datos/configuracion.dart';
 import '../datos/yacimientos_curados.dart';
 import '../servicios/servicio_geologia.dart';
@@ -150,6 +152,61 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
         duration: Duration(seconds: 6),
       ),
     );
+  }
+
+  Future<void> _solicitarBorradoAportacionesComunidad(
+      BuildContext contextoExterior) async {
+    final controladorEmail = TextEditingController();
+    final email = await showDialog<String>(
+      context: contextoExterior,
+      builder: (dialogoContext) => AlertDialog(
+        title: Text('Borrar mis aportaciones'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Introduce el email con el que enviaste las aportaciones. '
+              'Te mandaremos un enlace; al pulsarlo se borrarán todas tus '
+              'fotos (pendientes y aprobadas).',
+              style: TextStyle(fontSize: 13),
+            ),
+            SizedBox(height: 12),
+            TextField(
+              controller: controladorEmail,
+              keyboardType: TextInputType.emailAddress,
+              decoration: InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogoContext).pop(null),
+            child: Text(SoleraL10n.t('cancelar')),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogoContext)
+                .pop(controladorEmail.text.trim()),
+            child: Text('Enviar'),
+          ),
+        ],
+      ),
+    );
+    if (email == null || email.isEmpty) return;
+    try {
+      await ClienteComunidad().solicitarBorradoPorEmail(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(contextoExterior).showSnackBar(SnackBar(
+          content: Text(
+              'Solicitud enviada. Revisa tu email para confirmar el borrado.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(contextoExterior)
+          .showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
   }
 
   Future<void> _vaciarCache() async {
@@ -396,8 +453,31 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
             ),
           ]),
 
+          if (kFeatureComunidadHabilitada) ...[
+            SizedBox(height: 32),
+            Text('Tus aportaciones a la comunidad',
+                style: Theme.of(context).textTheme.titleLarge),
+            SizedBox(height: 8),
+            Text(
+              'Si has compartido fotos con la comunidad puedes pedir su '
+              'borrado en cualquier momento (RGPD). Te llegará un enlace '
+              'al email indicado; haciendo click se borrarán todas tus '
+              'aportaciones, incluso las que ya estén publicadas.',
+              style: TextStyle(fontSize: 13),
+            ),
+            SizedBox(height: 12),
+            OutlinedButton.icon(
+              icon: Icon(Icons.delete_sweep_outlined),
+              onPressed: () => _solicitarBorradoAportacionesComunidad(context),
+              label: Text('Borrar mis aportaciones'),
+              style: OutlinedButton.styleFrom(
+                minimumSize: Size(double.infinity, 40),
+              ),
+            ),
+          ],
+
           SizedBox(height: 32),
-          
+
           Text('Apoyar el proyecto', style: Theme.of(context).textTheme.titleLarge),
           SizedBox(height: 8),
           Text(

@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import '../comunidad/dialogo_compartir_comunidad.dart';
+import '../comunidad/feature_flag_comunidad.dart';
 import '../datos/base_datos.dart';
 import '../modelos/hallazgo.dart';
 import '../datos/configuracion.dart';
@@ -195,6 +197,22 @@ class _PantallaListaState extends State<PantallaLista> {
             },
             label: Text('Ver en el mapa'),
             style: FilledButton.styleFrom(
+              minimumSize: Size(double.infinity, 40),
+            ),
+          ),
+          SizedBox(height: 8),
+        ],
+        if (kFeatureComunidadHabilitada && hallazgo.rutasFotos.isNotEmpty) ...[
+          OutlinedButton.icon(
+            icon: Icon(Icons.public),
+            onPressed: () {
+              showDialog<bool>(
+                context: context,
+                builder: (_) => DialogoCompartirComunidad(hallazgo: hallazgo),
+              );
+            },
+            label: Text('Compartir con la comunidad'),
+            style: OutlinedButton.styleFrom(
               minimumSize: Size(double.infinity, 40),
             ),
           ),
