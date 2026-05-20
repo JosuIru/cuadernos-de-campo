@@ -32,7 +32,70 @@ enum TipoEvidencia {
       orElse: () => TipoEvidencia.avistamiento,
     );
   }
+
+  /// Tipos de evidencia razonablemente aplicables a una categoría.
+  /// Filtrado conservador: sólo descarta lo manifiestamente absurdo
+  /// (una huella en una planta, una pluma en un reptil). Si una
+  /// categoría no aparece en el mapa, devuelve todos los tipos.
+  static List<TipoEvidencia> aplicablesParaCategoria(String categoria) {
+    return _tiposAplicablesPorCategoria[categoria] ?? TipoEvidencia.values;
+  }
 }
+
+// Conjuntos por categoría. Se busca cobertura útil del campo, no
+// exhaustividad biológica. Cuando aparezca un caso que falta, se
+// añade aquí.
+const Map<String, List<TipoEvidencia>> _tiposAplicablesPorCategoria = {
+  'planta': [
+    TipoEvidencia.avistamiento,
+    TipoEvidencia.marcaCorteza,
+    TipoEvidencia.restosAlimentacion,
+    TipoEvidencia.interaccion,
+  ],
+  'seta': [
+    TipoEvidencia.avistamiento,
+    TipoEvidencia.restosAlimentacion,
+    TipoEvidencia.interaccion,
+  ],
+  'insecto': [
+    TipoEvidencia.avistamiento,
+    TipoEvidencia.sonido,
+    TipoEvidencia.restosAlimentacion,
+    TipoEvidencia.interaccion,
+    TipoEvidencia.refugio,
+  ],
+  'ave': [
+    TipoEvidencia.avistamiento,
+    TipoEvidencia.pluma,
+    TipoEvidencia.excremento,
+    TipoEvidencia.restosAlimentacion,
+    TipoEvidencia.nidoVacio,
+    TipoEvidencia.refugio,
+    TipoEvidencia.sonido,
+    TipoEvidencia.interaccion,
+  ],
+  'pez': [
+    TipoEvidencia.avistamiento,
+    TipoEvidencia.restosAlimentacion,
+    TipoEvidencia.interaccion,
+  ],
+  'anfibio': [
+    TipoEvidencia.avistamiento,
+    TipoEvidencia.sonido,
+    TipoEvidencia.restosAlimentacion,
+    TipoEvidencia.refugio,
+    TipoEvidencia.interaccion,
+  ],
+  'reptil': [
+    TipoEvidencia.avistamiento,
+    TipoEvidencia.huella,
+    TipoEvidencia.excremento,
+    TipoEvidencia.restosAlimentacion,
+    TipoEvidencia.refugio,
+    TipoEvidencia.interaccion,
+  ],
+  // mamifero, animal (otros) → todos los tipos disponibles.
+};
 
 /// Cuánta confianza tiene el aficionado en su propia identificación
 /// en el momento de anotar. Texto libre (no enum estricto) permite

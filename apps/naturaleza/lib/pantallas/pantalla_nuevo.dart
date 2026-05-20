@@ -633,6 +633,22 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   }
 
   Widget _seccionEvidencia() {
+    // Filtramos los tipos aplicables a la categoría actual. Si el
+    // tipo seleccionado deja de aplicar (cambio de animal a planta),
+    // lo reseteamos a avistamiento — invariante de UI: el chip
+    // seleccionado siempre está visible.
+    final tiposAplicables =
+        TipoEvidencia.aplicablesParaCategoria(_categoria);
+    if (!tiposAplicables.contains(_tipoEvidencia)) {
+      // No llamamos a setState dentro del build: dejamos que el
+      // próximo rebuild lo recoja vía addPostFrameCallback.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !tiposAplicables.contains(_tipoEvidencia)) {
+          setState(() => _tipoEvidencia = TipoEvidencia.avistamiento);
+        }
+      });
+    }
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -651,7 +667,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              children: TipoEvidencia.values.map((tipo) {
+              children: tiposAplicables.map((tipo) {
                 final seleccionado = _tipoEvidencia == tipo;
                 return ChoiceChip(
                   avatar:

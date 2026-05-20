@@ -12,6 +12,7 @@ import '../modelos/hallazgo.dart';
 import '../modelos/track.dart';
 import '../servicios/cache_teselas.dart';
 import '../servicios/grabador_track.dart';
+import '../servicios/checker_actualizaciones_naturaleza.dart';
 import '../servicios/estado_conexion.dart';
 import '../servicios/estado_salida_en_curso.dart';
 import '../servicios/servicio_gbif.dart';
@@ -693,6 +694,33 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 ),
               ),
             ),
+          // Banner del checker de actualizaciones. Va sobre el mapa,
+          // bajo la SafeArea, en modo compacto para no estorbar.
+          Positioned(
+            top: _conectado ? 0 : 32,
+            left: 8,
+            right: 8,
+            child: SafeArea(
+              bottom: false,
+              child: ValueListenableBuilder<ActualizacionDisponible?>(
+                valueListenable: notificadorActualizacion,
+                builder: (_, actualizacion, __) {
+                  if (actualizacion == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: BannerActualizacionDisponible(
+                      actualizacion: actualizacion,
+                      compacto: true,
+                      onDescartar: () =>
+                          notificadorActualizacion.value = null,
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
           // RepaintBoundary aísla todo el subárbol del FlutterMap a su
           // propia capa GPU. Eventos del HUD (FAB, snackbars, banner de
           // conexión) y cambios de estado que no afectan al mapa ya no

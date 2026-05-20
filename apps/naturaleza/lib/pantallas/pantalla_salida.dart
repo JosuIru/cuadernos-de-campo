@@ -230,6 +230,35 @@ class _PantallaSalidaState extends State<PantallaSalida> {
     if (mounted) _cargar();
   }
 
+  Future<void> _borrarAnotacion(int? idAnotacion) async {
+    if (idAnotacion == null) return;
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Borrar anotación'),
+        content: const Text(
+          'Se borrará esta anotación al margen. La salida y los '
+          'hallazgos se mantienen.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Borrar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true) return;
+    await BaseDatosNaturaleza.instancia
+        .borrarAnotacionDiferida(idAnotacion);
+    if (mounted) _cargar();
+  }
+
   Future<void> _cerrarSalida() async {
     final salida = _salida;
     if (salida?.id == null || salida!.cerrada) return;
@@ -659,18 +688,35 @@ class _PantallaSalidaState extends State<PantallaSalida> {
                         .colorScheme
                         .surfaceContainerHighest,
                   ),
-                  child: Column(
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        fmt.format(DateTime.fromMillisecondsSinceEpoch(
-                            a.fechaAnotacionMs)),
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.grey),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fmt.format(DateTime.fromMillisecondsSinceEpoch(
+                                  a.fechaAnotacionMs)),
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(a.texto,
+                                style: const TextStyle(
+                                    fontSize: 14, height: 1.4)),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(a.texto,
-                          style: const TextStyle(fontSize: 14, height: 1.4)),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline,
+                            size: 18, color: Colors.grey),
+                        tooltip: 'Borrar anotación',
+                        onPressed: () => _borrarAnotacion(a.id),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                            minWidth: 32, minHeight: 32),
+                      ),
                     ],
                   ),
                 ),

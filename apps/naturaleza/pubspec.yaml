@@ -1,7 +1,7 @@
 name: naturaleza_flutter
 description: "Cuaderno de campo de naturaleza (animales, insectos y plantas)"
 publish_to: 'none'
-version: 1.0.5+6
+version: 1.0.6+7
 
 environment:
   sdk: ^3.5.0

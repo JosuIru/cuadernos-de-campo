@@ -7,6 +7,7 @@ import '../datos/base_datos.dart';
 import '../datos/datos_guia.dart';
 import '../modelos/anotacion_diferida.dart';
 import '../modelos/hallazgo.dart';
+import '../servicios/checker_actualizaciones_naturaleza.dart';
 import '../servicios/exportar_zip.dart';
 import '../servicios/tarjeta_imagen.dart';
 import 'pantalla_estadisticas.dart';
@@ -475,25 +476,72 @@ class _PantallaListaState extends State<PantallaLista> {
                         .colorScheme
                         .surfaceContainerHighest,
                   ),
-                  child: Column(
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        fmt.format(DateTime.fromMillisecondsSinceEpoch(
-                            a.fechaAnotacionMs)),
-                        style: const TextStyle(
-                            fontSize: 11, color: Colors.grey),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              fmt.format(DateTime.fromMillisecondsSinceEpoch(
+                                  a.fechaAnotacionMs)),
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(a.texto,
+                                style: const TextStyle(
+                                    fontSize: 13, height: 1.4)),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(a.texto,
-                          style:
-                              const TextStyle(fontSize: 13, height: 1.4)),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline,
+                            size: 18, color: Colors.grey),
+                        tooltip: 'Borrar anotación',
+                        onPressed: () =>
+                            _borrarAnotacion(a.id, recargar),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(
+                            minWidth: 32, minHeight: 32),
+                      ),
                     ],
                   ),
                 ),
               )),
       ],
     );
+  }
+
+  Future<void> _borrarAnotacion(
+      int? idAnotacion, Future<void> Function() recargar) async {
+    if (idAnotacion == null) return;
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Borrar anotación'),
+        content: const Text(
+          'Se borrará esta anotación al margen. El hallazgo y otras '
+          'anotaciones se mantienen.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Borrar'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar != true) return;
+    await BaseDatosNaturaleza.instancia
+        .borrarAnotacionDiferida(idAnotacion);
+    await recargar();
   }
 
   Future<void> _aniadirAnotacionAHallazgo(
@@ -611,6 +659,57 @@ class _PantallaListaState extends State<PantallaLista> {
     return 'Hallazgo';
   }
 
+  /// Subtítulo de la lista: si hay corrección de identificación,
+  /// muestra la especie corregida prominente y la original pequeña
+  /// y tachada al lado. Si no, comportamiento normal.
+  Widget _subtituloHallazgo(Hallazgo hallazgo, String fecha) {
+    final lineaCoordenadas =
+        '$fecha · ${hallazgo.latitud.toStringAsFixed(4)}, ${hallazgo.longitud.toStringAsFixed(4)}';
+    final hayCorreccion =
+        hallazgo.identificacionValidada == EstadoIdentificacion.corregida &&
+            hallazgo.especieCorregida.isNotEmpty;
+
+    if (!hayCorreccion) {
+      return Text(
+        '${hallazgo.especie.isEmpty ? "—" : hallazgo.especie}\n$lineaCoordenadas',
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                hallazgo.especieCorregida,
+                style: const TextStyle(fontStyle: FontStyle.italic),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (hallazgo.especie.isNotEmpty) ...[
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  hallazgo.especie,
+                  style: const TextStyle(
+                    decoration: TextDecoration.lineThrough,
+                    color: Colors.grey,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ],
+        ),
+        Text(lineaCoordenadas),
+      ],
+    );
+  }
+
   String _etiquetaCategoria(String idCategoria) {
     return categoriaPorId(idCategoria)?.nombre ?? idCategoria;
   }
@@ -662,6 +761,21 @@ class _PantallaListaState extends State<PantallaLista> {
       ),
       body: Column(
         children: [
+          ValueListenableBuilder<ActualizacionDisponible?>(
+            valueListenable: notificadorActualizacion,
+            builder: (_, actualizacion, __) {
+              if (actualizacion == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+                child: BannerActualizacionDisponible(
+                  actualizacion: actualizacion,
+                  compacto: true,
+                  onDescartar: () =>
+                      notificadorActualizacion.value = null,
+                ),
+              );
+            },
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 6),
             child: TextField(
@@ -740,10 +854,7 @@ class _PantallaListaState extends State<PantallaLista> {
                               child: Icon(categoria?.icono ?? Icons.help_outline, color: categoria?.color),
                             ),
                       title: Text(_tituloHallazgo(hallazgo)),
-                      subtitle: Text(
-                        '${hallazgo.especie.isEmpty ? "—" : hallazgo.especie}\n'
-                        '$fecha · ${hallazgo.latitud.toStringAsFixed(4)}, ${hallazgo.longitud.toStringAsFixed(4)}',
-                      ),
+                      subtitle: _subtituloHallazgo(hallazgo, fecha),
                       isThreeLine: true,
                       onTap: () => _abrirDetalle(hallazgo),
                     );
