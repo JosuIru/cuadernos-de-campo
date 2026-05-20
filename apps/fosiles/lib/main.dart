@@ -16,6 +16,7 @@ import 'pantallas/pantalla_onboarding.dart';
 import 'servicios/grabador_track.dart';
 import 'servicios/estado_conexion.dart';
 import 'servicios/auto_backup.dart';
+import 'servicios/checker_actualizaciones_fosiles.dart';
 import 'datos/base_datos.dart';
 import 'datos/configuracion.dart';
 import 'datos/datos_guia.dart';
@@ -42,6 +43,7 @@ Future<void> main() async {
   final restaurado = await _autoBackup.restaurarSiProcede();
 
   unawaited(GrabadorTrack.instancia.consolidarSesionesPendientes());
+  unawaited(comprobarActualizacionFosilesEnBackground());
   EstadoConexion.instancia.iniciar();
   runApp(AplicacionFosiles(restaurado: restaurado));
 }

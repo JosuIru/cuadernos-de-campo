@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'pantalla_chat.dart';
 import 'pantalla_meteo.dart';
+import '../servicios/checker_actualizaciones_fosiles.dart';
 
 class PantallaInicio extends StatelessWidget {
   final VoidCallback? alIrAMapa;
@@ -17,6 +19,20 @@ class PantallaInicio extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          ValueListenableBuilder<ActualizacionDisponible?>(
+            valueListenable: notificadorActualizacionFosiles,
+            builder: (_, actualizacion, __) {
+              if (actualizacion == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: BannerActualizacionDisponible(
+                  actualizacion: actualizacion,
+                  onDescartar: () =>
+                      notificadorActualizacionFosiles.value = null,
+                ),
+              );
+            },
+          ),
           // ─── Cabecera ───────────────────────────────────
           Container(
             padding: const EdgeInsets.all(20),

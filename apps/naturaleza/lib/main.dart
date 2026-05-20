@@ -12,6 +12,7 @@ import 'servicios/grabador_track.dart';
 import 'servicios/estado_conexion.dart';
 import 'servicios/auto_backup.dart';
 import 'servicios/estado_salida_en_curso.dart';
+import 'servicios/checker_actualizaciones_naturaleza.dart';
 import 'datos/base_datos.dart';
 import 'datos/datos_guia.dart';
 
@@ -37,6 +38,7 @@ Future<void> main() async {
 
   unawaited(GrabadorTrack.instancia.consolidarSesionesPendientes());
   unawaited(EstadoSalidaEnCurso.instancia.recargarDesdeBD());
+  unawaited(comprobarActualizacionNaturalezaEnBackground());
   EstadoConexion.instancia.iniciar();
   runApp(AplicacionNaturaleza(restaurado: restaurado));
 }

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'pantalla_chat.dart';
 import 'pantalla_meteo.dart';
 import 'pantalla_salida.dart';
 import 'pantalla_salidas.dart';
 import '../servicios/estado_salida_en_curso.dart';
+import '../servicios/checker_actualizaciones_naturaleza.dart';
 
 class PantallaInicio extends StatefulWidget {
   final VoidCallback? alIrAMapa;
@@ -41,6 +43,23 @@ class _PantallaInicioState extends State<PantallaInicio> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // Aviso de actualización disponible — sticky arriba de
+          // todo, antes incluso del banner de salida en curso, para
+          // que el usuario lo vea aunque haya otras señales activas.
+          ValueListenableBuilder<ActualizacionDisponible?>(
+            valueListenable: notificadorActualizacion,
+            builder: (_, actualizacion, __) {
+              if (actualizacion == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: BannerActualizacionDisponible(
+                  actualizacion: actualizacion,
+                  onDescartar: () =>
+                      notificadorActualizacion.value = null,
+                ),
+              );
+            },
+          ),
           if (salidaActiva != null) ...[
             _bannerSalidaActiva(context, salidaActiva.id!,
                 salidaActiva.titulo, salidaActiva.fechaInicioMs),
