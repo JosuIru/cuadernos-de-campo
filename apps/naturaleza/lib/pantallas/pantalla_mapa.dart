@@ -9,9 +9,11 @@ import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/base_datos.dart';
 import '../datos/datos_guia.dart';
 import '../modelos/hallazgo.dart';
+import '../modelos/track.dart';
 import '../servicios/cache_teselas.dart';
 import '../servicios/grabador_track.dart';
 import '../servicios/estado_conexion.dart';
+import '../servicios/estado_salida_en_curso.dart';
 import '../servicios/servicio_gbif.dart';
 import '../servicios/servicio_overpass.dart';
 import 'pantalla_nuevo.dart';
@@ -399,7 +401,21 @@ class _PantallaMapaState extends State<PantallaMapa> {
       final inicioMs = grabador.inicioMs;
       final resultado = grabador.detener();
       if (resultado != null) {
-        await BaseDatosNaturaleza.instancia.guardarTrack(resultado.track, resultado.puntos);
+        // Si hay salida activa, el track recién detenido se ata
+        // automáticamente a esa salida — así detalle de salida lo
+        // muestra junto a hallazgos y meteo.
+        final idSalida = EstadoSalidaEnCurso.instancia.salida?.id;
+        final trackAGuardar = idSalida == null
+            ? resultado.track
+            : Track(
+                fechaMs: resultado.track.fechaMs,
+                nombre: resultado.track.nombre,
+                duracionMs: resultado.track.duracionMs,
+                distanciaMetros: resultado.track.distanciaMetros,
+                salidaId: idSalida,
+              );
+        await BaseDatosNaturaleza.instancia
+            .guardarTrack(trackAGuardar, resultado.puntos);
         // Buffer consolidado correctamente: limpiamos los puntos
         // huérfanos que la grabación dejó en disco (red de seguridad
         // ante crash). Idempotente.

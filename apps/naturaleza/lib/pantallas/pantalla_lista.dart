@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../datos/base_datos.dart';
 import '../datos/datos_guia.dart';
+import '../modelos/anotacion_diferida.dart';
 import '../modelos/hallazgo.dart';
 import '../servicios/exportar_zip.dart';
 import '../servicios/tarjeta_imagen.dart';
@@ -57,7 +58,16 @@ class _PantallaListaState extends State<PantallaLista> {
     }).toList();
   }
 
-  Future<void> _abrirDetalle(Hallazgo hallazgo) async {
+  Future<void> _abrirDetalle(Hallazgo hallazgoOriginal) async {
+    // El sheet mantiene su propio estado para poder recargar el
+    // hallazgo (validar/corregir) y la lista de anotaciones diferidas
+    // sin cerrarse. La pantalla externa se refresca al cerrar.
+    Hallazgo hallazgo = hallazgoOriginal;
+    List<AnotacionDiferida> anotaciones = const [];
+    if (hallazgo.id != null) {
+      anotaciones = await BaseDatosNaturaleza.instancia
+          .anotacionesDeHallazgo(hallazgo.id!);
+    }
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -67,12 +77,27 @@ class _PantallaListaState extends State<PantallaLista> {
         initialChildSize: 0.85,
         maxChildSize: 0.95,
         minChildSize: 0.4,
-        builder: (_, controladorScroll) => SingleChildScrollView(
-          controller: controladorScroll,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+        builder: (_, controladorScroll) => StatefulBuilder(
+          builder: (innerContext, refrescarSheet) {
+            Future<void> recargarFicha() async {
+              if (hallazgo.id == null) return;
+              final fresco = await BaseDatosNaturaleza.instancia
+                  .obtenerHallazgo(hallazgo.id!);
+              final lista = await BaseDatosNaturaleza.instancia
+                  .anotacionesDeHallazgo(hallazgo.id!);
+              if (fresco == null) return;
+              refrescarSheet(() {
+                hallazgo = fresco;
+                anotaciones = lista;
+              });
+            }
+
+            return SingleChildScrollView(
+              controller: controladorScroll,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               if (hallazgo.rutasFotos.isNotEmpty)
                 SizedBox(
                   height: 240,
@@ -113,9 +138,12 @@ class _PantallaListaState extends State<PantallaLista> {
                   ),
                 ),
               SizedBox(height: 12),
+              _badgesEvidencia(hallazgo),
               _filaDetalle('Categoría', _etiquetaCategoria(hallazgo.categoria)),
               _filaDetalle('Nombre común', hallazgo.nombreComun.isEmpty ? '—' : hallazgo.nombreComun),
               _filaDetalle('Especie', hallazgo.especie.isEmpty ? '—' : hallazgo.especie),
+              if (hallazgo.especieCorregida.isNotEmpty)
+                _filaDetalle('Corregida a', hallazgo.especieCorregida),
               _filaDetalle('Taxonomía', hallazgo.taxonomia.isEmpty ? '—' : hallazgo.taxonomia),
               _filaDetalle('Hábitat', hallazgo.habitat.isEmpty ? '—' : hallazgo.habitat),
               _filaDetalle(
@@ -129,6 +157,14 @@ class _PantallaListaState extends State<PantallaLista> {
                 '${hallazgo.precision != null ? " (±${hallazgo.precision!.round()} m)" : ""}',
               ),
               _filaDetalle('Notas', hallazgo.notas.isEmpty ? '—' : hallazgo.notas),
+              if (hallazgo.hipotesis.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _bloqueHipotesis(hallazgo),
+              ],
+              const SizedBox(height: 16),
+              _bloqueValidacion(hallazgo, recargarFicha),
+              const SizedBox(height: 16),
+              _bloqueAnotacionesHallazgo(hallazgo, anotaciones, recargarFicha),
               SizedBox(height: 16),
               Row(
                 children: [
@@ -184,9 +220,321 @@ class _PantallaListaState extends State<PantallaLista> {
               ),
             ],
           ),
+            );
+          },
         ),
       ),
     );
+    if (mounted) _cargar();
+  }
+
+  // ─── Bloques de la ficha (v3) ─────────────────────────────────────
+
+  Widget _badgesEvidencia(Hallazgo hallazgo) {
+    final badges = <Widget>[];
+    badges.add(_pillEvidencia(
+      _etiquetaTipoEvidencia(hallazgo.tipoEvidencia),
+      const Color(0xFF3A7D5A),
+    ));
+    if (hallazgo.confianzaIdentificacion != null) {
+      final etiqueta = hallazgo.confianzaIdentificacion!;
+      badges.add(_pillEvidencia(
+        'Confianza: ${etiqueta[0].toUpperCase()}${etiqueta.substring(1)}',
+        Colors.blueGrey,
+      ));
+    }
+    switch (hallazgo.identificacionValidada) {
+      case EstadoIdentificacion.confirmada:
+        badges.add(_pillEvidencia('✓ Confirmada', Colors.green.shade700));
+        break;
+      case EstadoIdentificacion.corregida:
+        badges.add(_pillEvidencia('→ Corregida', Colors.deepOrange));
+        break;
+      default:
+        if (hallazgo.especie.isNotEmpty) {
+          badges.add(_pillEvidencia('? Sin validar', Colors.grey));
+        }
+    }
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Wrap(spacing: 6, runSpacing: 6, children: badges),
+    );
+  }
+
+  Widget _pillEvidencia(String etiqueta, Color color) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(etiqueta,
+            style: const TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold)),
+      );
+
+  String _etiquetaTipoEvidencia(TipoEvidencia tipo) => tipo.etiqueta;
+
+  Widget _bloqueHipotesis(Hallazgo hallazgo) => Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.blueGrey.shade50,
+          borderRadius: BorderRadius.circular(8),
+          border: Border(
+              left: BorderSide(color: Colors.blueGrey.shade400, width: 3)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Tu hipótesis',
+                style: TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 12)),
+            const SizedBox(height: 4),
+            Text(hallazgo.hipotesis,
+                style: const TextStyle(fontSize: 13, height: 1.4)),
+          ],
+        ),
+      );
+
+  Widget _bloqueValidacion(Hallazgo hallazgo, Future<void> Function() recargar) {
+    if (hallazgo.id == null) return const SizedBox.shrink();
+    final etiquetaEspecieActual = hallazgo.especieCorregida.isNotEmpty
+        ? hallazgo.especieCorregida
+        : (hallazgo.especie.isNotEmpty
+            ? hallazgo.especie
+            : hallazgo.nombreComun);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Validar identificación',
+              style: TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          const Text(
+            'Tras revisar fotos o bibliografía, marca si era correcta '
+            'o anota la especie real. Sirve para calcular tu tasa de '
+            'acierto en el tiempo.',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: Text(
+                    hallazgo.identificacionValidada ==
+                            EstadoIdentificacion.confirmada
+                        ? 'Confirmada ✓'
+                        : 'Confirmar',
+                  ),
+                  onPressed: hallazgo.identificacionValidada ==
+                          EstadoIdentificacion.confirmada
+                      ? null
+                      : () async {
+                          await BaseDatosNaturaleza.instancia
+                              .actualizarHallazgo(hallazgo.id!, {
+                            'identificacion_validada':
+                                EstadoIdentificacion.confirmada,
+                            'especie_corregida': null,
+                          });
+                          await recargar();
+                        },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: const Icon(Icons.edit_note),
+                  label: const Text('Corregir'),
+                  onPressed: () => _dialogoCorregirEspecie(
+                      hallazgo, etiquetaEspecieActual, recargar),
+                ),
+              ),
+            ],
+          ),
+          if (hallazgo.identificacionValidada !=
+              EstadoIdentificacion.sinRevisar) ...[
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () async {
+                await BaseDatosNaturaleza.instancia.actualizarHallazgo(
+                  hallazgo.id!,
+                  {
+                    'identificacion_validada':
+                        EstadoIdentificacion.sinRevisar,
+                  },
+                );
+                await recargar();
+              },
+              child: const Text('Volver a sin revisar'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _dialogoCorregirEspecie(Hallazgo hallazgo,
+      String etiquetaActual, Future<void> Function() recargar) async {
+    final controlador = TextEditingController(
+        text: hallazgo.especieCorregida.isNotEmpty
+            ? hallazgo.especieCorregida
+            : '');
+    final corregida = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Corregir identificación'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Identificación actual: $etiquetaActual',
+                style:
+                    const TextStyle(fontSize: 12, color: Colors.grey)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controlador,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Especie real',
+                hintText: 'nombre científico o común',
+              ),
+              textCapitalization: TextCapitalization.sentences,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.of(ctx).pop(controlador.text.trim()),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (corregida == null || corregida.isEmpty) return;
+    await BaseDatosNaturaleza.instancia.actualizarHallazgo(hallazgo.id!, {
+      'identificacion_validada': EstadoIdentificacion.corregida,
+      'especie_corregida': corregida,
+    });
+    await recargar();
+  }
+
+  Widget _bloqueAnotacionesHallazgo(Hallazgo hallazgo,
+      List<AnotacionDiferida> anotaciones,
+      Future<void> Function() recargar) {
+    if (hallazgo.id == null) return const SizedBox.shrink();
+    final fmt = DateFormat('d MMM HH:mm', 'es_ES');
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text('Anotaciones al margen',
+                  style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+            TextButton.icon(
+              onPressed: () => _aniadirAnotacionAHallazgo(hallazgo, recargar),
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Añadir'),
+            ),
+          ],
+        ),
+        if (anotaciones.isEmpty)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Sin anotaciones. Úsalas para revisar dudas, conexiones '
+              'con otra salida, correcciones de detalle.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          )
+        else
+          ...anotaciones.map((a) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                          color: Theme.of(context).colorScheme.primary,
+                          width: 3),
+                    ),
+                    color: Theme.of(context)
+                        .colorScheme
+                        .surfaceContainerHighest,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        fmt.format(DateTime.fromMillisecondsSinceEpoch(
+                            a.fechaAnotacionMs)),
+                        style: const TextStyle(
+                            fontSize: 11, color: Colors.grey),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(a.texto,
+                          style:
+                              const TextStyle(fontSize: 13, height: 1.4)),
+                    ],
+                  ),
+                ),
+              )),
+      ],
+    );
+  }
+
+  Future<void> _aniadirAnotacionAHallazgo(
+      Hallazgo hallazgo, Future<void> Function() recargar) async {
+    if (hallazgo.id == null) return;
+    final controladorTexto = TextEditingController();
+    final guardada = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Anotación al margen'),
+        content: TextField(
+          controller: controladorTexto,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            labelText: 'Texto',
+            hintText: 'p. ej. al final era hembra, no macho',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    if (guardada != true || controladorTexto.text.trim().isEmpty) return;
+    final anotacion = AnotacionDiferida(
+      fechaAnotacionMs: DateTime.now().millisecondsSinceEpoch,
+      hallazgoId: hallazgo.id,
+      salidaId: hallazgo.salidaId,
+      texto: controladorTexto.text.trim(),
+    );
+    await BaseDatosNaturaleza.instancia.guardarAnotacionDiferida(anotacion);
+    await recargar();
   }
 
   Future<void> _exportar() async {

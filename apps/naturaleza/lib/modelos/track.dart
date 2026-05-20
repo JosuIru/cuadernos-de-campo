@@ -5,12 +5,19 @@ class Track {
   final int? duracionMs;
   final double? distanciaMetros;
 
+  /// Salida (v3) a la que pertenece el track, si la hay. Permite
+  /// modelar el caso "abro salida → arranco track → cierro track →
+  /// cierro salida" con el track aún consultable desde la salida.
+  /// Null para tracks sueltos (todos los previos a v3).
+  final int? salidaId;
+
   Track({
     this.id,
     required this.fechaMs,
     this.nombre = '',
     this.duracionMs,
     this.distanciaMetros,
+    this.salidaId,
   });
 
   Map<String, Object?> toMap() => {
@@ -19,6 +26,7 @@ class Track {
         'nombre': nombre,
         'duracion_ms': duracionMs,
         'distancia_metros': distanciaMetros,
+        'salida_id': salidaId,
       };
 
   factory Track.fromMap(Map<String, Object?> mapa) => Track(
@@ -27,6 +35,7 @@ class Track {
         nombre: (mapa['nombre'] as String?) ?? '',
         duracionMs: mapa['duracion_ms'] as int?,
         distanciaMetros: (mapa['distancia_metros'] as num?)?.toDouble(),
+        salidaId: mapa['salida_id'] as int?,
       );
 }
 

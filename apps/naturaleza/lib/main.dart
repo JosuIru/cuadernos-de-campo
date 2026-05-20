@@ -11,6 +11,7 @@ import 'pantallas/pantalla_ajustes.dart';
 import 'servicios/grabador_track.dart';
 import 'servicios/estado_conexion.dart';
 import 'servicios/auto_backup.dart';
+import 'servicios/estado_salida_en_curso.dart';
 import 'datos/base_datos.dart';
 import 'datos/datos_guia.dart';
 
@@ -35,6 +36,7 @@ Future<void> main() async {
   final restaurado = await _autoBackupNaturaleza.restaurarSiProcede();
 
   unawaited(GrabadorTrack.instancia.consolidarSesionesPendientes());
+  unawaited(EstadoSalidaEnCurso.instancia.recargarDesdeBD());
   EstadoConexion.instancia.iniciar();
   runApp(AplicacionNaturaleza(restaurado: restaurado));
 }

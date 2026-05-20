@@ -1,20 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'pantalla_chat.dart';
 import 'pantalla_meteo.dart';
+import 'pantalla_salida.dart';
+import 'pantalla_salidas.dart';
+import '../servicios/estado_salida_en_curso.dart';
 
-class PantallaInicio extends StatelessWidget {
+class PantallaInicio extends StatefulWidget {
   final VoidCallback? alIrAMapa;
   final VoidCallback? alIrAGuia;
 
   const PantallaInicio({super.key, this.alIrAMapa, this.alIrAGuia});
 
   @override
+  State<PantallaInicio> createState() => _PantallaInicioState();
+}
+
+class _PantallaInicioState extends State<PantallaInicio> {
+  @override
+  void initState() {
+    super.initState();
+    EstadoSalidaEnCurso.instancia.addListener(_alCambiarSalida);
+  }
+
+  @override
+  void dispose() {
+    EstadoSalidaEnCurso.instancia.removeListener(_alCambiarSalida);
+    super.dispose();
+  }
+
+  void _alCambiarSalida() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final salidaActiva = EstadoSalidaEnCurso.instancia.salida;
     return Scaffold(
       appBar: AppBar(title: const Text('Naturaleza')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (salidaActiva != null) ...[
+            _bannerSalidaActiva(context, salidaActiva.id!,
+                salidaActiva.titulo, salidaActiva.fechaInicioMs),
+            const SizedBox(height: 16),
+          ],
           // ─── Cabecera ───────────────────────────────────
           Container(
             padding: const EdgeInsets.all(20),
@@ -47,7 +78,7 @@ class PantallaInicio extends StatelessWidget {
                 icono: Icons.explore,
                 titulo: 'Explorar mapa',
                 subtitulo: 'Especies y observaciones',
-                onTap: () => alIrAMapa?.call(),
+                onTap: () => widget.alIrAMapa?.call(),
               ),
             ),
             const SizedBox(width: 8),
@@ -73,6 +104,18 @@ class PantallaInicio extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const PantallaChat(
                 sistemaPrompt: PantallaChat.sistemaNaturaleza,
               )),
+            ),
+            anchoCompleto: true,
+          ),
+          const SizedBox(height: 8),
+          _tarjetaAccion(
+            context,
+            icono: Icons.hiking,
+            titulo: 'Salidas de campo',
+            subtitulo:
+                'Agrupa hallazgos, track y meteorología de una jornada en una sola unidad narrativa',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PantallaSalidas()),
             ),
             anchoCompleto: true,
           ),
@@ -182,6 +225,57 @@ class PantallaInicio extends StatelessWidget {
           ),
         ]),
       );
+
+  Widget _bannerSalidaActiva(
+      BuildContext context, int idSalida, String titulo, int inicioMs) {
+    final fmt = DateFormat('HH:mm', 'es_ES');
+    final etiquetaInicio =
+        fmt.format(DateTime.fromMillisecondsSinceEpoch(inicioMs));
+    final etiquetaTitulo =
+        titulo.isNotEmpty ? titulo : 'Salida sin título';
+    return Material(
+      color: Colors.orange.shade50,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => PantallaSalida(idSalida: idSalida),
+          ),
+        ),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Icon(Icons.fiber_manual_record,
+                  color: Colors.orange.shade700, size: 14),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Salida en curso · desde $etiquetaInicio',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.orange.shade900,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(etiquetaTitulo,
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, fontSize: 14)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.grey),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _paso(int numero, String titulo, String descripcion) => Padding(
         padding: const EdgeInsets.only(bottom: 12),

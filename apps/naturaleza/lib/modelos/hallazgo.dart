@@ -2,6 +2,56 @@ import 'dart:convert';
 
 import 'atribucion_foto.dart';
 
+/// Tipo de evidencia del hallazgo. La práctica real del aficionado
+/// mezcla "vi el bicho" con "encontré una huella suya" o "oí su canto"
+/// en la misma página del cuaderno. Aquí los tratamos como ciudadanos
+/// de primera clase, no como casi-especies.
+///
+/// La persistencia es texto plano (no índice numérico) para que la
+/// base de datos sea legible y los valores fácil de leer en SQL.
+enum TipoEvidencia {
+  avistamiento('avistamiento', 'Avistamiento'),
+  huella('huella', 'Huella'),
+  pluma('pluma', 'Pluma'),
+  excremento('excremento', 'Excremento'),
+  restosAlimentacion('restos_alimentacion', 'Restos de alimentación'),
+  marcaCorteza('marca_corteza', 'Marca en corteza'),
+  nidoVacio('nido_vacio', 'Nido vacío'),
+  refugio('refugio', 'Refugio o madriguera'),
+  sonido('sonido', 'Sonido o canto'),
+  interaccion('interaccion', 'Interacción');
+
+  final String clave;
+  final String etiqueta;
+  const TipoEvidencia(this.clave, this.etiqueta);
+
+  static TipoEvidencia desdeClave(String? clave) {
+    if (clave == null) return TipoEvidencia.avistamiento;
+    return TipoEvidencia.values.firstWhere(
+      (e) => e.clave == clave,
+      orElse: () => TipoEvidencia.avistamiento,
+    );
+  }
+}
+
+/// Cuánta confianza tiene el aficionado en su propia identificación
+/// en el momento de anotar. Texto libre (no enum estricto) permite
+/// añadir valores en el futuro sin migrar la BD.
+class ConfianzaIdentificacion {
+  static const String segura = 'segura';
+  static const String probable = 'probable';
+  static const String tentativa = 'tentativa';
+}
+
+/// Estado de validación posterior de la identificación. Permite
+/// calcular la propia tasa de acierto del aficionado a lo largo del
+/// tiempo, sin depender de comunidad externa.
+class EstadoIdentificacion {
+  static const int sinRevisar = 0;
+  static const int confirmada = 1;
+  static const int corregida = 2;
+}
+
 class Hallazgo {
   final int? id;
   final int fechaMs;
@@ -28,6 +78,29 @@ class Hallazgo {
 
   final Map<String, dynamic> atributos;
 
+  /// Si pertenece a una salida (v3), su id. Null para hallazgos
+  /// sueltos (incluidos todos los previos a la migración v3).
+  final int? salidaId;
+
+  /// Tipo de evidencia que sustenta el hallazgo (v3).
+  final TipoEvidencia tipoEvidencia;
+
+  /// Razonamiento del aficionado en el momento de anotar (v3):
+  /// "creo que es Saxicola rubicola por el babero blanco". Permite
+  /// revisar a posteriori la propia capacidad de identificación.
+  final String hipotesis;
+
+  /// Una de las constantes de [ConfianzaIdentificacion] o null. Texto
+  /// libre por simplicidad en la BD (no enum).
+  final String? confianzaIdentificacion;
+
+  /// Estado de validación, ver [EstadoIdentificacion].
+  final int identificacionValidada;
+
+  /// Especie real tras revisión, si difiere de [especie] original.
+  /// Sólo se rellena cuando [identificacionValidada] == corregida.
+  final String especieCorregida;
+
   Hallazgo({
     this.id,
     required this.fechaMs,
@@ -43,6 +116,12 @@ class Hallazgo {
     this.rutasFotos = const [],
     this.atribucionesFotos = const [],
     this.atributos = const {},
+    this.salidaId,
+    this.tipoEvidencia = TipoEvidencia.avistamiento,
+    this.hipotesis = '',
+    this.confianzaIdentificacion,
+    this.identificacionValidada = EstadoIdentificacion.sinRevisar,
+    this.especieCorregida = '',
   });
 
   bool get esAnimal => categoria == 'animal';
@@ -86,6 +165,13 @@ class Hallazgo {
           rutasFotos.isEmpty ? null : jsonEncode(rutasFotos),
       'atributos_json':
           atributosCompleto.isEmpty ? null : jsonEncode(atributosCompleto),
+      'salida_id': salidaId,
+      'tipo_evidencia': tipoEvidencia.clave,
+      'hipotesis': hipotesis.isEmpty ? null : hipotesis,
+      'confianza_identificacion': confianzaIdentificacion,
+      'identificacion_validada': identificacionValidada,
+      'especie_corregida':
+          especieCorregida.isEmpty ? null : especieCorregida,
     };
   }
 
@@ -134,6 +220,15 @@ class Hallazgo {
       rutasFotos: rutas,
       atribucionesFotos: atribuciones,
       atributos: atributos,
+      salidaId: mapa['salida_id'] as int?,
+      tipoEvidencia:
+          TipoEvidencia.desdeClave(mapa['tipo_evidencia'] as String?),
+      hipotesis: (mapa['hipotesis'] as String?) ?? '',
+      confianzaIdentificacion: mapa['confianza_identificacion'] as String?,
+      identificacionValidada:
+          (mapa['identificacion_validada'] as int?) ??
+              EstadoIdentificacion.sinRevisar,
+      especieCorregida: (mapa['especie_corregida'] as String?) ?? '',
     );
   }
 
@@ -147,6 +242,14 @@ class Hallazgo {
     List<String>? rutasFotos,
     List<AtribucionFoto?>? atribucionesFotos,
     Map<String, dynamic>? atributos,
+    int? salidaId,
+    bool desasociarSalida = false,
+    TipoEvidencia? tipoEvidencia,
+    String? hipotesis,
+    String? confianzaIdentificacion,
+    bool limpiarConfianza = false,
+    int? identificacionValidada,
+    String? especieCorregida,
   }) =>
       Hallazgo(
         id: id,
@@ -163,5 +266,14 @@ class Hallazgo {
         rutasFotos: rutasFotos ?? this.rutasFotos,
         atribucionesFotos: atribucionesFotos ?? this.atribucionesFotos,
         atributos: atributos ?? this.atributos,
+        salidaId: desasociarSalida ? null : (salidaId ?? this.salidaId),
+        tipoEvidencia: tipoEvidencia ?? this.tipoEvidencia,
+        hipotesis: hipotesis ?? this.hipotesis,
+        confianzaIdentificacion: limpiarConfianza
+            ? null
+            : (confianzaIdentificacion ?? this.confianzaIdentificacion),
+        identificacionValidada:
+            identificacionValidada ?? this.identificacionValidada,
+        especieCorregida: especieCorregida ?? this.especieCorregida,
       );
 }

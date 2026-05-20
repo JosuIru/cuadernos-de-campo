@@ -11,6 +11,8 @@ import '../datos/configuracion.dart';
 import '../datos/datos_guia.dart';
 import '../modelos/atribucion_foto.dart';
 import '../modelos/hallazgo.dart';
+import '../modelos/salida.dart';
+import '../servicios/estado_salida_en_curso.dart';
 import '../servicios/identificador_claude.dart';
 import '../servicios/servicio_inaturalist.dart';
 import '../servicios/servicio_plantnet.dart';
@@ -41,8 +43,15 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   final _controladorTaxonomia = TextEditingController();
   final _controladorHabitat = TextEditingController();
   final _controladorNotas = TextEditingController();
+  final _controladorHipotesis = TextEditingController();
 
   String _categoria = 'animal';
+  TipoEvidencia _tipoEvidencia = TipoEvidencia.avistamiento;
+
+  /// Confianza del propio aficionado en su identificación. null = no
+  /// marcada (lo más habitual al anotar rápido). Cuando se rellena
+  /// toma uno de los valores de [ConfianzaIdentificacion].
+  String? _confianza;
   final List<String> _rutasFotos = [];
 
   /// Atribución por foto, paralela a [_rutasFotos] (mismo índice).
@@ -62,9 +71,20 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   bool _identificandoPlantNet = false;
   String? _claveApiKeyPlantNetCacheada;
 
+  /// Salida en curso a la que se autoasociará el hallazgo nuevo. Se
+  /// captura al entrar a la pantalla; si el usuario destilda el
+  /// checkbox la dejamos a null y el hallazgo queda suelto.
+  Salida? _salidaAsociarAuto;
+  bool _asociarASalida = true;
+
   @override
   void initState() {
     super.initState();
+    // Sólo en hallazgos nuevos miramos la salida en curso. En edición
+    // se respeta el salida_id existente (no se cambia desde aquí).
+    if (widget.hallazgoExistente == null) {
+      _salidaAsociarAuto = EstadoSalidaEnCurso.instancia.salida;
+    }
     final hallazgo = widget.hallazgoExistente;
     if (hallazgo != null) {
       _categoria = hallazgo.categoria;
@@ -73,6 +93,9 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       _controladorTaxonomia.text = hallazgo.taxonomia;
       _controladorHabitat.text = hallazgo.habitat;
       _controladorNotas.text = hallazgo.notas;
+      _controladorHipotesis.text = hallazgo.hipotesis;
+      _tipoEvidencia = hallazgo.tipoEvidencia;
+      _confianza = hallazgo.confianzaIdentificacion;
       _rutasFotos.addAll(hallazgo.rutasFotos);
       // Mantenemos la lista paralela alineada en longitud — si el
       // hallazgo viejo no tenía atribuciones, rellenamos con nulls.
@@ -107,6 +130,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     _controladorTaxonomia.dispose();
     _controladorHabitat.dispose();
     _controladorNotas.dispose();
+    _controladorHipotesis.dispose();
     for (final controlador in _controladoresAtributos.values) {
       controlador.dispose();
     }
@@ -442,6 +466,10 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           rutasFotos: List.unmodifiable(_rutasFotos),
           atribucionesFotos: List.unmodifiable(atribucionesAlineadas),
           atributos: Map<String, dynamic>.unmodifiable(atributosFiltrados),
+          tipoEvidencia: _tipoEvidencia,
+          hipotesis: _controladorHipotesis.text.trim(),
+          confianzaIdentificacion: _confianza,
+          limpiarConfianza: _confianza == null,
         );
         final idHallazgo = hallazgoExistente.id;
         if (idHallazgo == null) {
@@ -462,6 +490,9 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             'notas': mapa['notas'],
             'rutas_fotos_json': mapa['rutas_fotos_json'],
             'atributos_json': mapa['atributos_json'],
+            'tipo_evidencia': mapa['tipo_evidencia'],
+            'hipotesis': mapa['hipotesis'],
+            'confianza_identificacion': mapa['confianza_identificacion'],
           },
         );
       } else {
@@ -479,6 +510,10 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           rutasFotos: List.unmodifiable(_rutasFotos),
           atribucionesFotos: List.unmodifiable(atribucionesAlineadas),
           atributos: Map<String, dynamic>.unmodifiable(atributosFiltrados),
+          salidaId: (_asociarASalida ? _salidaAsociarAuto?.id : null),
+          tipoEvidencia: _tipoEvidencia,
+          hipotesis: _controladorHipotesis.text.trim(),
+          confianzaIdentificacion: _confianza,
         );
         await BaseDatosNaturaleza.instancia.guardarHallazgo(hallazgo);
       }
@@ -573,7 +608,13 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (_salidaAsociarAuto != null) ...[
+            _bannerSalidaAsociacion(_salidaAsociarAuto!),
+            const SizedBox(height: 16),
+          ],
           _seccionCategoria(),
+          SizedBox(height: 16),
+          _seccionEvidencia(),
           SizedBox(height: 16),
           _seccionFotos(),
           SizedBox(height: 16),
@@ -581,9 +622,194 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           SizedBox(height: 16),
           _seccionDatos(),
           SizedBox(height: 16),
+          _seccionHipotesisYConfianza(),
+          SizedBox(height: 16),
           _seccionAtributosCategoria(),
           SizedBox(height: 16),
           _seccionIdentificacion(),
+        ],
+      ),
+    );
+  }
+
+  Widget _seccionEvidencia() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Tipo de evidencia',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            const Text(
+              'Si no viste el bicho, no pasa nada. Una huella, una '
+              'pluma o un canto son hallazgo de pleno derecho.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: TipoEvidencia.values.map((tipo) {
+                final seleccionado = _tipoEvidencia == tipo;
+                return ChoiceChip(
+                  avatar:
+                      Icon(_iconoEvidencia(tipo), size: 16, color: Colors.white),
+                  showCheckmark: false,
+                  label: Text(tipo.etiqueta),
+                  labelStyle: TextStyle(
+                    color: seleccionado ? Colors.white : null,
+                    fontWeight: seleccionado
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                  selected: seleccionado,
+                  selectedColor: const Color(0xFF3A7D5A),
+                  backgroundColor: Colors.grey.shade100,
+                  onSelected: (sel) {
+                    if (sel) setState(() => _tipoEvidencia = tipo);
+                  },
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _seccionHipotesisYConfianza() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Tu hipótesis',
+                style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            const Text(
+              'Lo que crees que es y por qué. Útil para revisar después '
+              'qué pistas usaste y cuándo aciertas.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _controladorHipotesis,
+              decoration: const InputDecoration(
+                labelText: 'Hipótesis',
+                hintText:
+                    'creo que es X porque…  (vuelo, canto, hábitat…)',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+              textCapitalization: TextCapitalization.sentences,
+            ),
+            const SizedBox(height: 12),
+            const Text('Confianza',
+                style:
+                    TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              children: [
+                _chipConfianza('Sin marcar', null),
+                _chipConfianza('Tentativa', ConfianzaIdentificacion.tentativa),
+                _chipConfianza('Probable', ConfianzaIdentificacion.probable),
+                _chipConfianza('Segura', ConfianzaIdentificacion.segura),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _chipConfianza(String etiqueta, String? valor) {
+    final seleccionado = _confianza == valor;
+    return ChoiceChip(
+      label: Text(etiqueta),
+      labelStyle: TextStyle(
+        color: seleccionado ? Colors.white : null,
+        fontWeight:
+            seleccionado ? FontWeight.bold : FontWeight.normal,
+      ),
+      selected: seleccionado,
+      selectedColor: const Color(0xFF3A7D5A),
+      backgroundColor: Colors.grey.shade100,
+      onSelected: (sel) {
+        if (sel) setState(() => _confianza = valor);
+      },
+    );
+  }
+
+  IconData _iconoEvidencia(TipoEvidencia tipo) {
+    switch (tipo) {
+      case TipoEvidencia.avistamiento:
+        return Icons.visibility;
+      case TipoEvidencia.huella:
+        return Icons.pets;
+      case TipoEvidencia.pluma:
+        return Icons.air;
+      case TipoEvidencia.excremento:
+        return Icons.circle_outlined;
+      case TipoEvidencia.restosAlimentacion:
+        return Icons.set_meal;
+      case TipoEvidencia.marcaCorteza:
+        return Icons.park;
+      case TipoEvidencia.nidoVacio:
+        return Icons.egg;
+      case TipoEvidencia.refugio:
+        return Icons.house_outlined;
+      case TipoEvidencia.sonido:
+        return Icons.graphic_eq;
+      case TipoEvidencia.interaccion:
+        return Icons.compare_arrows;
+    }
+  }
+
+  Widget _bannerSalidaAsociacion(Salida salida) {
+    final etiqueta = salida.titulo.isNotEmpty
+        ? salida.titulo
+        : (salida.zona.isNotEmpty ? salida.zona : 'Salida sin título');
+    return Container(
+      padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+      decoration: BoxDecoration(
+        color: Colors.orange.shade50,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.orange.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.hiking, color: Colors.orange.shade700, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _asociarASalida
+                      ? 'Esta observación entrará en la salida'
+                      : 'Se guardará como hallazgo suelto',
+                  style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.orange.shade900,
+                      fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  etiqueta,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 14),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Switch(
+            value: _asociarASalida,
+            onChanged: (valor) => setState(() => _asociarASalida = valor),
+          ),
         ],
       ),
     );

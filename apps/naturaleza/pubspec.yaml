@@ -1,7 +1,7 @@
 name: naturaleza_flutter
 description: "Cuaderno de campo de naturaleza (animales, insectos y plantas)"
 publish_to: 'none'
-version: 1.0.2+3
+version: 1.0.3+4
 
 environment:
   sdk: ^3.5.0
@@ -69,6 +69,9 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  # Para tests de la BD desde Dart VM (sin emulador). Provee el
+  # backend ffi necesario para que sqflite funcione fuera de Android/iOS.
+  sqflite_common_ffi: ^2.3.3
   flutter_launcher_icons: ^0.14.1
   # Genera el splash nativo Android para que el primer arranque no
   # sea una pantalla en blanco — invocar con
