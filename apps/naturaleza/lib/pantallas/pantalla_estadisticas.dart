@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import '../datos/base_datos.dart';
 import '../datos/datos_guia.dart';
 import '../modelos/hallazgo.dart';
+import 'pantalla_fenologia.dart';
+import 'pantalla_tasa_acierto.dart';
 
 class PantallaEstadisticas extends StatefulWidget {
   const PantallaEstadisticas({super.key});
@@ -96,6 +98,8 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
             ('Especies', especiesUnicas.length.toString()),
             ('Con foto', _hallazgos.where((hallazgo) => hallazgo.rutaFoto != null).length.toString()),
           ]),
+          const SizedBox(height: 16),
+          _atajosCuaderno(),
           const SizedBox(height: 16),
           _tarjeta(
             titulo: 'Por categoría',
@@ -205,6 +209,76 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
           ],
         ),
       );
+
+  Widget _atajosCuaderno() {
+    return Row(
+      children: [
+        Expanded(
+          child: _tarjetaAtajo(
+            icono: Icons.calendar_today,
+            titulo: 'Mi fenología',
+            subtitulo: 'Primer registro de cada especie por año',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const PantallaFenologia(),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _tarjetaAtajo(
+            icono: Icons.fact_check_outlined,
+            titulo: 'Tasa de acierto',
+            subtitulo: 'Tu calibración tras validar identificaciones',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const PantallaTasaAcierto(),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _tarjetaAtajo({
+    required IconData icono,
+    required String titulo,
+    required String subtitulo,
+    required VoidCallback onTap,
+  }) {
+    final esquema = Theme.of(context).colorScheme;
+    return Material(
+      color: esquema.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icono, color: esquema.primary, size: 26),
+              const SizedBox(height: 6),
+              Text(titulo,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.bold, fontSize: 13)),
+              const SizedBox(height: 2),
+              Text(
+                subtitulo,
+                style: TextStyle(
+                  fontSize: 11,
+                  color: esquema.onSurface.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _filaTotales(List<(String, String)> totales) => Row(
         children: totales
