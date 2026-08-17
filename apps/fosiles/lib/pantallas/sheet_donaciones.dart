@@ -33,11 +33,14 @@ class _ContenidoSheet extends StatelessWidget {
   static const String _btcTaproot =
       'bc1p29l9vjelerljlwhg6dhr0uldldus4zgn8vjaecer0spj7273d7rss4gnyk';
   static const String _urlEcosistema = 'https://coleccion-nuevo-ser.gailu.net/';
+  static const String _urlDescargaApp =
+      'https://github.com/JosuIru/cuadernos-de-campo/releases';
   static const String _mensajeCompartir =
       'Fósiles — cuaderno de campo digital para anotar hallazgos con '
-      'georreferencia, edad estratigráfica y guía de identificación de '
-      'fósiles y minerales. App libre, sin anuncios ni tracking. '
-      'Pruébala: https://coleccion-nuevo-ser.gailu.net/';
+      'georreferencia, edad estratigráfica, orientación del estrato y guía '
+      'de identificación de fósiles y minerales. Cartografía geológica IGME '
+      'y mapas offline. Libre, gratuita, sin anuncios ni seguimiento. '
+      'Descarga el APK para Android en $_urlDescargaApp';
 
   @override
   Widget build(BuildContext context) {
