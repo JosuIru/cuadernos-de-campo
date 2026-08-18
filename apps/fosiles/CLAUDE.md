@@ -59,5 +59,35 @@ export PATH="$HOME/flutter/bin:$PATH"
 ( cd apps/fosiles && flutter analyze )
 ( cd apps/fosiles && flutter test )
 ( cd apps/fosiles && flutter run -d linux )
-( cd apps/fosiles && flutter build apk --release )
+
+# APK que se publica en releases. El --target-platform es obligatorio:
+# sin él se cuelan las libs x86_64 (solo emuladores) y el APK pasa de
+# 47 MB a 69 MB. El bloque `ndk { abiFilters }` NO sirve para esto,
+# porque las .so las inyecta el plugin de Flutter, no el NDK.
+( cd apps/fosiles && flutter build apk --release --target-platform android-arm,android-arm64 )
 ```
+
+## Firma de release
+
+Desde `fosiles-v1.0.15` el APK se firma con keystore propio, no con la
+clave de depuración:
+
+- Keystore: `~/.claves-android/fosiles-release.jks` (RSA 4096, alias
+  `fosiles`, válido 30 años). **Fuera del repo y sin copia de seguridad
+  automática: si se pierde, ningún usuario puede volver a actualizar.**
+- Credenciales: `apps/fosiles/android/key.properties`, ignorado por git.
+- Si `key.properties` no existe, el build recae en la clave de depuración
+  y produce un APK que NO actualiza sobre los publicados.
+
+Las versiones hasta `1.0.14` iban firmadas con la clave de depuración
+(`CN=Android Debug`). El cambio de firma rompe la actualización in-place:
+quien tenga una de aquellas debe desinstalar y reinstalar, exportando
+antes sus hallazgos.
+
+## Publicar un release
+
+Tag `fosiles-vX.Y.Z` en `JosuIru/cuadernos-de-campo`, con el APK subido
+como `fosiles-vX.Y.Z.apk` **en minúsculas**: el checker de
+actualizaciones (`lib/servicios/checker_actualizaciones_fosiles.dart`)
+filtra por `contains('fosiles-')`, sensible a mayúsculas. Subir siempre
+el `versionCode` en `pubspec.yaml`, o el checker no verá la novedad.
