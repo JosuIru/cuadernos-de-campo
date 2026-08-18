@@ -160,7 +160,7 @@ class _PantallaTracksState extends State<PantallaTracks> {
                               if (ok != true) return;
                               await BaseDatosFosiles.instancia.borrarTrack(track.id!);
                               if (!mounted) return;
-                              Navigator.of(sheetCtx).pop();
+                              if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
                               _cargar();
                             },
                             label: Text('Borrar', style: TextStyle(color: Colors.red)),

@@ -910,7 +910,9 @@ class _PantallaMapaState extends State<PantallaMapa> {
                                 if (ok != true) return;
                                 await BaseDatosFosiles.instancia.borrarHallazgo(h.id!);
                                 if (!mounted) return;
-                                Navigator.of(sheetContext).pop();
+                                if (sheetContext.mounted) {
+                                  Navigator.of(sheetContext).pop();
+                                }
                                 _cargarHallazgos();
                               },
                               label: Text('Borrar', style: TextStyle(color: Colors.red)),

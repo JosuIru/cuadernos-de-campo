@@ -242,7 +242,7 @@ class _PantallaListaState extends State<PantallaLista> {
                   if (confirmar != true) return;
                   await BaseDatosFosiles.instancia.borrarHallazgo(hallazgo.id!);
                   if (!mounted) return;
-                  Navigator.of(sheetContext).pop();
+                  if (sheetContext.mounted) Navigator.of(sheetContext).pop();
                   _cargar();
                 },
                 label: Text('Borrar', style: TextStyle(color: Colors.red)),

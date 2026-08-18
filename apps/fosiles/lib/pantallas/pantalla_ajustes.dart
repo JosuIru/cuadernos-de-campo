@@ -198,12 +198,12 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     if (email == null || email.isEmpty) return;
     try {
       await ClienteComunidad().solicitarBorradoPorEmail(email);
-      if (!mounted) return;
+      if (!mounted || !contextoExterior.mounted) return;
       ScaffoldMessenger.of(contextoExterior).showSnackBar(SnackBar(
           content: Text(
               'Solicitud enviada. Revisa tu email para confirmar el borrado.')));
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || !contextoExterior.mounted) return;
       ScaffoldMessenger.of(contextoExterior)
           .showSnackBar(SnackBar(content: Text('Error: $e')));
     }
