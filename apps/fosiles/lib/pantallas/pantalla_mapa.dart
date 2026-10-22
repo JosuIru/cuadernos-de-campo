@@ -81,6 +81,9 @@ final List<CapaBase> capasBaseDisponibles = [
   ),
 ];
 
+const String urlPlantillaNombresLugares =
+    'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}';
+
 const String urlPlantillaHillshade =
     'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}';
 
@@ -1953,10 +1956,12 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     keepBuffer: 4,
                   ),
                 ),
+              // Nombres de lugares y límites encima de la geología. Antes
+              // era CARTO (voyager_only_labels), que desde 2026 pide API key
+              // y pinta «API KEY REQUIRED» en cada tesela; Esri es libre.
               if (_capaGeologicaActual != null || _mostrarLig)
                 TileLayer(
-                  urlTemplate: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager_only_labels/{z}/{x}/{y}.png',
-                  subdomains: const ['a', 'b', 'c', 'd'],
+                  urlTemplate: urlPlantillaNombresLugares,
                   maxZoom: 19,
                   userAgentPackageName: 'com.josu.fosiles',
                   tileProvider: _proveedorTeselasCache,
