@@ -9,6 +9,7 @@ import '../datos/configuracion.dart';
 import '../datos/yacimientos_curados.dart';
 import '../servicios/servicio_geologia.dart';
 import '../servicios/cache_teselas.dart';
+import '../servicios/checker_actualizaciones_fosiles.dart';
 import '../servicios/servicio_backup.dart';
 import '../servicios/geofencing.dart';
 import 'pantalla_identidad.dart';
@@ -280,6 +281,19 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
             SizedBox(height: 12),
             Center(child: Text(_mensajeEstado!, style: TextStyle(color: Theme.of(context).colorScheme.primary))),
           ],
+          SizedBox(height: 16),
+          OutlinedButton.icon(
+            icon: Icon(Icons.system_update),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const PantallaEstadoActualizaciones(
+                  config: configActualizacionesFosiles,
+                  nombreApp: 'Fósiles',
+                ),
+              ),
+            ),
+            label: Text('Comprobar actualizaciones'),
+          ),
 
           SizedBox(height: 32),
           Card(

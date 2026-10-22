@@ -5,6 +5,7 @@ import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:share_plus/share_plus.dart';
 import '../datos/configuracion.dart';
 import '../servicios/cache_teselas.dart';
+import '../servicios/checker_actualizaciones_naturaleza.dart';
 import '../servicios/servicio_backup.dart';
 import 'pantalla_mapas_offline.dart';
 import 'sheet_donaciones.dart';
@@ -264,6 +265,19 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
               child: Text(_mensajeEstado!, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
             ),
           ],
+          SizedBox(height: 16),
+          OutlinedButton.icon(
+            icon: Icon(Icons.system_update),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const PantallaEstadoActualizaciones(
+                  config: configActualizacionesNaturaleza,
+                  nombreApp: 'Naturaleza',
+                ),
+              ),
+            ),
+            label: Text('Comprobar actualizaciones'),
+          ),
           SizedBox(height: 32),
           
           Text('Mapas sin conexión', style: Theme.of(context).textTheme.titleLarge),
