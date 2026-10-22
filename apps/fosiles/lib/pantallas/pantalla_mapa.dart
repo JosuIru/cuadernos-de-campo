@@ -87,6 +87,9 @@ const String urlPlantillaNombresLugares =
 const String urlPlantillaHillshade =
     'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}';
 
+/// Entradas del menú «⋮» del mapa.
+enum _OpcionMenuMapa { lig, relieve, mapaDeCalor, yacimientos, tracksGuardados }
+
 class PantallaMapa extends StatefulWidget {
   final CallbackPedirNuevoHallazgo alPedirNuevoHallazgo;
   final CallbackSeleccionarFosilGuia alSeleccionarFosilGuia;
@@ -1750,12 +1753,47 @@ class _PantallaMapaState extends State<PantallaMapa> {
         : const [];
   }
 
+  /// Lleva el mapa a un lugar buscado por nombre (buscador del core:
+  /// CartoCiudad con OpenStreetMap de respaldo).
+  Future<void> _buscarLugar() async {
+    final posicion = await buscarLugarEnMapa(context,
+        identificacion: 'Fosiles (com.josu.fosiles)');
+    if (posicion == null || !mounted) return;
+    _controladorMapa.move(posicion, 15);
+  }
+
+  void _alElegirOpcionMenu(_OpcionMenuMapa opcion) {
+    switch (opcion) {
+      case _OpcionMenuMapa.lig:
+        setState(() => _mostrarLig = !_mostrarLig);
+      case _OpcionMenuMapa.relieve:
+        setState(() => _mostrarHillshade = !_mostrarHillshade);
+      case _OpcionMenuMapa.mapaDeCalor:
+        setState(() {
+          _modoHeatmap = !_modoHeatmap;
+          _recalcularMarkersHallazgos();
+        });
+      case _OpcionMenuMapa.yacimientos:
+        setState(() {
+          _mostrarYacimientos = !_mostrarYacimientos;
+          _recalcularMarkersYacimientos();
+        });
+      case _OpcionMenuMapa.tracksGuardados:
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaTracks()));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(SoleraL10n.t('mapa')),
         actions: [
+          IconButton(
+            icon: Icon(Icons.search),
+            tooltip: 'Buscar un lugar',
+            onPressed: _buscarLugar,
+          ),
           PopupMenuButton<CapaBase>(
             icon: Icon(Icons.layers),
             tooltip: 'Capa base',
@@ -1810,41 +1848,47 @@ class _PantallaMapaState extends State<PantallaMapa> {
             ],
           ),
           IconButton(
-            icon: Icon(_mostrarLig ? Icons.star : Icons.star_outline),
-            tooltip: _mostrarLig ? 'Ocultar LIG' : 'Mostrar Lugares de Interés Geológico',
-            onPressed: () => setState(() => _mostrarLig = !_mostrarLig),
-          ),
-          IconButton(
-            icon: Icon(_mostrarHillshade ? Icons.landscape : Icons.landscape_outlined),
-            tooltip: _mostrarHillshade ? 'Ocultar relieve' : 'Mostrar relieve',
-            onPressed: () => setState(() => _mostrarHillshade = !_mostrarHillshade),
-          ),
-          IconButton(
-            icon: Icon(_modoHeatmap ? Icons.local_fire_department : Icons.local_fire_department_outlined),
-            tooltip: _modoHeatmap ? 'Ver puntos' : 'Ver mapa de calor',
-            onPressed: () => setState(() {
-              _modoHeatmap = !_modoHeatmap;
-              _recalcularMarkersHallazgos();
-            }),
-          ),
-          IconButton(
-            icon: Icon(_mostrarYacimientos ? Icons.museum : Icons.museum_outlined),
-            tooltip: _mostrarYacimientos ? 'Ocultar yacimientos' : 'Mostrar yacimientos curados',
-            onPressed: () => setState(() {
-              _mostrarYacimientos = !_mostrarYacimientos;
-              _recalcularMarkersYacimientos();
-            }),
-          ),
-          IconButton(
             icon: Icon(GrabadorTrack.instancia.grabando ? Icons.stop_circle : Icons.fiber_manual_record),
             color: GrabadorTrack.instancia.grabando ? Colors.red : null,
             tooltip: GrabadorTrack.instancia.grabando ? 'Detener track' : 'Iniciar track',
             onPressed: _alternarTrack,
           ),
-          IconButton(
-            icon: Icon(Icons.timeline),
-            tooltip: 'Tracks guardados',
-            onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaTracks())),
+          // Los interruptores de capas y los tracks guardados van en un
+          // menú: en la barra no caben (en un móvil se comían el título).
+          PopupMenuButton<_OpcionMenuMapa>(
+            tooltip: 'Más capas y opciones',
+            onSelected: _alElegirOpcionMenu,
+            itemBuilder: (_) => [
+              CheckedPopupMenuItem(
+                value: _OpcionMenuMapa.lig,
+                checked: _mostrarLig,
+                child: Text('Lugares de Interés Geológico'),
+              ),
+              CheckedPopupMenuItem(
+                value: _OpcionMenuMapa.relieve,
+                checked: _mostrarHillshade,
+                child: Text('Relieve sombreado'),
+              ),
+              CheckedPopupMenuItem(
+                value: _OpcionMenuMapa.mapaDeCalor,
+                checked: _modoHeatmap,
+                child: Text('Hallazgos como mapa de calor'),
+              ),
+              CheckedPopupMenuItem(
+                value: _OpcionMenuMapa.yacimientos,
+                checked: _mostrarYacimientos,
+                child: Text('Yacimientos curados'),
+              ),
+              PopupMenuDivider(),
+              PopupMenuItem(
+                value: _OpcionMenuMapa.tracksGuardados,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.timeline),
+                  title: Text('Tracks guardados'),
+                ),
+              ),
+            ],
           ),
         ],
       ),

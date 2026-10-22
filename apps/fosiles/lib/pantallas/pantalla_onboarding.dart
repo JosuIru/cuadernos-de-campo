@@ -27,7 +27,7 @@ class _PantallaOnboardingState extends State<PantallaOnboarding> {
       titulo: 'Mapa geológico nacional',
       texto:
           'La app arranca con la capa GEODE 50 del IGME pintada sobre el mapa. '
-          'Desde el icono del mundo en la barra superior puedes alternar entre '
+          'Desde el icono de la montaña en la barra superior puedes alternar entre '
           'GEODE, MAGNA, Edades 1M, Litologías 1M y otras capas IGME. '
           'La primera vez que paneas una zona el mosaico tarda un poco en cargar '
           'mientras se descargan las teselas; después se queda en caché.',
