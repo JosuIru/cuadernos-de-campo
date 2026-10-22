@@ -54,6 +54,9 @@ class ClienteComunidad {
       'POST',
       Uri.parse('$urlBaseComunidad/aportaciones'),
     );
+    // Sin Accept, el ModSecurity de algunos hostings responde 406 a los
+    // POST (pasó con el WordPress de Zunbeltz): Dart no la manda sola.
+    solicitud.headers['accept'] = 'application/json';
     solicitud.fields['datos'] = jsonEncode({
       'tipo': tipo,
       'especie': especie,
@@ -128,7 +131,10 @@ class ClienteComunidad {
     final respuesta = await http
         .post(
           Uri.parse('$urlBaseComunidad/aportaciones/borrar-mis-aportaciones'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {
+            'Content-Type': 'application/json',
+            'accept': 'application/json',
+          },
           body: jsonEncode({'email': email}),
         )
         .timeout(_timeout);
