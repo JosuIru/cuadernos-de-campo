@@ -22,6 +22,7 @@ import '../servicios/geofencing.dart';
 import '../servicios/estado_conexion.dart';
 import '../servicios/servicio_mareas.dart';
 import 'pantalla_tracks.dart';
+import 'pantalla_ayuda_mapa.dart';
 import '../datos/datos_guia.dart';
 import '../datos/datos_minerales.dart';
 import '../datos/cronoestratigrafia.dart';
@@ -88,7 +89,7 @@ const String urlPlantillaHillshade =
     'https://server.arcgisonline.com/ArcGIS/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}';
 
 /// Entradas del menú «⋮» del mapa.
-enum _OpcionMenuMapa { lig, relieve, mapaDeCalor, yacimientos, tracksGuardados }
+enum _OpcionMenuMapa { lig, relieve, mapaDeCalor, yacimientos, tracksGuardados, ayuda }
 
 class PantallaMapa extends StatefulWidget {
   final CallbackPedirNuevoHallazgo alPedirNuevoHallazgo;
@@ -1144,7 +1145,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Configura primero tu nombre en Ajustes → Perfil del descubridor.'),
+          content: Text('Configura primero tu nombre en Ajustes → Perfil e identidad.'),
           duration: Duration(seconds: 4),
         ),
       );
@@ -1780,6 +1781,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
         });
       case _OpcionMenuMapa.tracksGuardados:
         Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaTracks()));
+      case _OpcionMenuMapa.ayuda:
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PantallaAyudaMapa()));
     }
   }
 
@@ -1886,6 +1889,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.timeline),
                   title: Text('Tracks guardados'),
+                ),
+              ),
+              PopupMenuItem(
+                value: _OpcionMenuMapa.ayuda,
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(Icons.help_outline),
+                  title: Text('Cómo leer el mapa'),
                 ),
               ),
             ],

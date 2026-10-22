@@ -5,20 +5,21 @@ import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:share_plus/share_plus.dart';
 import '../comunidad/cliente_comunidad.dart';
 import '../comunidad/feature_flag_comunidad.dart';
-import '../datos/configuracion.dart';
 import '../datos/yacimientos_curados.dart';
-import '../servicios/servicio_geologia.dart';
 import '../servicios/cache_teselas.dart';
 import '../servicios/checker_actualizaciones_fosiles.dart';
 import '../servicios/servicio_backup.dart';
 import '../servicios/geofencing.dart';
-import 'pantalla_identidad.dart';
+import 'pantalla_ajustes_ia.dart';
+import 'pantalla_ayuda_mapa.dart';
 import 'pantalla_mapas_offline.dart';
-import 'pantalla_modo_experto.dart';
 import 'pantalla_onboarding.dart';
-import 'pantalla_verificar_certificado.dart';
+import 'pantalla_perfil_identidad.dart';
 import 'sheet_donaciones.dart';
 
+/// Ajustes por secciones: General · Inteligencia artificial · Perfil e
+/// identidad · Mapas y datos · Privacidad · Acerca de. La IA y el perfil
+/// viven en subpantallas con su propio Guardar.
 class PantallaAjustes extends StatefulWidget {
   PantallaAjustes({super.key});
 
@@ -27,49 +28,12 @@ class PantallaAjustes extends StatefulWidget {
 }
 
 class _PantallaAjustesState extends State<PantallaAjustes> {
-  final _controladorApiKey = TextEditingController();
-  final _controladorDeepseekKey = TextEditingController();
-  final _controladorNombre = TextEditingController();
-  final _controladorEmail = TextEditingController();
-  final _controladorOrg = TextEditingController();
-  String _modeloSeleccionado = modeloPorDefecto;
-  bool _ocultarApiKey = true;
-  String? _mensajeEstado;
   String _resumenCache = 'Calculando…';
 
   @override
   void initState() {
     super.initState();
-    _cargar();
     _refrescarResumenCache();
-  }
-
-  @override
-  void dispose() {
-    _controladorApiKey.dispose();
-    _controladorNombre.dispose();
-    _controladorEmail.dispose();
-    _controladorOrg.dispose();
-    _controladorDeepseekKey.dispose();
-    super.dispose();
-  }
-
-  Future<void> _cargar() async {
-    final apiKey = await Configuracion.obtenerApiKey();
-    final apiKeyDeepseek = await Configuracion.obtenerApiKeyDeepseek();
-    final modelo = await Configuracion.obtenerModelo();
-    final nombre = await Configuracion.obtenerNombreDescubridor();
-    final email = await Configuracion.obtenerEmailDescubridor();
-    final org = await Configuracion.obtenerOrganizacionDescubridor();
-    if (!mounted) return;
-    setState(() {
-      _controladorApiKey.text = apiKey;
-      _controladorDeepseekKey.text = apiKeyDeepseek;
-      _modeloSeleccionado = modelo;
-      _controladorNombre.text = nombre;
-      _controladorEmail.text = email;
-      _controladorOrg.text = org;
-    });
   }
 
   Future<void> _refrescarResumenCache() async {
@@ -79,17 +43,6 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     setState(() {
       _resumenCache = '$ficheros teselas en caché · ${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
     });
-  }
-
-  Future<void> _guardar() async {
-    await Configuracion.guardarApiKey(_controladorApiKey.text.trim());
-    await Configuracion.guardarApiKeyDeepseek(_controladorDeepseekKey.text.trim());
-    await Configuracion.guardarModelo(_modeloSeleccionado);
-    await Configuracion.guardarNombreDescubridor(_controladorNombre.text);
-    await Configuracion.guardarEmailDescubridor(_controladorEmail.text);
-    await Configuracion.guardarOrganizacionDescubridor(_controladorOrg.text);
-    if (!mounted) return;
-    setState(() => _mensajeEstado = '✅ Ajustes guardados');
   }
 
   Future<void> _hacerBackup() async {
@@ -226,302 +179,187 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     await _refrescarResumenCache();
   }
 
+  void _abrir(Widget pantalla) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => pantalla));
+  }
+
+  /// Contenido de una sección con el mismo margen lateral que su cabecera.
+  Widget _bloque(List<Widget> hijos) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: hijos),
+    );
+  }
+
+  Widget _subtitulo(String texto) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 4),
+      child: Text(texto, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+    );
+  }
+
+  Widget _explicacion(String texto) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(texto, style: TextStyle(fontSize: 13)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(SoleraL10n.t('ajustes'))),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.only(bottom: 32),
         children: [
-          Text('Identificación con Claude', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: 8),
-          Text(
-            'Para identificar fósiles automáticamente, introduce tu API key de Anthropic. '
-            'Se guarda solo en tu teléfono y se envía únicamente a api.anthropic.com. '
-            'Consigue una en console.anthropic.com.',
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(height: 12),
-          TextField(
-            controller: _controladorApiKey,
-            obscureText: _ocultarApiKey,
-            decoration: InputDecoration(
-              labelText: 'API key de Anthropic',
-              border: OutlineInputBorder(),
-              hintText: 'sk-ant-…',
-              suffixIcon: IconButton(
-                icon: Icon(_ocultarApiKey ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _ocultarApiKey = !_ocultarApiKey),
-              ),
+          const CabeceraSeccionAjustes('General'),
+          _bloque([
+            _subtitulo('Idioma / Language'),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SelectorIdioma(onCambio: () => setState(() {})),
             ),
+          ]),
+
+          const CabeceraSeccionAjustes('Inteligencia artificial'),
+          ListTile(
+            leading: Icon(Icons.auto_awesome_outlined),
+            title: Text('Claves y modelo'),
+            subtitle: Text('Anthropic para identificar por foto, DeepSeek para el chat'),
+            trailing: Icon(Icons.chevron_right),
+            onTap: () => _abrir(const PantallaAjustesIa()),
           ),
-          SizedBox(height: 12),
-          TextField(
-            controller: _controladorDeepseekKey,
-            obscureText: _ocultarApiKey,
-            decoration: InputDecoration(
-              labelText: 'API key de DeepSeek (para chat)',
-              border: OutlineInputBorder(),
-              hintText: 'sk-…',
+
+          const CabeceraSeccionAjustes('Perfil e identidad'),
+          ListTile(
+            leading: Icon(Icons.badge_outlined),
+            title: Text('Perfil del descubridor e identidad'),
+            subtitle: Text('Nombre para los certificados, identidad criptográfica, verificar certificados y Modo Experto'),
+            trailing: Icon(Icons.chevron_right),
+            onTap: () => _abrir(const PantallaPerfilIdentidad()),
+          ),
+
+          const CabeceraSeccionAjustes('Mapas y datos'),
+          _bloque([
+            _subtitulo('Mapas sin conexión'),
+            _explicacion(
+              'Las teselas que veas en el mapa se guardan automáticamente en caché. '
+              'Para precachear una zona entera (vista actual del mapa), usa el botón de descarga.',
             ),
-          ),
-          SizedBox(height: 16),
-          Text('Modelo de Claude', style: TextStyle(fontWeight: FontWeight.bold)),
-          SizedBox(height: 8),
-          ...modelosDisponibles.map((modelo) => RadioListTile<String>(
-                value: modelo.id,
-                groupValue: _modeloSeleccionado,
-                onChanged: (v) => setState(() => _modeloSeleccionado = v ?? modeloPorDefecto),
-                title: Text(modelo.nombre),
-                subtitle: Text('${modelo.descripcion} ~${modelo.precioOrientativoCentimosPorIdentificacion} céntimos por foto.'),
-              )),
-          SizedBox(height: 16),
-          FilledButton(onPressed: _guardar, child: Text('Guardar ajustes')),
-          if (_mensajeEstado != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(6)),
+              child: Text(_resumenCache),
+            ),
             SizedBox(height: 12),
-            Center(child: Text(_mensajeEstado!, style: TextStyle(color: Theme.of(context).colorScheme.primary))),
-          ],
-          SizedBox(height: 16),
-          OutlinedButton.icon(
-            icon: Icon(Icons.system_update),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const PantallaEstadoActualizaciones(
-                  config: configActualizacionesFosiles,
-                  nombreApp: 'Fósiles',
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    icon: Icon(Icons.download),
+                    onPressed: () async {
+                      await Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaMapasOffline()));
+                      await _refrescarResumenCache();
+                    },
+                    label: Text('Descargar zona'),
+                  ),
                 ),
-              ),
+                SizedBox(width: 8),
+                OutlinedButton.icon(
+                  icon: Icon(Icons.delete_outline),
+                  onPressed: _vaciarCache,
+                  label: Text('Vaciar'),
+                ),
+              ],
             ),
-            label: Text('Comprobar actualizaciones'),
-          ),
-
-          SizedBox(height: 32),
-          Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Idioma / Language',
-                  style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              SelectorIdioma(),
-            ],
-          ),
-        ),
-      ),
-      Divider(),
-          SizedBox(height: 16),
-          Text('Perfil del descubridor', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: 8),
-          Text(
-            'Tu nombre se incluirá en los certificados de hallazgo. '
-            'El email y la organización son opcionales. Estos datos se guardan solo en tu teléfono.',
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(height: 12),
-          TextField(
-            controller: _controladorNombre,
-            decoration: InputDecoration(
-              labelText: 'Nombre (obligatorio para certificados)',
-              border: OutlineInputBorder(),
-              hintText: 'Ej: María González',
+            SizedBox(height: 8),
+            _subtitulo('Copia de seguridad'),
+            _explicacion(
+              'Exporta toda tu base (hallazgos + tracks + fotos) en un fichero único .fosbackup. '
+              'Guárdalo en Drive/USB/correo. Para restaurar, selecciona el .fosbackup; reemplazará los datos actuales.',
             ),
-          ),
-          SizedBox(height: 8),
-          TextField(
-            controller: _controladorEmail,
-            keyboardType: TextInputType.emailAddress,
-            decoration: InputDecoration(
-              labelText: 'Email (opcional)',
-              border: OutlineInputBorder(),
-              hintText: 'contacto@ejemplo.com',
-            ),
-          ),
-          SizedBox(height: 8),
-          TextField(
-            controller: _controladorOrg,
-            decoration: InputDecoration(
-              labelText: 'Organización / afiliación (opcional)',
-              border: OutlineInputBorder(),
-              hintText: 'Ej: UPV/EHU, Sociedad de Ciencias Aranzadi…',
-            ),
-          ),
-          SizedBox(height: 12),
-          OutlinedButton.icon(
-            icon: Icon(Icons.fingerprint),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PantallaIdentidad()),
-            ),
-            label: Text('Mi identidad criptográfica'),
-          ),
-          SizedBox(height: 8),
-          OutlinedButton.icon(
-            icon: Icon(Icons.verified),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => PantallaVerificarCertificado()),
-            ),
-            label: Text('Verificar un certificado'),
-          ),
-          SizedBox(height: 8),
-          OutlinedButton.icon(
-            icon: Icon(Icons.school_outlined),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const PantallaModoExperto()),
-            ),
-            label: Text('Modo Experto (autoridades certificadoras)'),
-          ),
-
-          SizedBox(height: 32),
-          
-          Text('Mapas sin conexión', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: 8),
-          Text(
-            'Las teselas que veas en el mapa se guardan automáticamente en caché. '
-            'Para precachear una zona entera (vista actual del mapa), usa el botón de descarga.',
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(6)),
-            child: Text(_resumenCache),
-          ),
-          SizedBox(height: 12),
-          Row(
-            children: [
+            Row(children: [
               Expanded(
                 child: FilledButton.icon(
-                  icon: Icon(Icons.download),
-                  onPressed: () async {
-                    await Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaMapasOffline()));
-                    await _refrescarResumenCache();
-                  },
-                  label: Text('Descargar zona'),
+                  icon: Icon(Icons.backup),
+                  onPressed: _hacerBackup,
+                  label: Text('Hacer copia'),
                 ),
               ),
               SizedBox(width: 8),
-              OutlinedButton.icon(
-                icon: Icon(Icons.delete_outline),
-                onPressed: _vaciarCache,
-                label: Text('Vaciar'),
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: Icon(Icons.restore),
+                  onPressed: _restaurarBackup,
+                  label: Text('Restaurar copia'),
+                ),
               ),
-            ],
-          ),
-
-          SizedBox(height: 32),
-          
-          Text('Copia de seguridad', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: 8),
-          Text(
-            'Exporta toda tu base (hallazgos + tracks + fotos) en un fichero único .fosbackup. '
-            'Guárdalo en Drive/USB/correo. Para restaurar, selecciona el .fosbackup; reemplazará los datos actuales.',
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-              child: FilledButton.icon(
-                icon: Icon(Icons.backup),
-                onPressed: _hacerBackup,
-                label: Text('Hacer copia'),
-              ),
+            ]),
+            SizedBox(height: 8),
+            _subtitulo('Asistente de campo'),
+            _explicacion(
+              'Cuando el GPS detecta que estás dentro de un radio de 250 m de un yacimiento curado, '
+              'aparece un aviso en el mapa con el botón "Ver ficha". Cada yacimiento te avisa una sola vez por sesión.',
             ),
-            SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                icon: Icon(Icons.restore),
-                onPressed: _restaurarBackup,
-                label: Text('Restaurar copia'),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: Icon(Icons.refresh),
+                  onPressed: _resetearGeofencing,
+                  label: Text('Reactivar avisos'),
+                ),
               ),
-            ),
-          ]),
-
-          SizedBox(height: 32),
-          
-          Text('Asistente de campo', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: 8),
-          Text(
-            'Cuando el GPS detecta que estás dentro de un radio de 250 m de un yacimiento curado, '
-            'aparece un aviso en el mapa con el botón "Ver ficha". Cada yacimiento te avisa una sola vez por sesión.',
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(height: 12),
-          Row(children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                icon: Icon(Icons.refresh),
-                onPressed: _resetearGeofencing,
-                label: Text('Reactivar avisos'),
+              SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  icon: Icon(Icons.notifications_active),
+                  onPressed: _probarGeofencing,
+                  label: Text('Probar aviso'),
+                ),
               ),
-            ),
-            SizedBox(width: 8),
-            Expanded(
-              child: OutlinedButton.icon(
-                icon: Icon(Icons.notifications_active),
-                onPressed: _probarGeofencing,
-                label: Text('Probar aviso'),
-              ),
-            ),
+            ]),
           ]),
 
           if (kFeatureComunidadHabilitada) ...[
-            SizedBox(height: 32),
-            Text('Tus aportaciones a la comunidad',
-                style: Theme.of(context).textTheme.titleLarge),
-            SizedBox(height: 8),
-            Text(
-              'Si has compartido fotos con la comunidad puedes pedir su '
-              'borrado en cualquier momento (RGPD). Te llegará un enlace '
-              'al email indicado; haciendo click se borrarán todas tus '
-              'aportaciones, incluso las que ya estén publicadas.',
-              style: TextStyle(fontSize: 13),
-            ),
-            SizedBox(height: 12),
-            OutlinedButton.icon(
-              icon: Icon(Icons.delete_sweep_outlined),
-              onPressed: () => _solicitarBorradoAportacionesComunidad(context),
-              label: Text('Borrar mis aportaciones'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: Size(double.infinity, 40),
+            const CabeceraSeccionAjustes('Privacidad'),
+            _bloque([
+              _subtitulo('Tus aportaciones a la comunidad'),
+              _explicacion(
+                'Si has compartido fotos con la comunidad puedes pedir su '
+                'borrado en cualquier momento (RGPD). Te llegará un enlace '
+                'al email indicado; haciendo click se borrarán todas tus '
+                'aportaciones, incluso las que ya estén publicadas.',
               ),
-            ),
+              OutlinedButton.icon(
+                icon: Icon(Icons.delete_sweep_outlined),
+                onPressed: () => _solicitarBorradoAportacionesComunidad(context),
+                label: Text('Borrar mis aportaciones'),
+              ),
+            ]),
           ],
 
-          SizedBox(height: 32),
-
-          Text('Apoyar el proyecto', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: 8),
-          Text(
-            'La app es y seguirá siendo gratuita y abierta para todos. '
-            'Si te ha sido útil y puedes permitírtelo, una pequeña aportación '
-            'voluntaria ayuda al mantenimiento, soporte y actualizaciones.',
-            style: TextStyle(fontSize: 13),
+          const CabeceraSeccionAjustes('Acerca de'),
+          ListTile(
+            leading: Icon(Icons.system_update),
+            title: Text('Comprobar actualizaciones'),
+            trailing: Icon(Icons.chevron_right),
+            onTap: () => _abrir(const PantallaEstadoActualizaciones(
+              config: configActualizacionesFosiles,
+              nombreApp: 'Fósiles',
+            )),
           ),
-          SizedBox(height: 12),
-          FilledButton.tonalIcon(
-            icon: Icon(Icons.favorite_outline),
-            onPressed: () => mostrarSheetDonaciones(context),
-            label: Text('Ver formas de apoyar'),
+          ListTile(
+            leading: Icon(Icons.map_outlined),
+            title: Text('Cómo leer el mapa'),
+            subtitle: Text('Capas geológicas, otras capas y sugerencias de fósiles'),
+            trailing: Icon(Icons.chevron_right),
+            onTap: () => _abrir(const PantallaAyudaMapa()),
           ),
-          SizedBox(height: 32),
-          
-          Text('Sobre la app', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: 8),
-          Text(
-            'Cuaderno de campo de fósiles para adulto aficionado. Anota '
-            'hallazgos georreferenciados con foto, edad, formación, '
-            'strike/dip del estrato; consulta el contexto geológico del '
-            'IGME en el punto donde pinches; y guarda una guía local de '
-            'fósiles y minerales por período.',
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(height: 12),
-          OutlinedButton.icon(
-            icon: Icon(Icons.help_outline),
-            onPressed: () => Navigator.of(context).push(
+          ListTile(
+            leading: Icon(Icons.help_outline),
+            title: Text('Ver tour de presentación'),
+            trailing: Icon(Icons.chevron_right),
+            onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
                 fullscreenDialog: true,
                 builder: (_) => const PantallaOnboarding(
@@ -529,119 +367,37 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
                 ),
               ),
             ),
-            label: Text('Ver tour de presentación'),
           ),
-          SizedBox(height: 16),
-
-          Text('Capas geológicas del mapa',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          SizedBox(height: 6),
-          Text(
-            'En la barra superior del mapa, el icono 🌍 abre el desplegable '
-            'de capas geológicas del IGME. La app arranca con la primera '
-            'de la lista (GEODE 50). Para qué sirve cada una:',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
-          ),
-          SizedBox(height: 10),
-          ...capasGeologicasWms.map((capa) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '• ${capa.nombre}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.only(left: 12, top: 2),
-                      child: Text(
-                        capa.descripcion,
-                        style: const TextStyle(fontSize: 12, height: 1.3),
-                      ),
-                    ),
-                  ],
-                ),
-              )),
-          SizedBox(height: 8),
-          Text(
-            'Las sugerencias de fósiles y minerales del asistente y del '
-            'explorador SIEMPRE consultan GEODE 50 internamente, sin '
-            'importar qué capa esté pintada — así cambiar de capa visual '
-            'no hace bailar la lista de fósiles probables.',
-            style: TextStyle(fontSize: 12, color: Colors.grey.shade700, fontStyle: FontStyle.italic),
-          ),
-          SizedBox(height: 16),
-
-          Text('Otras capas y filtros',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          SizedBox(height: 6),
-          Text(
-            '• ⭐ LIG — Lugares de Interés Geológico declarados por el IGME.\n'
-            '• ⛰️ Relieve sombreado (hillshade) para ver topografía.\n'
-            '• 🦇 Cuevas (OpenStreetMap, requiere zoom ≥ 10).\n'
-            '• 🗿 Megalitos y monumentos arqueológicos (OSM, zoom ≥ 9).\n'
-            '• 🏛️ Yacimientos curados — selección manual con fichas, '
-            'aparecen también como pista de "yacimientos cercanos" cuando '
-            'pinchas a menos de 5 km.',
-            style: TextStyle(fontSize: 12, height: 1.5),
-          ),
-          SizedBox(height: 16),
-
-          Text('Sugerencias de fósiles y minerales',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          SizedBox(height: 6),
-          Text(
-            'Al pinchar un punto (modo Explorar geología) o con el '
-            'asistente activado en el centro del mapa, la app cruza la '
-            'respuesta del IGME con sus catálogos locales:\n\n'
-            '• Si la formación que devuelve GEODE coincide con el catálogo '
-            'de formaciones ibéricas, se sugieren los fósiles '
-            'característicos de esa formación (sello PENDIENTE_VALIDACION '
-            'paleontológica hasta auditoría de comité científico).\n'
-            '• Si no, se sugieren fósiles del período inferido y filtrados '
-            'por el ambiente sedimentario probable de la litología '
-            '(p. ej. granito o basalto → sin fósiles; caliza → marinos).\n'
-            '• Los minerales se ponderan por litología: cada grupo '
-            '(granítico, carbonático, basáltico, evaporítico, metamórfico…) '
-            'tiene su propio set probable.',
-            style: TextStyle(fontSize: 12, height: 1.4),
-          ),
-          SizedBox(height: 16),
-
-          Text('Funcionalidades clave',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          SizedBox(height: 6),
-          Text(
-            '• Hallazgo georreferenciado con foto, edad, formación, '
-            'strike/dip, notas y trazabilidad.\n'
-            '• Mapa con capas IGME, hillshade, LIG, cuevas, megalitos y '
-            'yacimientos curados.\n'
-            '• Asistente geológico en el centro del mapa al panear.\n'
-            '• Mapas offline descargables por bbox + zoom.\n'
-            '• Guía local de fósiles y minerales por período.\n'
-            '• Estadísticas y línea del tiempo.\n'
-            '• Quiz de identificación.\n'
-            '• Chat de IA paleontológica (requiere API key personal).\n'
-            '• Exportar hallazgo como tarjeta de imagen o certificado '
-            'verificable cripto-firmado.\n'
-            '• Importar .fos-card de otra persona y certificar cadena '
-            '(Modo Experto).\n'
-            '• Backup y restauración completa de la base de datos.',
-            style: TextStyle(fontSize: 12, height: 1.4),
-          ),
-          SizedBox(height: 16),
-
-          Text('Datos y fuentes',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-          SizedBox(height: 6),
-          Text(
-            'Datos geológicos: IGME (GEODE 50, MAGNA 50, Edades 1M, '
-            'Litologías 1M, IELIG). Mapa base: OpenStreetMap, ESRI, '
-            'OpenTopoMap. Cuevas y megalitos: OpenStreetMap (Overpass). '
-            'Imágenes y descripciones complementarias: Wikipedia '
-            '(CC-BY-SA). Versión Flutter para Android.',
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
+          _bloque([
+            _subtitulo('Sobre la app'),
+            _explicacion(
+              'Cuaderno de campo de fósiles para adulto aficionado. Anota '
+              'hallazgos georreferenciados con foto, edad, formación, '
+              'strike/dip del estrato; consulta el contexto geológico del '
+              'IGME en el punto donde pinches; y guarda una guía local de '
+              'fósiles y minerales por período.',
+            ),
+            _subtitulo('Apoyar el proyecto'),
+            _explicacion(
+              'La app es y seguirá siendo gratuita y abierta para todos. '
+              'Si te ha sido útil y puedes permitírtelo, una pequeña aportación '
+              'voluntaria ayuda al mantenimiento, soporte y actualizaciones.',
+            ),
+            FilledButton.tonalIcon(
+              icon: Icon(Icons.favorite_outline),
+              onPressed: () => mostrarSheetDonaciones(context),
+              label: Text('Ver formas de apoyar'),
+            ),
+            _subtitulo('Datos y fuentes'),
+            Text(
+              'Datos geológicos: IGME (GEODE 50, MAGNA 50, Edades 1M, '
+              'Litologías 1M, IELIG). Mapa base: OpenStreetMap, ESRI, '
+              'OpenTopoMap. Cuevas y megalitos: OpenStreetMap (Overpass). '
+              'Imágenes y descripciones complementarias: Wikipedia '
+              '(CC-BY-SA). Versión Flutter para Android.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ]),
         ],
       ),
     );

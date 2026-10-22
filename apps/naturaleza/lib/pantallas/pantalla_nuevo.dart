@@ -284,7 +284,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     final clave = _claveApiKeyPlantNetCacheada;
     if (clave == null || clave.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Configura tu clave de Pl@ntNet en Ajustes.')),
+        SnackBar(content: Text('Configura tu clave de Pl@ntNet en Ajustes → Inteligencia artificial.')),
       );
       return;
     }

@@ -10,7 +10,6 @@ import 'pantallas/pantalla_guia.dart';
 import 'pantallas/pantalla_ajustes.dart';
 import 'servicios/grabador_track.dart';
 import 'servicios/estado_conexion.dart';
-import 'servicios/auto_backup.dart';
 import 'servicios/estado_salida_en_curso.dart';
 import 'servicios/checker_actualizaciones_naturaleza.dart';
 import 'datos/base_datos.dart';
@@ -31,6 +30,8 @@ final _autoBackupNaturaleza = AutoBackup(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Idioma elegido en Ajustes la última vez (si no, castellano).
+  await cargarIdiomaSolera();
   _inicializarAccesosDirectos();
   await initializeDateFormatting('es_ES', null);
 

@@ -155,7 +155,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     final fotoParaIdentificar = _primeraFotoParaIdentificar;
     if (fotoParaIdentificar == null) return;
     if (!await Configuracion.tieneApiKey()) {
-      _mostrarSnack('Configura primero tu API key en Ajustes.');
+      _mostrarSnack('Configura primero tu API key en Ajustes → Inteligencia artificial.');
       return;
     }
     setState(() => _identificandoFosil = true);

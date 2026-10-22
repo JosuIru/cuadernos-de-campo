@@ -3,13 +3,15 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:share_plus/share_plus.dart';
-import '../datos/configuracion.dart';
 import '../servicios/cache_teselas.dart';
 import '../servicios/checker_actualizaciones_naturaleza.dart';
 import '../servicios/servicio_backup.dart';
+import 'pantalla_ajustes_ia.dart';
 import 'pantalla_mapas_offline.dart';
 import 'sheet_donaciones.dart';
 
+/// Ajustes por secciones: General · Inteligencia artificial (subpantalla
+/// con su propio Guardar) · Mapas y datos · Acerca de.
 class PantallaAjustes extends StatefulWidget {
   const PantallaAjustes({super.key});
 
@@ -18,42 +20,12 @@ class PantallaAjustes extends StatefulWidget {
 }
 
 class _PantallaAjustesState extends State<PantallaAjustes> {
-  final _controladorApiKey = TextEditingController();
-  final _controladorApiKeyPlantNet = TextEditingController();
-  final _controladorDeepseekKey = TextEditingController();
-  String _modeloSeleccionado = modeloPorDefecto;
-  bool _ocultarApiKey = true;
-  bool _ocultarApiKeyPlantNet = true;
-  String? _mensajeEstado;
   String _resumenCache = 'Calculando…';
 
   @override
   void initState() {
     super.initState();
-    _cargar();
     _refrescarResumenCache();
-  }
-
-  @override
-  void dispose() {
-    _controladorApiKey.dispose();
-    _controladorApiKeyPlantNet.dispose();
-    _controladorDeepseekKey.dispose();
-    super.dispose();
-  }
-
-  Future<void> _cargar() async {
-    final apiKey = await Configuracion.obtenerApiKey();
-    final apiKeyPlantNet = await Configuracion.obtenerApiKeyPlantNet();
-    final apiKeyDeepseek = await Configuracion.obtenerApiKeyDeepseek();
-    final modelo = await Configuracion.obtenerModelo();
-    if (!mounted) return;
-    setState(() {
-      _controladorApiKey.text = apiKey;
-      _controladorApiKeyPlantNet.text = apiKeyPlantNet;
-      _controladorDeepseekKey.text = apiKeyDeepseek;
-      _modeloSeleccionado = modelo;
-    });
   }
 
   Future<void> _refrescarResumenCache() async {
@@ -63,15 +35,6 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     setState(() {
       _resumenCache = '$ficheros teselas en caché · ${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
     });
-  }
-
-  Future<void> _guardar() async {
-    await Configuracion.guardarApiKey(_controladorApiKey.text.trim());
-    await Configuracion.guardarApiKeyPlantNet(_controladorApiKeyPlantNet.text.trim());
-    await Configuracion.guardarApiKeyDeepseek(_controladorDeepseekKey.text.trim());
-    await Configuracion.guardarModelo(_modeloSeleccionado);
-    if (!mounted) return;
-    setState(() => _mensajeEstado = 'Ajustes guardados');
   }
 
   Future<void> _hacerBackup() async {
@@ -161,217 +124,151 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     await _refrescarResumenCache();
   }
 
+  void _abrir(Widget pantalla) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => pantalla));
+  }
+
+  /// Contenido de una sección con el mismo margen lateral que su cabecera.
+  Widget _bloque(List<Widget> hijos) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: hijos),
+    );
+  }
+
+  Widget _subtitulo(String texto) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 12, bottom: 4),
+      child: Text(texto, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+    );
+  }
+
+  Widget _explicacion(String texto) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(texto, style: TextStyle(fontSize: 13)),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(SoleraL10n.t('ajustes'))),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.only(bottom: 32),
         children: [
-          Text('Identificación con Claude', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: 8),
-          Text(
-            'Para identificar especies automáticamente, introduce tu API key de Anthropic. '
-            'Se guarda solo en tu teléfono y se envía únicamente a api.anthropic.com. '
-            'Consigue una en console.anthropic.com.',
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(height: 12),
-          TextField(
-            controller: _controladorApiKey,
-            obscureText: _ocultarApiKey,
-            decoration: InputDecoration(
-              labelText: 'API key de Anthropic',
-              border: OutlineInputBorder(),
-              hintText: 'sk-ant-…',
-              suffixIcon: IconButton(
-                icon: Icon(_ocultarApiKey ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _ocultarApiKey = !_ocultarApiKey),
-              ),
+          const CabeceraSeccionAjustes('General'),
+          _bloque([
+            _subtitulo('Idioma / Language'),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: SelectorIdioma(onCambio: () => setState(() {})),
             ),
+          ]),
+
+          const CabeceraSeccionAjustes('Inteligencia artificial'),
+          ListTile(
+            leading: Icon(Icons.auto_awesome_outlined),
+            title: Text('Claves y modelo'),
+            subtitle: Text('Claude para identificar, Pl@ntNet para plantas y DeepSeek para el chat'),
+            trailing: Icon(Icons.chevron_right),
+            onTap: () => _abrir(const PantallaAjustesIa()),
           ),
-          SizedBox(height: 24),
-          Card(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Idioma / Language',
-                  style: Theme.of(context).textTheme.titleSmall
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              SizedBox(height: 8),
-              SelectorIdioma(),
-            ],
-          ),
-        ),
-      ),
-      Divider(),
-          SizedBox(height: 16),
-          Text('Identificación de plantas con Pl@ntNet (gratis)', style: Theme.of(context).textTheme.titleMedium),
-          SizedBox(height: 8),
-          Text(
-            'Pl@ntNet identifica plantas con una foto y devuelve un ranking de candidatas. '
-            'El plan gratuito da 500 identificaciones al día. '
-            'Regístrate en my.plantnet.org y pega aquí tu clave. '
-            'La foto se envía solo cuando pulses el botón "Identificar planta" en la ficha de un hallazgo.',
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(height: 12),
-          TextField(
-            controller: _controladorApiKeyPlantNet,
-            obscureText: _ocultarApiKeyPlantNet,
-            decoration: InputDecoration(
-              labelText: 'Clave API de Pl@ntNet',
-              border: OutlineInputBorder(),
-              hintText: '2bxxxxxxxxxxxxxxxxxxxxxxxxx',
-              suffixIcon: IconButton(
-                icon: Icon(_ocultarApiKeyPlantNet ? Icons.visibility : Icons.visibility_off),
-                onPressed: () => setState(() => _ocultarApiKeyPlantNet = !_ocultarApiKeyPlantNet),
-              ),
+
+          const CabeceraSeccionAjustes('Mapas y datos'),
+          _bloque([
+            _subtitulo('Mapas sin conexión'),
+            _explicacion(
+              'Las teselas que veas en el mapa se guardan automáticamente en caché. '
+              'Para precachear una zona entera (vista actual del mapa), usa el botón de descarga.',
             ),
-          ),
-          SizedBox(height: 12),
-          TextField(
-            controller: _controladorDeepseekKey,
-            obscureText: _ocultarApiKey,
-            decoration: InputDecoration(
-              labelText: 'API key de DeepSeek (para chat)',
-              border: OutlineInputBorder(),
-              hintText: 'sk-…',
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(6)),
+              child: Text(_resumenCache),
             ),
-          ),
-          SizedBox(height: 24),
-          
-          Text('Modelo de Claude', style: TextStyle(fontWeight: FontWeight.bold)),
-          SizedBox(height: 8),
-          ...modelosDisponibles.map(
-            (modelo) => RadioListTile<String>(
-              value: modelo.id,
-              groupValue: _modeloSeleccionado,
-              onChanged: (valor) => setState(() => _modeloSeleccionado = valor ?? modeloPorDefecto),
-              title: Text(modelo.nombre),
-              subtitle: Text(
-                '${modelo.descripcion} ~${modelo.precioOrientativoCentimosPorIdentificacion} céntimos por foto.',
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
-          FilledButton(onPressed: _guardar, child: Text('Guardar ajustes')),
-          if (_mensajeEstado != null) ...[
             SizedBox(height: 12),
-            Center(
-              child: Text(_mensajeEstado!, style: TextStyle(color: Theme.of(context).colorScheme.primary)),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    icon: Icon(Icons.download),
+                    onPressed: () async {
+                      await Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => PantallaMapasOffline()),
+                      );
+                      await _refrescarResumenCache();
+                    },
+                    label: Text('Descargar zona'),
+                  ),
+                ),
+                SizedBox(width: 8),
+                OutlinedButton.icon(
+                  icon: Icon(Icons.delete_outline),
+                  onPressed: _vaciarCache,
+                  label: Text('Vaciar'),
+                ),
+              ],
             ),
-          ],
-          SizedBox(height: 16),
-          OutlinedButton.icon(
-            icon: Icon(Icons.system_update),
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const PantallaEstadoActualizaciones(
-                  config: configActualizacionesNaturaleza,
-                  nombreApp: 'Naturaleza',
-                ),
-              ),
+            SizedBox(height: 8),
+            _subtitulo('Copia de seguridad'),
+            _explicacion(
+              'Exporta toda tu base (hallazgos + tracks + fotos) en un fichero único .natbackup. '
+              'Guárdalo en Drive/USB/correo. Para restaurar, selecciona el .natbackup; '
+              'reemplazará los datos actuales.',
             ),
-            label: Text('Comprobar actualizaciones'),
-          ),
-          SizedBox(height: 32),
-          
-          Text('Mapas sin conexión', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: 8),
-          Text(
-            'Las teselas que veas en el mapa se guardan automáticamente en caché. '
-            'Para precachear una zona entera (vista actual del mapa), usa el botón de descarga.',
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(6)),
-            child: Text(_resumenCache),
-          ),
-          SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  icon: Icon(Icons.download),
-                  onPressed: () async {
-                    await Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => PantallaMapasOffline()),
-                    );
-                    await _refrescarResumenCache();
-                  },
-                  label: Text('Descargar zona'),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    icon: Icon(Icons.backup),
+                    onPressed: _hacerBackup,
+                    label: Text('Hacer copia'),
+                  ),
                 ),
-              ),
-              SizedBox(width: 8),
-              OutlinedButton.icon(
-                icon: Icon(Icons.delete_outline),
-                onPressed: _vaciarCache,
-                label: Text('Vaciar'),
-              ),
-            ],
-          ),
-          SizedBox(height: 32),
-          
-          Text('Copia de seguridad', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: 8),
-          Text(
-            'Exporta toda tu base (hallazgos + tracks + fotos) en un fichero único .natbackup. '
-            'Guárdalo en Drive/USB/correo. Para restaurar, selecciona el .natbackup; '
-            'reemplazará los datos actuales.',
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  icon: Icon(Icons.backup),
-                  onPressed: _hacerBackup,
-                  label: Text('Hacer copia'),
+                SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: Icon(Icons.restore),
+                    onPressed: _restaurarBackup,
+                    label: Text('Restaurar copia'),
+                  ),
                 ),
-              ),
-              SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  icon: Icon(Icons.restore),
-                  onPressed: _restaurarBackup,
-                  label: Text('Restaurar copia'),
-                ),
-              ),
-            ],
+              ],
+            ),
+          ]),
+
+          const CabeceraSeccionAjustes('Acerca de'),
+          ListTile(
+            leading: Icon(Icons.system_update),
+            title: Text('Comprobar actualizaciones'),
+            trailing: Icon(Icons.chevron_right),
+            onTap: () => _abrir(const PantallaEstadoActualizaciones(
+              config: configActualizacionesNaturaleza,
+              nombreApp: 'Naturaleza',
+            )),
           ),
-          SizedBox(height: 32),
-          
-          Text('Apoyar el proyecto', style: Theme.of(context).textTheme.titleLarge),
-          SizedBox(height: 8),
-          Text(
-            'La app es y seguirá siendo gratuita y abierta para todos. '
-            'Si te ha sido útil y puedes permitírtelo, una pequeña aportación '
-            'voluntaria ayuda al mantenimiento, soporte y actualizaciones.',
-            style: TextStyle(fontSize: 13),
-          ),
-          SizedBox(height: 12),
-          FilledButton.tonalIcon(
-            icon: Icon(Icons.favorite_outline),
-            onPressed: () => mostrarSheetDonaciones(context),
-            label: Text('Ver formas de apoyar'),
-          ),
-          SizedBox(height: 32),
-          
-          Text('Sobre la app', style: TextStyle(fontWeight: FontWeight.bold)),
-          SizedBox(height: 8),
-          Text(
-            'Naturaleza — Cuaderno de campo (animales, insectos y plantas). Versión Flutter para Android.\n\n'
-            'Mapa base: OpenStreetMap, ESRI, OpenTopoMap. '
-            'Identificación: Claude (Anthropic). Taxonomía y referencias: iNaturalist y GBIF.',
-            style: TextStyle(fontSize: 13, color: Colors.grey),
-          ),
+          _bloque([
+            _subtitulo('Apoyar el proyecto'),
+            _explicacion(
+              'La app es y seguirá siendo gratuita y abierta para todos. '
+              'Si te ha sido útil y puedes permitírtelo, una pequeña aportación '
+              'voluntaria ayuda al mantenimiento, soporte y actualizaciones.',
+            ),
+            FilledButton.tonalIcon(
+              icon: Icon(Icons.favorite_outline),
+              onPressed: () => mostrarSheetDonaciones(context),
+              label: Text('Ver formas de apoyar'),
+            ),
+            SizedBox(height: 8),
+            _subtitulo('Sobre la app'),
+            Text(
+              'Naturaleza — Cuaderno de campo (animales, insectos y plantas). Versión Flutter para Android.\n\n'
+              'Mapa base: OpenStreetMap, ESRI, OpenTopoMap. '
+              'Identificación: Claude (Anthropic). Taxonomía y referencias: iNaturalist y GBIF.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+          ]),
         ],
       ),
     );

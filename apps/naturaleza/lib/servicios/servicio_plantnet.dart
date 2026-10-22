@@ -113,7 +113,7 @@ Future<ResultadoPlantNet> identificarPlantaConPlantNet({
   if (respuesta.statusCode == 401 || respuesta.statusCode == 403) {
     throw PlantNetClaveInvalida(
       'Pl@ntNet rechazó la clave (HTTP ${respuesta.statusCode}). '
-      'Comprueba la clave en Ajustes.',
+      'Comprueba la clave en Ajustes → Inteligencia artificial.',
     );
   }
   if (respuesta.statusCode == 429) {

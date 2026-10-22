@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../datos/configuracion.dart';
-import '../servicios/servicio_chat.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 
 class PantallaChat extends StatefulWidget {
   final String? contextoInicial;
@@ -108,7 +108,7 @@ class _PantallaChatState extends State<PantallaChat> {
       final nombre = proveedor == ProveedorChat.claude ? 'Claude' : 'DeepSeek';
       setState(() {
         _mensajes.add(MensajeChat(
-          texto: 'Necesitas configurar tu API key de $nombre en Ajustes.',
+          texto: 'Necesitas configurar tu API key de $nombre en Ajustes → Inteligencia artificial.',
           esUsuario: false,
           proveedor: proveedor,
         ));

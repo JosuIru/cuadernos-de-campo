@@ -1,7 +1,7 @@
 name: fosiles_flutter
 description: "Cuaderno de campo de fósiles"
 publish_to: 'none'
-version: 1.0.19+20
+version: 1.0.20+21
 
 environment:
   sdk: ^3.5.0

@@ -211,6 +211,15 @@ class _PantallaMapaState extends State<PantallaMapa> {
     ];
   }
 
+  /// Lleva el mapa a un lugar buscado por nombre (buscador del core:
+  /// CartoCiudad con OpenStreetMap de respaldo).
+  Future<void> _buscarLugar() async {
+    final posicion = await buscarLugarEnMapa(context,
+        identificacion: 'Naturaleza (cuadernos-de-campo)');
+    if (posicion == null || !mounted) return;
+    _controladorMapa.move(posicion, 15);
+  }
+
   Future<void> _centrarEnMiUbicacion() async {
     final permitido = await asegurarPermisoUbicacion();
     if (!permitido) {
@@ -814,6 +823,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
             child: _BotonesAccion(
               capaActual: _capaBaseActual,
               onCambioCapa: (capa) => setState(() => _capaBaseActual = capa),
+              onBuscar: _buscarLugar,
               onCentrar: _centrarEnMiUbicacion,
               onAbrirOffline: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => PantallaMapasOffline()),
@@ -887,12 +897,13 @@ class _IconoHallazgo extends StatelessWidget {
 }
 
 /// Lateral derecho del mapa. Antes eran 8 FABs apilados que ocupaban
-/// casi toda la altura en pantallas pequeñas. Ahora son 5: dos acciones
-/// directas (GPS y track) y tres menús desplegables que agrupan capas,
-/// datos cargables y tracks/offline.
+/// casi toda la altura en pantallas pequeñas. Ahora son 5: buscador, dos
+/// acciones directas (GPS y track) y dos menús desplegables: capas (con
+/// mapas offline y tracks guardados) y datos cargables.
 class _BotonesAccion extends StatelessWidget {
   final CapaBase capaActual;
   final ValueChanged<CapaBase> onCambioCapa;
+  final VoidCallback onBuscar;
   final VoidCallback onCentrar;
   final VoidCallback onAbrirOffline;
   final VoidCallback onAbrirTracks;
@@ -910,6 +921,7 @@ class _BotonesAccion extends StatelessWidget {
   _BotonesAccion({
     required this.capaActual,
     required this.onCambioCapa,
+    required this.onBuscar,
     required this.onCentrar,
     required this.onAbrirOffline,
     required this.onAbrirTracks,
@@ -927,6 +939,7 @@ class _BotonesAccion extends StatelessWidget {
 
   Future<void> _abrirMenuCapas(BuildContext context) async {
     const valorOffline = '__offline__';
+    const valorTracks = '__tracks__';
     final seleccion = await showMenu<dynamic>(
       context: context,
       position: const RelativeRect.fromLTRB(1000, 100, 8, 0),
@@ -957,12 +970,24 @@ class _BotonesAccion extends StatelessWidget {
             ],
           ),
         ),
+        const PopupMenuItem(
+          value: valorTracks,
+          child: Row(
+            children: [
+              Icon(Icons.route, size: 18),
+              SizedBox(width: 8),
+              Text('Tracks guardados…'),
+            ],
+          ),
+        ),
       ],
     );
     if (seleccion is CapaBase) {
       onCambioCapa(seleccion);
     } else if (seleccion == valorOffline) {
       onAbrirOffline();
+    } else if (seleccion == valorTracks) {
+      onAbrirTracks();
     }
   }
 
@@ -1050,6 +1075,13 @@ class _BotonesAccion extends StatelessWidget {
     return Column(
       children: [
         FloatingActionButton.small(
+          heroTag: 'buscar',
+          tooltip: 'Buscar un lugar',
+          onPressed: onBuscar,
+          child: const Icon(Icons.search),
+        ),
+        const SizedBox(height: 8),
+        FloatingActionButton.small(
           heroTag: 'gps',
           tooltip: 'Centrar en mi ubicación',
           onPressed: onCentrar,
@@ -1067,7 +1099,7 @@ class _BotonesAccion extends StatelessWidget {
         const SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'capas',
-          tooltip: 'Capas del mapa',
+          tooltip: 'Capas del mapa, mapas offline y tracks guardados',
           onPressed: () => _abrirMenuCapas(context),
           child: const Icon(Icons.layers),
         ),
@@ -1085,13 +1117,6 @@ class _BotonesAccion extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.eco_outlined),
-        ),
-        const SizedBox(height: 8),
-        FloatingActionButton.small(
-          heroTag: 'tracks',
-          tooltip: 'Tracks guardados',
-          onPressed: onAbrirTracks,
-          child: const Icon(Icons.route),
         ),
       ],
     );

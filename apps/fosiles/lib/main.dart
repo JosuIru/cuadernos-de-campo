@@ -15,7 +15,6 @@ import 'pantallas/pantalla_importar_fos_card.dart';
 import 'pantallas/pantalla_onboarding.dart';
 import 'servicios/grabador_track.dart';
 import 'servicios/estado_conexion.dart';
-import 'servicios/auto_backup.dart';
 import 'servicios/checker_actualizaciones_fosiles.dart';
 import 'datos/base_datos.dart';
 import 'datos/configuracion.dart';
@@ -36,6 +35,8 @@ final _autoBackup = AutoBackup(
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Idioma elegido en Ajustes la última vez (si no, castellano).
+  await cargarIdiomaSolera();
   _inicializarAccesosDirectos();
   await initializeDateFormatting('es_ES', null);
 

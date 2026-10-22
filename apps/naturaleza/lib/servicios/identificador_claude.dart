@@ -72,7 +72,7 @@ Future<IdentificacionEspecie> identificarEspecie({
 }) async {
   final apiKey = await Configuracion.obtenerApiKey();
   if (apiKey.trim().isEmpty) {
-    throw Exception('Falta la API key de Anthropic. Configúrala en Ajustes.');
+    throw Exception('Falta la API key de Anthropic. Configúrala en Ajustes → Inteligencia artificial.');
   }
   final modelo = await Configuracion.obtenerModelo();
 

@@ -117,7 +117,7 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
                 _seccion(
                   titulo: 'Datos declarados',
                   textoAyuda:
-                      'Estos datos los rellenas tú en Ajustes. Acompañan a la firma '
+                      'Estos datos los rellenas tú en Ajustes → Perfil e identidad. Acompañan a la firma '
                       'cuando compartes una card o un certificado, pero no están '
                       'autenticados contra una autoridad externa: cualquiera puede '
                       'decir que se llama como quiera. Lo que sí es único y permanente '
