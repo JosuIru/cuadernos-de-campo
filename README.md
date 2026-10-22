@@ -14,7 +14,7 @@ Estas apps **dependen de** `packages/nuevo_ser_core` del repo sibling `nuevo-ser
 **Layout esperado:**
 
 ```
-~/Projects/games/
+~/Projects/juegos/               (en esta máquina, nuevo-ser es un enlace a ~/Projects/monorepo-nuevo-ser)
 ├── nuevo-ser/                  ← Kids + Solera + plataforma compartida + wp-plugin
 │   ├── apps/
 │   │   ├── uno-roto/
@@ -36,7 +36,7 @@ Estas apps **dependen de** `packages/nuevo_ser_core` del repo sibling `nuevo-ser
 
 Si solo clonas este repo sin `nuevo-ser/` al lado, `flutter pub get` fallará porque no encuentra `../../../nuevo-ser/packages/nuevo_ser_core`. Soluciones:
 
-1. **Clonar nuevo-ser como hermano** (recomendado).
+1. **Clonar nuevo-ser como hermano** (recomendado), o crear un enlace simbólico `nuevo-ser` que apunte a donde esté el monorepo.
 2. Editar la línea `path:` del `pubspec.yaml` de la app afectada para apuntar a una ruta absoluta.
 3. Sustituir el `path:` por un `git:` dependency apuntando al repo de nuevo-ser.
 

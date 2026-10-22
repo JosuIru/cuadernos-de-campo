@@ -20,10 +20,14 @@ Repo separado de `nuevo-ser/` el 2026-05-19. Aloja **dos apps de operador para a
 `packages/nuevo_ser_core` del repo sibling `nuevo-ser/` se importa por `path: ../../../nuevo-ser/packages/nuevo_ser_core` en los pubspec.yaml. Layout asumido:
 
 ```
-~/Projects/games/
-├── nuevo-ser/           ← Kids + Solera + plataforma compartida
-└── cuadernos-de-campo/  ← este repo
+~/Projects/
+├── monorepo-nuevo-ser/          ← Kids + Solera + plataforma compartida
+└── juegos/                      (también ~/Projects/games, enlace)
+    ├── nuevo-ser → ~/Projects/monorepo-nuevo-ser   (enlace simbólico)
+    └── cuadernos-de-campo/      ← este repo
 ```
+
+El enlace `juegos/nuevo-ser` existe porque los `pubspec.yaml` buscan el core en `../../../nuevo-ser/`; desde la reorganización de carpetas del 2026-08-24 el monorepo vive en `~/Projects/monorepo-nuevo-ser`. Si `flutter pub get` no encuentra `nuevo_ser_core`, comprobar ese enlace.
 
 `nuevo_ser_core` lo siguen usando 4 apps Kids + 6 Solera del repo nuevo-ser; no se puede mover aquí sin duplicar.
 
