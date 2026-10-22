@@ -1,6 +1,5 @@
-import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/configuracion.dart';
 
 class ContextoIdentificacion {
@@ -88,13 +87,14 @@ Future<IdentificacionFosil> identificarFosil({
 }) async {
   final apiKey = await Configuracion.obtenerApiKey();
   if (apiKey.trim().isEmpty) {
-    throw Exception('Falta la API key de Anthropic. Configúrala en Ajustes → Inteligencia artificial.');
+    throw ErrorClaude(
+      MotivoErrorClaude.sinClave,
+      'Falta la API key de Anthropic. Configúrala en Ajustes → Inteligencia artificial.',
+    );
   }
   final modelo = await Configuracion.obtenerModelo();
 
-  final bytes = await archivoFoto.readAsBytes();
-  final base64Foto = base64Encode(bytes);
-  final mediaType = _detectarMimeType(archivoFoto.path);
+  final foto = await ImagenClaude.desdeFichero(archivoFoto.path);
 
   final monedaTexto = contexto.monedaReferencia;
   final lineasContexto = <String>[
@@ -111,25 +111,17 @@ Future<IdentificacionFosil> identificarFosil({
       'En la foto hay una moneda de $monedaTexto como referencia (diámetros: ${_diametrosComoTexto()}). Usa la moneda visible para estimar el tamaño real del fósil/mineral en mm o cm.',
   ];
 
-  final mensajeUsuario = <Map<String, dynamic>>[
-    {
-      'type': 'image',
-      'source': {
-        'type': 'base64',
-        'media_type': mediaType,
-        'data': base64Foto,
-      },
-    },
-    {
-      'type': 'text',
-      'text': lineasContexto.isNotEmpty
-          ? 'Contexto disponible:\n${lineasContexto.join("\n")}\n\nIdentifica el fósil de la foto.'
-          : 'Identifica el fósil de la foto.',
-    },
-  ];
+  final mensajeUsuario = MensajeClaude.usuario(
+    lineasContexto.isNotEmpty
+        ? 'Contexto disponible:\n${lineasContexto.join("\n")}\n\nIdentifica el fósil de la foto.'
+        : 'Identifica el fósil de la foto.',
+    imagenes: [foto],
+  );
 
+  // La salida estructurada exige `additionalProperties: false` en cada objeto.
   final esquema = {
     'type': 'object',
+    'additionalProperties': false,
     'properties': {
       'grupo_taxonomico': {'type': 'string', 'description': 'Grupo amplio: Ammonoidea, Bivalvia, Foraminifera, etc.'},
       'identificacion_tentativa': {'type': 'string', 'description': 'Nombre concreto: género o especie tentativa.'},
@@ -146,49 +138,20 @@ Future<IdentificacionFosil> identificarFosil({
     'required': ['grupo_taxonomico', 'identificacion_tentativa', 'confianza', 'descripcion', 'razonamiento', 'como_confirmar', 'tipo_detectado'],
   };
 
-  final body = jsonEncode({
-    'model': modelo,
-    'max_tokens': 2048,
-    'system': _systemPrompt,
-    'messages': [
-      {'role': 'user', 'content': mensajeUsuario}
-    ],
-    'output_config': {
-      'format': {
-        'type': 'json_schema',
-        'schema': esquema,
-      },
-    },
-  });
-
-  final respuesta = await http.post(
-    Uri.parse('https://api.anthropic.com/v1/messages'),
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: body,
-  ).timeout(const Duration(seconds: 60));
-
-  if (respuesta.statusCode != 200) {
-    throw Exception('Error API (${respuesta.statusCode}): ${utf8.decode(respuesta.bodyBytes)}');
-  }
-
-  final json = jsonDecode(utf8.decode(respuesta.bodyBytes)) as Map<String, dynamic>;
-  final contenidos = (json['content'] as List).cast<Map<String, dynamic>>();
-  String? textoRespuesta;
-  for (final bloque in contenidos) {
-    if (bloque['type'] == 'text') {
-      textoRespuesta = bloque['text'] as String?;
-      break;
-    }
-  }
-  if (textoRespuesta == null) {
-    throw Exception('Respuesta vacía del modelo.');
-  }
-  final datos = jsonDecode(textoRespuesta) as Map<String, dynamic>;
+  // Salida estructurada (`output_config.format`) con el esquema de arriba.
+  // Los modelos 5.5 razonan antes de contestar y ese razonamiento cuenta en
+  // `max_tokens`: 4096 deja sitio a razonamiento + JSON. Esfuerzo medio en
+  // todos: identificar por foto pide algo de razonamiento, y en Haiku el
+  // coste extra es despreciable (medio es además su valor por defecto).
+  final clienteClaude = ClienteClaude(claveApi: apiKey);
+  final datos = await clienteClaude.pedirJson(
+    modelo: modelo,
+    sistema: _systemPrompt,
+    mensajes: [mensajeUsuario],
+    maxTokens: 4096,
+    esfuerzo: EsfuerzoClaude.medio,
+    esquemaJson: esquema,
+  );
   return IdentificacionFosil(
     grupoTaxonomico: datos['grupo_taxonomico'] as String? ?? 'Desconocido',
     identificacionTentativa: datos['identificacion_tentativa'] as String? ?? 'Sin identificación',
@@ -203,15 +166,4 @@ Future<IdentificacionFosil> identificarFosil({
     durezaMohsEstimada: datos['dureza_mohs_estimada'] as String?,
     modeloUsado: modelo,
   );
-}
-
-String _detectarMimeType(String ruta) {
-  final ext = ruta.split('.').last.toLowerCase();
-  return switch (ext) {
-    'jpg' || 'jpeg' => 'image/jpeg',
-    'png' => 'image/png',
-    'webp' => 'image/webp',
-    'gif' => 'image/gif',
-    _ => 'image/jpeg',
-  };
 }

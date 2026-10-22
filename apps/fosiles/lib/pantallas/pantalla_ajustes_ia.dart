@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart' show numeroParaEditar;
 import '../datos/configuracion.dart';
 
 /// Ajustes → Inteligencia artificial: claves de Anthropic (identificación
@@ -103,7 +104,7 @@ class _PantallaAjustesIaState extends State<PantallaAjustesIa> {
                   .map((modelo) => RadioListTile<String>(
                         value: modelo.id,
                         title: Text(modelo.nombre),
-                        subtitle: Text('${modelo.descripcion} ~${modelo.precioOrientativoCentimosPorIdentificacion} céntimos por foto.'),
+                        subtitle: Text('${modelo.descripcion} ~${numeroParaEditar(modelo.precioOrientativoCentimosPorIdentificacion)} céntimos por foto.'),
                       ))
                   .toList(),
             ),
