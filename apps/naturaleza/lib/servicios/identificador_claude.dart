@@ -1,6 +1,5 @@
-import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/configuracion.dart';
 
 class ContextoIdentificacion {
@@ -72,13 +71,14 @@ Future<IdentificacionEspecie> identificarEspecie({
 }) async {
   final apiKey = await Configuracion.obtenerApiKey();
   if (apiKey.trim().isEmpty) {
-    throw Exception('Falta la API key de Anthropic. Configúrala en Ajustes → Inteligencia artificial.');
+    throw ErrorClaude(
+      MotivoErrorClaude.sinClave,
+      'Falta la API key de Anthropic. Configúrala en Ajustes → Inteligencia artificial.',
+    );
   }
   final modelo = await Configuracion.obtenerModelo();
 
-  final bytes = await archivoFoto.readAsBytes();
-  final base64Foto = base64Encode(bytes);
-  final mediaType = _detectarMimeType(archivoFoto.path);
+  final foto = await ImagenClaude.desdeFichero(archivoFoto.path);
 
   final lineasContexto = <String>[
     if (contexto.categoriaEsperada != 'auto') 'El usuario espera identificar un/a ${contexto.categoriaEsperada}.',
@@ -90,25 +90,17 @@ Future<IdentificacionEspecie> identificarEspecie({
     if (contexto.notas != null && contexto.notas!.isNotEmpty) 'Notas del usuario: ${contexto.notas}',
   ];
 
-  final mensajeUsuario = <Map<String, dynamic>>[
-    {
-      'type': 'image',
-      'source': {
-        'type': 'base64',
-        'media_type': mediaType,
-        'data': base64Foto,
-      },
-    },
-    {
-      'type': 'text',
-      'text': lineasContexto.isNotEmpty
-          ? 'Contexto disponible:\n${lineasContexto.join("\n")}\n\nIdentifica la especie de la foto.'
-          : 'Identifica la especie de la foto.',
-    },
-  ];
+  final mensajeUsuario = MensajeClaude.usuario(
+    lineasContexto.isNotEmpty
+        ? 'Contexto disponible:\n${lineasContexto.join("\n")}\n\nIdentifica la especie de la foto.'
+        : 'Identifica la especie de la foto.',
+    imagenes: [foto],
+  );
 
+  // La salida estructurada exige `additionalProperties: false` en cada objeto.
   final esquema = {
     'type': 'object',
+    'additionalProperties': false,
     'properties': {
       'categoria_detectada': {'type': 'string', 'enum': ['animal', 'insecto', 'planta', 'seta', 'desconocido']},
       'nombre_cientifico': {'type': 'string', 'description': 'Binomial Genus species cuando sea posible.'},
@@ -134,87 +126,20 @@ Future<IdentificacionEspecie> identificarEspecie({
     ],
   };
 
-  // La forma canónica de pedir output JSON estructurado a la API
-  // Anthropic es vía tool-use: declaras una tool con `input_schema`
-  // y la fuerzas con `tool_choice`. La forma anterior con
-  // `output_config.format.json_schema` no es parte de la API pública
-  // y dejaba de identificar en producción.
-  const nombreHerramienta = 'registrar_identificacion';
-  final cuerpo = jsonEncode({
-    'model': modelo,
-    'max_tokens': 2048,
-    'system': _systemPrompt,
-    'messages': [
-      {'role': 'user', 'content': mensajeUsuario}
-    ],
-    'tools': [
-      {
-        'name': nombreHerramienta,
-        'description':
-            'Registra la identificación de la especie observada en la foto, con nombre científico, taxonomía y nivel de confianza.',
-        'input_schema': esquema,
-      },
-    ],
-    'tool_choice': {'type': 'tool', 'name': nombreHerramienta},
-  });
-
-  final respuesta = await http.post(
-    Uri.parse('https://api.anthropic.com/v1/messages'),
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01',
-      'anthropic-dangerous-direct-browser-access': 'true',
-    },
-    body: cuerpo,
-  ).timeout(const Duration(seconds: 60));
-
-  if (respuesta.statusCode != 200) {
-    throw Exception('Error API (${respuesta.statusCode}): ${utf8.decode(respuesta.bodyBytes)}');
-  }
-
-  final json = jsonDecode(utf8.decode(respuesta.bodyBytes)) as Map<String, dynamic>;
-  final contenidos = ((json['content'] as List?) ?? const [])
-      .cast<Map<String, dynamic>>();
-  // Con tool-use forzado, la respuesta llega como bloque
-  // `type: 'tool_use'` con el JSON estructurado en `input`. Si por
-  // cualquier motivo el modelo devuelve un bloque `text` en su
-  // lugar, intentamos parsearlo como JSON (compat antigua).
-  Map<String, dynamic>? datos;
-  for (final bloque in contenidos) {
-    if (bloque['type'] == 'tool_use') {
-      final entrada = bloque['input'];
-      if (entrada is Map<String, dynamic>) {
-        datos = entrada;
-        break;
-      }
-    }
-  }
-  if (datos == null) {
-    for (final bloque in contenidos) {
-      if (bloque['type'] == 'text') {
-        final texto = bloque['text'] as String?;
-        if (texto != null && texto.trim().isNotEmpty) {
-          try {
-            final d = jsonDecode(texto);
-            if (d is Map<String, dynamic>) {
-              datos = d;
-              break;
-            }
-          } catch (_) {
-            // Texto no parseable como JSON: probable mensaje de error
-            // del modelo. Lo dejamos pasar para que el throw siguiente
-            // lo reporte con contexto.
-          }
-        }
-      }
-    }
-  }
-  if (datos == null) {
-    throw Exception(
-      'Respuesta sin contenido estructurado. body=${utf8.decode(respuesta.bodyBytes)}',
-    );
-  }
+  // Salida estructurada (`output_config.format`) con el esquema de arriba.
+  // Los modelos 5.5 razonan antes de contestar y ese razonamiento cuenta en
+  // `max_tokens`: 4096 deja sitio a razonamiento + JSON. Esfuerzo medio en
+  // todos: identificar por foto pide algo de razonamiento, y en Haiku el
+  // coste extra es despreciable (medio es además su valor por defecto).
+  final clienteClaude = ClienteClaude(claveApi: apiKey);
+  final datos = await clienteClaude.pedirJson(
+    modelo: modelo,
+    sistema: _systemPrompt,
+    mensajes: [mensajeUsuario],
+    maxTokens: 4096,
+    esfuerzo: EsfuerzoClaude.medio,
+    esquemaJson: esquema,
+  );
   return IdentificacionEspecie(
     categoriaDetectada: datos['categoria_detectada'] as String? ?? 'desconocido',
     nombreCientifico: datos['nombre_cientifico'] as String? ?? '',
@@ -229,15 +154,4 @@ Future<IdentificacionEspecie> identificarEspecie({
     estadoConservacion: datos['estado_conservacion'] as String?,
     modeloUsado: modelo,
   );
-}
-
-String _detectarMimeType(String ruta) {
-  final ext = ruta.split('.').last.toLowerCase();
-  return switch (ext) {
-    'jpg' || 'jpeg' => 'image/jpeg',
-    'png' => 'image/png',
-    'webp' => 'image/webp',
-    'gif' => 'image/gif',
-    _ => 'image/jpeg',
-  };
 }

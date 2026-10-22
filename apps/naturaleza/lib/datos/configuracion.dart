@@ -1,10 +1,11 @@
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 const String _claveApiKey = 'anthropic_api_key';
 const String _claveApiKeyDeepseek = 'deepseek_api_key';
 const String _claveModelo = 'modelo_claude';
 const String _claveApiKeyPlantNet = 'plantnet_api_key';
-const String modeloPorDefecto = 'claude-opus-4-7';
+const String modeloPorDefecto = modeloClaudePotente;
 
 class ModeloDisponible {
   final String id;
@@ -14,10 +15,15 @@ class ModeloDisponible {
   const ModeloDisponible(this.id, this.nombre, this.descripcion, this.precioOrientativoCentimosPorIdentificacion);
 }
 
+// Precio orientativo por foto (USD → céntimos, redondeado hacia arriba):
+// ~2.000 tokens de entrada (foto + prompt) y salida con razonamiento.
+// Tarifas por millón de tokens entrada/salida: Opus 5.5 4/20, Sonnet 5.5
+// 2/10, Haiku 5.5 0,10/0,50. Escalado desde las estimaciones de la familia
+// 4.x y subido un poco porque los 5.5 razonan antes de responder.
 const List<ModeloDisponible> modelosDisponibles = [
-  ModeloDisponible('claude-opus-4-7', 'Claude Opus 4.7', 'Máxima precisión. Recomendado.', 1.5),
-  ModeloDisponible('claude-sonnet-4-6', 'Claude Sonnet 4.6', 'Buen equilibrio precisión/coste.', 0.5),
-  ModeloDisponible('claude-haiku-4-5', 'Claude Haiku 4.5', 'Más barato. Aciertos algo menores.', 0.2),
+  ModeloDisponible(modeloClaudePotente, 'Claude Opus 5.5', 'Máxima precisión. Recomendado.', 4),
+  ModeloDisponible(modeloClaudeEquilibrado, 'Claude Sonnet 5.5', 'Buen equilibrio precisión/coste.', 2),
+  ModeloDisponible(modeloClaudeRapido, 'Claude Haiku 5.5', 'Mucho más barato. Aciertos algo menores.', 0.1),
 ];
 
 class Configuracion {
@@ -26,9 +32,13 @@ class Configuracion {
     return prefs.getString(_claveApiKey) ?? '';
   }
 
+  /// Modelo elegido, traducido al actual de su familia (quien tenga
+  /// guardado `claude-opus-4-7` recibe Opus 5.5, etc.).
   static Future<String> obtenerModelo() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_claveModelo) ?? modeloPorDefecto;
+    final modeloGuardado = prefs.getString(_claveModelo);
+    if (modeloGuardado == null || modeloGuardado.trim().isEmpty) return modeloPorDefecto;
+    return modeloClaudeActual(modeloGuardado);
   }
 
   static Future<void> guardarApiKey(String apiKey) async {
