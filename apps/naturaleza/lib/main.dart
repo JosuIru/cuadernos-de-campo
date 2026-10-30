@@ -44,6 +44,10 @@ Future<void> main() async {
   runApp(AplicacionNaturaleza(restaurado: restaurado));
 }
 
+// El aviso de «datos restaurados» sale antes de que exista un context con
+// ScaffoldMessenger debajo: se lanza desde el que crea el MaterialApp.
+final _claveMensajes = GlobalKey<ScaffoldMessengerState>();
+
 class AplicacionNaturaleza extends StatefulWidget {
   final bool restaurado;
   const AplicacionNaturaleza({super.key, this.restaurado = false});
@@ -60,7 +64,7 @@ class _AplicacionNaturalezaState extends State<AplicacionNaturaleza> with Widget
     if (widget.restaurado) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          _claveMensajes.currentState?.showSnackBar(
             const SnackBar(content: Text('Datos restaurados desde copia de seguridad.')),
           );
         }
@@ -84,6 +88,7 @@ class _AplicacionNaturalezaState extends State<AplicacionNaturaleza> with Widget
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: _claveMensajes,
       title: 'Naturaleza',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

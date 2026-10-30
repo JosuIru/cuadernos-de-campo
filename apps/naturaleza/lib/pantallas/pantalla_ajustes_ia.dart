@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart' show numeroParaEditar;
+import 'package:url_launcher/url_launcher.dart' show launchUrl, LaunchMode;
 import '../datos/configuracion.dart';
 
 /// Ajustes → Inteligencia artificial: claves de Claude (Anthropic),
@@ -62,6 +63,27 @@ class _PantallaAjustesIaState extends State<PantallaAjustesIa> {
     setState(() => _mensajeEstado = 'Ajustes de IA guardados');
   }
 
+  /// Abre en el navegador la web donde se saca cada clave.
+  Future<void> _abrirWeb(String direccion) async {
+    try {
+      await launchUrl(Uri.parse(direccion), mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('No se pudo abrir el navegador. Entra en $direccion')),
+      );
+    }
+  }
+
+  Widget _botonConseguirClave(String texto, String direccion) => Align(
+        alignment: Alignment.centerLeft,
+        child: TextButton.icon(
+          icon: const Icon(Icons.open_in_new, size: 18),
+          label: Text(texto),
+          onPressed: () => _abrirWeb(direccion),
+        ),
+      );
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -77,7 +99,8 @@ class _PantallaAjustesIaState extends State<PantallaAjustesIa> {
             'Consigue una en console.anthropic.com.',
             style: TextStyle(fontSize: 13),
           ),
-          SizedBox(height: 12),
+          _botonConseguirClave('Conseguir clave de Anthropic', 'https://console.anthropic.com/settings/keys'),
+          SizedBox(height: 4),
           TextField(
             controller: _controladorApiKey,
             obscureText: _ocultarApiKey,
@@ -101,7 +124,8 @@ class _PantallaAjustesIaState extends State<PantallaAjustesIa> {
             'La foto se envía solo cuando pulses el botón "Identificar planta" en la ficha de un hallazgo.',
             style: TextStyle(fontSize: 13),
           ),
-          SizedBox(height: 12),
+          _botonConseguirClave('Conseguir clave de Pl@ntNet', 'https://my.plantnet.org/'),
+          SizedBox(height: 4),
           TextField(
             controller: _controladorApiKeyPlantNet,
             obscureText: _ocultarApiKeyPlantNet,
@@ -117,7 +141,8 @@ class _PantallaAjustesIaState extends State<PantallaAjustesIa> {
           ),
           SizedBox(height: 24),
           Text('Chat con DeepSeek', style: Theme.of(context).textTheme.titleMedium),
-          SizedBox(height: 12),
+          _botonConseguirClave('Conseguir clave de DeepSeek', 'https://platform.deepseek.com/api_keys'),
+          SizedBox(height: 4),
           TextField(
             controller: _controladorDeepseekKey,
             obscureText: _ocultarApiKey,
