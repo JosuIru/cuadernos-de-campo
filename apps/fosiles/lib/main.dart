@@ -49,6 +49,10 @@ Future<void> main() async {
   runApp(AplicacionFosiles(restaurado: restaurado));
 }
 
+// El aviso de «datos restaurados» sale antes de que exista un context con
+// ScaffoldMessenger debajo: se lanza desde el que crea el MaterialApp.
+final _claveMensajes = GlobalKey<ScaffoldMessengerState>();
+
 class AplicacionFosiles extends StatefulWidget {
   final bool restaurado;
   const AplicacionFosiles({super.key, this.restaurado = false});
@@ -65,7 +69,7 @@ class _AplicacionFosilesState extends State<AplicacionFosiles> with WidgetsBindi
     if (widget.restaurado) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
+          _claveMensajes.currentState?.showSnackBar(
             const SnackBar(content: Text('Datos restaurados desde copia de seguridad.')),
           );
         }
@@ -89,6 +93,7 @@ class _AplicacionFosilesState extends State<AplicacionFosiles> with WidgetsBindi
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      scaffoldMessengerKey: _claveMensajes,
       title: 'Fósiles',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(

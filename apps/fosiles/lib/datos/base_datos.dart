@@ -188,10 +188,16 @@ class BaseDatosFosiles {
   }
 
   /// Devuelve true si no hay ningún hallazgo guardado (BD vacía).
+  /// Sin hallazgos ni tracks: la copia automática se restaura al arrancar y
+  /// una BD así no pisa la copia. Solo con hallazgos, un móvil con tracks
+  /// propios los perdería al restaurar.
   Future<bool> estaVacia() async {
     final db = await basedatos;
-    final count = Sqflite.firstIntValue(await db.rawQuery('SELECT COUNT(*) FROM hallazgos'));
-    return (count ?? 0) == 0;
+    for (final tabla in const ['hallazgos', 'tracks']) {
+      final filas = await db.rawQuery('SELECT 1 FROM $tabla LIMIT 1');
+      if (filas.isNotEmpty) return false;
+    }
+    return true;
   }
 
   /// Cierra y reabre la BD (útil tras restaurar un backup).
