@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart' show SoleraL10n;
 
 const _baseGbif = 'https://api.gbif.org/v1';
 const _cabecerasGbif = {
@@ -108,7 +109,7 @@ Future<List<OcurrenciaGbif>> ocurrenciasEnBbox({
   final uri = Uri.parse('$_baseGbif/occurrence/search').replace(queryParameters: parametros);
   final respuesta = await http.get(uri, headers: _cabecerasGbif);
   if (respuesta.statusCode != 200) {
-    throw Exception('GBIF devolvió ${respuesta.statusCode}');
+    throw Exception(SoleraL10n.tf('nat.ajus_servicio_devolvio', {'servicio': 'GBIF', 'codigo': '${respuesta.statusCode}'}));
   }
   final cuerpo = jsonDecode(utf8.decode(respuesta.bodyBytes)) as Map<String, dynamic>;
   final resultados = (cuerpo['results'] as List?) ?? const [];
@@ -162,7 +163,7 @@ Future<List<OcurrenciaGbif>> ocurrenciasCercanas({
   final uri = Uri.parse('$_baseGbif/occurrence/search').replace(queryParameters: parametros);
   final respuesta = await http.get(uri, headers: _cabecerasGbif);
   if (respuesta.statusCode != 200) {
-    throw Exception('GBIF devolvió ${respuesta.statusCode}');
+    throw Exception(SoleraL10n.tf('nat.ajus_servicio_devolvio', {'servicio': 'GBIF', 'codigo': '${respuesta.statusCode}'}));
   }
   final cuerpo = jsonDecode(utf8.decode(respuesta.bodyBytes)) as Map<String, dynamic>;
   final resultados = (cuerpo['results'] as List?) ?? const [];

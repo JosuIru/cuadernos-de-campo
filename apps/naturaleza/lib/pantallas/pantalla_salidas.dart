@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 
 import '../datos/base_datos.dart';
 import '../modelos/salida.dart';
@@ -69,34 +70,34 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (innerCtx, refrescar) => AlertDialog(
-          title: const Text('Nueva salida'),
+          title: Text(SoleraL10n.t('nat.mapa_nueva_salida')),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: controladorTitulo,
-                  decoration: const InputDecoration(
-                    labelText: 'Título (opcional)',
-                    hintText: 'p. ej. Encinares del Pirulén',
+                  decoration: InputDecoration(
+                    labelText: SoleraL10n.t('nat.mapa_titulo_opcional'),
+                    hintText: SoleraL10n.t('nat.mapa_titulo_ejemplo'),
                   ),
                   textCapitalization: TextCapitalization.sentences,
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: controladorZona,
-                  decoration: const InputDecoration(
-                    labelText: 'Zona (opcional)',
-                    hintText: 'comarca, paraje, sierra…',
+                  decoration: InputDecoration(
+                    labelText: SoleraL10n.t('nat.mapa_zona_opcional'),
+                    hintText: SoleraL10n.t('nat.mapa_zona_ejemplo'),
                   ),
                   textCapitalization: TextCapitalization.sentences,
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: controladorHipotesis,
-                  decoration: const InputDecoration(
-                    labelText: 'Hipótesis de jornada (opcional)',
-                    hintText: '¿qué vienes a buscar?',
+                  decoration: InputDecoration(
+                    labelText: SoleraL10n.t('nat.mapa_hipotesis_opcional'),
+                    hintText: SoleraL10n.t('nat.mapa_hipotesis_ejemplo'),
                   ),
                   textCapitalization: TextCapitalization.sentences,
                   maxLines: 2,
@@ -114,23 +115,19 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
                         onChanged: (v) =>
                             refrescar(() => arrancarTrack = v ?? false),
                       ),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Arrancar también un track GPS',
-                          style: TextStyle(fontSize: 14),
+                          SoleraL10n.t('nat.mapa_arrancar_track'),
+                          style: const TextStyle(fontSize: 14),
                         ),
                       ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Mientras esté abierta, los hallazgos que crees se '
-                  'asociarán automáticamente a esta salida. Si arrancas '
-                  'también el track GPS, quedará atado a la salida al '
-                  'detenerlo. Podrás desactivar la auto-asociación en '
-                  'cada hallazgo si lo prefieres.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                Text(
+                  SoleraL10n.t('nat.mapa_salida_explicacion'),
+                  style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ],
             ),
@@ -138,11 +135,11 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(innerCtx).pop(false),
-              child: const Text('Cancelar'),
+              child: Text(SoleraL10n.t('cancelar')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(innerCtx).pop(true),
-              child: const Text('Iniciar'),
+              child: Text(SoleraL10n.t('nat.mapa_iniciar')),
             ),
           ],
         ),
@@ -163,10 +160,8 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
         GrabadorTrack.instancia.iniciar();
       } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'No se pudo arrancar el track: falta permiso de ubicación.',
-            ),
+          SnackBar(
+            content: Text(SoleraL10n.t('nat.mapa_sin_permiso_track')),
           ),
         );
       }
@@ -185,10 +180,10 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
   Widget build(BuildContext context) {
     final activa = EstadoSalidaEnCurso.instancia.salida;
     return Scaffold(
-      appBar: AppBar(title: const Text('Salidas')),
+      appBar: AppBar(title: Text(SoleraL10n.t('nat.mapa_salidas'))),
       floatingActionButton: FloatingActionButton.extended(
         icon: const Icon(Icons.add),
-        label: const Text('Iniciar salida'),
+        label: Text(SoleraL10n.t('nat.mapa_iniciar_salida')),
         onPressed: activa != null ? null : _iniciarSalida,
       ),
       body: _cargando
@@ -215,16 +210,15 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
             children: [
               const Icon(Icons.hiking, size: 64, color: Colors.grey),
               const SizedBox(height: 16),
-              const Text(
-                'Aún no has registrado ninguna salida',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              Text(
+                SoleraL10n.t('nat.mapa_sin_salidas'),
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Una salida agrupa los hallazgos, el track GPS, '
-                'la meteorología y las notas de una jornada de campo.',
+              Text(
+                SoleraL10n.t('nat.mapa_sin_salidas_ayuda'),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                style: const TextStyle(color: Colors.grey),
               ),
             ],
           ),
@@ -232,13 +226,13 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
       );
 
   Widget _tarjetaSalida(Salida salida) {
-    final fmtFecha = DateFormat('EEE d MMM y · HH:mm', 'es_ES');
+    final fmtFecha = DateFormat('EEE d MMM y · HH:mm', SoleraL10n.idioma);
     final fechaInicio =
         DateTime.fromMillisecondsSinceEpoch(salida.fechaInicioMs);
     final etiquetaFecha = fmtFecha.format(fechaInicio);
     final etiquetaTitulo = salida.titulo.isNotEmpty
         ? salida.titulo
-        : (salida.zona.isNotEmpty ? salida.zona : 'Salida sin título');
+        : (salida.zona.isNotEmpty ? salida.zona : SoleraL10n.t('nat.mapa_salida_sin_titulo'));
     final cuenta = (salida.id != null
             ? _conteoHallazgos[salida.id!]
             : 0) ??
@@ -276,9 +270,9 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
                   color: Colors.orange,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Text(
-                  'EN CURSO',
-                  style: TextStyle(
+                child: Text(
+                  SoleraL10n.t('nat.mapa_en_curso'),
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
@@ -295,7 +289,7 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
               Text(etiquetaFecha, style: const TextStyle(fontSize: 12)),
               const SizedBox(height: 2),
               Text(
-                '$cuenta hallazgo${cuenta == 1 ? '' : 's'} · $etiquetaDuracion',
+                '${cuenta == 1 ? SoleraL10n.t('nat.mapa_una_observacion') : SoleraL10n.tf('nat.mapa_n_observaciones', {'n': '$cuenta'})} · $etiquetaDuracion',
                 style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],

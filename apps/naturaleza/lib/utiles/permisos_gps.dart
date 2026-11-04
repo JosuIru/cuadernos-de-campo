@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 /// Resultado del intento de obtener permiso de ubicación.
@@ -41,17 +42,16 @@ Future<bool> asegurarPermisoUbicacion({BuildContext? context}) async {
     if (resultado == ResultadoPermisoGps.denegadoPermanente) {
       await _mostrarDialogoAjustes(
         context,
-        titulo: 'Permiso de ubicación bloqueado',
-        mensaje: 'Has denegado el permiso de forma permanente. Para usar el GPS '
-            'tienes que activarlo manualmente desde Ajustes del sistema.',
+        titulo: SoleraL10n.t('fos.mapa_permiso_bloqueado'),
+        mensaje: SoleraL10n.t('fos.mapa_permiso_bloqueado_texto'),
       );
     } else if (resultado == ResultadoPermisoGps.servicioApagado) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Activa el GPS del teléfono y vuelve a intentarlo.')),
+        SnackBar(content: Text(SoleraL10n.t('fos.mapa_activa_gps'))),
       );
     } else if (resultado == ResultadoPermisoGps.denegadoPuntual) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Necesito permiso de ubicación para esta acción.')),
+        SnackBar(content: Text(SoleraL10n.t('fos.mapa_necesito_permiso'))),
       );
     }
   }
@@ -71,14 +71,14 @@ Future<void> _mostrarDialogoAjustes(
       actions: [
         TextButton(
           onPressed: () => Navigator.of(dialogContext).pop(),
-          child: const Text('Cancelar'),
+          child: Text(SoleraL10n.t('cancelar')),
         ),
         FilledButton(
           onPressed: () async {
             Navigator.of(dialogContext).pop();
             await openAppSettings();
           },
-          child: const Text('Abrir Ajustes'),
+          child: Text(SoleraL10n.t('fos.mapa_abrir_ajustes')),
         ),
       ],
     ),

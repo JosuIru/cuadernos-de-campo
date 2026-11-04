@@ -20,7 +20,16 @@ class PantallaAjustes extends StatefulWidget {
 }
 
 class _PantallaAjustesState extends State<PantallaAjustes> {
-  String _resumenCache = 'Calculando…';
+  int? _ficherosCache;
+  int? _bytesCache;
+
+  /// Se monta al pintar para que cambie con el idioma.
+  String? get _resumenCache => _ficherosCache == null || _bytesCache == null
+      ? null
+      : SoleraL10n.tf('fos.ajus_resumen_cache', {
+          'n': '$_ficherosCache',
+          'mb': formatearNumero(_bytesCache! / 1024 / 1024, decimales: 1),
+        });
 
   @override
   void initState() {
@@ -33,7 +42,8 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     final bytes = await CacheTeselasDisco.tamanoTotalBytes();
     if (!mounted) return;
     setState(() {
-      _resumenCache = '$ficheros teselas en caché · ${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
+      _ficherosCache = ficheros;
+      _bytesCache = bytes;
     });
   }
 
@@ -49,13 +59,13 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
       Navigator.of(context).pop();
       await Share.shareXFiles(
         [XFile(fichero.path)],
-        subject: 'Backup naturaleza',
-        text: 'Copia de seguridad (${(await fichero.length()) ~/ 1024} KB)',
+        subject: SoleraL10n.t('nat.ajus_backup_asunto'),
+        text: SoleraL10n.tf('nat.ajus_backup_texto', {'kb': '${(await fichero.length()) ~/ 1024}'}),
       );
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error backup: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${SoleraL10n.t('fos.ajus_error_backup')}: $e')));
     }
   }
 
@@ -63,10 +73,8 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Restaurar copia de seguridad'),
-        content: Text(
-          'Esto reemplazará TODOS tus hallazgos, tracks y fotos actuales por los del fichero. ¿Continuar?',
-        ),
+        title: Text(SoleraL10n.t('fos.ajus_restaurar_titulo')),
+        content: Text(SoleraL10n.t('fos.ajus_restaurar_aviso')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
           FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(SoleraL10n.t('continuar'))),
@@ -90,16 +98,16 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Restaurados ${restauracion.hallazgosRestaurados} hallazgos y '
-            '${restauracion.fotosRestauradas} fotos. Reinicia la app para ver los cambios.',
-          ),
+          content: Text(SoleraL10n.tf('nat.ajus_restaurados', {
+            'hallazgos': '${restauracion.hallazgosRestaurados}',
+            'fotos': '${restauracion.fotosRestauradas}',
+          })),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.t('error_restaurando:_$e'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${SoleraL10n.t('error_restaurando')}: $e')));
     }
   }
 
@@ -107,14 +115,12 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        content: Text(
-          '¿Vaciar la caché de mapas offline? Tendrás que volver a descargar para usar sin conexión.',
-        ),
+        content: Text(SoleraL10n.t('fos.ajus_vaciar_cache_pregunta')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: Text('Vaciar', style: TextStyle(color: Colors.red)),
+            child: Text(SoleraL10n.t('fos.ajus_vaciar'), style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -157,35 +163,32 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
       body: ListView(
         padding: const EdgeInsets.only(bottom: 32),
         children: [
-          const CabeceraSeccionAjustes('General'),
+          CabeceraSeccionAjustes(SoleraL10n.t('fos.ajus_sec_general')),
           _bloque([
-            _subtitulo('Idioma / Language'),
+            _subtitulo(SoleraL10n.t('fos.ajus_idioma')),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SelectorIdioma(onCambio: () => setState(() {})),
             ),
           ]),
 
-          const CabeceraSeccionAjustes('Inteligencia artificial'),
+          CabeceraSeccionAjustes(SoleraL10n.t('seccion_integraciones')),
           ListTile(
             leading: Icon(Icons.auto_awesome_outlined),
-            title: Text('Claves y modelo'),
-            subtitle: Text('Claude para identificar, Pl@ntNet para plantas y DeepSeek para el chat'),
+            title: Text(SoleraL10n.t('fos.ajus_claves_modelo')),
+            subtitle: Text(SoleraL10n.t('nat.ajus_claves_modelo_sub')),
             trailing: Icon(Icons.chevron_right),
             onTap: () => _abrir(const PantallaAjustesIa()),
           ),
 
-          const CabeceraSeccionAjustes('Mapas y datos'),
+          CabeceraSeccionAjustes(SoleraL10n.t('fos.ajus_sec_mapas_datos')),
           _bloque([
-            _subtitulo('Mapas sin conexión'),
-            _explicacion(
-              'Las teselas que veas en el mapa se guardan automáticamente en caché. '
-              'Para precachear una zona entera (vista actual del mapa), usa el botón de descarga.',
-            ),
+            _subtitulo(SoleraL10n.t('fos.ajus_mapas_sin_conexion')),
+            _explicacion(SoleraL10n.t('fos.ajus_mapas_explicacion')),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(6)),
-              child: Text(_resumenCache),
+              child: Text(_resumenCache ?? SoleraL10n.t('fos.ajus_calculando')),
             ),
             SizedBox(height: 12),
             Row(
@@ -199,31 +202,27 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
                       );
                       await _refrescarResumenCache();
                     },
-                    label: Text('Descargar zona'),
+                    label: Text(SoleraL10n.t('fos.ajus_descargar_zona')),
                   ),
                 ),
                 SizedBox(width: 8),
                 OutlinedButton.icon(
                   icon: Icon(Icons.delete_outline),
                   onPressed: _vaciarCache,
-                  label: Text('Vaciar'),
+                  label: Text(SoleraL10n.t('fos.ajus_vaciar')),
                 ),
               ],
             ),
             SizedBox(height: 8),
-            _subtitulo('Copia de seguridad'),
-            _explicacion(
-              'Exporta toda tu base (hallazgos + tracks + fotos) en un fichero único .natbackup. '
-              'Guárdalo en Drive/USB/correo. Para restaurar, selecciona el .natbackup; '
-              'reemplazará los datos actuales.',
-            ),
+            _subtitulo(SoleraL10n.t('copia_de_seguridad')),
+            _explicacion(SoleraL10n.t('nat.ajus_backup_explicacion')),
             Row(
               children: [
                 Expanded(
                   child: FilledButton.icon(
                     icon: Icon(Icons.backup),
                     onPressed: _hacerBackup,
-                    label: Text('Hacer copia'),
+                    label: Text(SoleraL10n.t('fos.ajus_hacer_copia')),
                   ),
                 ),
                 SizedBox(width: 8),
@@ -231,17 +230,17 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
                   child: OutlinedButton.icon(
                     icon: Icon(Icons.restore),
                     onPressed: _restaurarBackup,
-                    label: Text('Restaurar copia'),
+                    label: Text(SoleraL10n.t('fos.ajus_restaurar_copia')),
                   ),
                 ),
               ],
             ),
           ]),
 
-          const CabeceraSeccionAjustes('Acerca de'),
+          CabeceraSeccionAjustes(SoleraL10n.t('acerca_de')),
           ListTile(
             leading: Icon(Icons.system_update),
-            title: Text('Comprobar actualizaciones'),
+            title: Text(SoleraL10n.t('comprobar_actualizaciones')),
             trailing: Icon(Icons.chevron_right),
             onTap: () => _abrir(const PantallaEstadoActualizaciones(
               config: configActualizacionesNaturaleza,
@@ -249,23 +248,17 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
             )),
           ),
           _bloque([
-            _subtitulo('Apoyar el proyecto'),
-            _explicacion(
-              'La app es y seguirá siendo gratuita y abierta para todos. '
-              'Si te ha sido útil y puedes permitírtelo, una pequeña aportación '
-              'voluntaria ayuda al mantenimiento, soporte y actualizaciones.',
-            ),
+            _subtitulo(SoleraL10n.t('fos.ajus_apoyar')),
+            _explicacion(SoleraL10n.t('fos.ajus_apoyar_texto')),
             FilledButton.tonalIcon(
               icon: Icon(Icons.favorite_outline),
               onPressed: () => mostrarSheetDonaciones(context),
-              label: Text('Ver formas de apoyar'),
+              label: Text(SoleraL10n.t('fos.ajus_ver_formas_apoyar')),
             ),
             SizedBox(height: 8),
-            _subtitulo('Sobre la app'),
+            _subtitulo(SoleraL10n.t('fos.ajus_sobre_app')),
             Text(
-              'Naturaleza — Cuaderno de campo (animales, insectos y plantas). Versión Flutter para Android.\n\n'
-              'Mapa base: OpenStreetMap, ESRI, OpenTopoMap. '
-              'Identificación: Claude (Anthropic). Taxonomía y referencias: iNaturalist y GBIF.',
+              '${SoleraL10n.t('nat.ajus_sobre_app_texto')}\n\n${SoleraL10n.t('nat.ajus_sobre_app_fuentes')}',
               style: TextStyle(fontSize: 13, color: Colors.grey),
             ),
           ]),

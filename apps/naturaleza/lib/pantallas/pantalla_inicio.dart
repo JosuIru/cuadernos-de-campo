@@ -79,10 +79,10 @@ class _PantallaInicioState extends State<PantallaInicio> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('🌿', style: TextStyle(fontSize: 40)),
               const SizedBox(height: 8),
-              const Text('Cuaderno de campo de naturaleza',
+              Text(SoleraL10n.t('nat.ajus_cabecera_titulo'),
                   style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text('Observa, aprende y convive con la biodiversidad que te rodea',
+              Text(SoleraL10n.t('nat.ajus_cabecera_sub'),
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
             ]),
           ),
@@ -95,8 +95,8 @@ class _PantallaInicioState extends State<PantallaInicio> {
               child: _tarjetaAccion(
                 context,
                 icono: Icons.explore,
-                titulo: 'Explorar mapa',
-                subtitulo: 'Especies y observaciones',
+                titulo: SoleraL10n.t('fos.ajus_explorar_mapa'),
+                subtitulo: SoleraL10n.t('nat.ajus_explorar_mapa_sub'),
                 onTap: () => widget.alIrAMapa?.call(),
               ),
             ),
@@ -105,8 +105,8 @@ class _PantallaInicioState extends State<PantallaInicio> {
               child: _tarjetaAccion(
                 context,
                 icono: Icons.wb_cloudy,
-                titulo: 'Meteorología',
-                subtitulo: 'Previsión para tu salida',
+                titulo: SoleraL10n.t('fos.ajus_meteo'),
+                subtitulo: SoleraL10n.t('nat.ajus_meteo_sub'),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const PantallaMeteo()),
                 ),
@@ -117,8 +117,8 @@ class _PantallaInicioState extends State<PantallaInicio> {
           _tarjetaAccion(
             context,
             icono: Icons.chat_bubble,
-            titulo: 'Chat IA',
-            subtitulo: 'Resuelve dudas, identifica especies, pide consejos de observación',
+            titulo: SoleraL10n.t('fos.ajus_chat_ia'),
+            subtitulo: SoleraL10n.t('nat.ajus_chat_ia_sub'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const PantallaChat(
                 sistemaPrompt: PantallaChat.sistemaNaturaleza,
@@ -130,9 +130,8 @@ class _PantallaInicioState extends State<PantallaInicio> {
           _tarjetaAccion(
             context,
             icono: Icons.hiking,
-            titulo: 'Salidas de campo',
-            subtitulo:
-                'Agrupa hallazgos, track y meteorología de una jornada en una sola unidad narrativa',
+            titulo: SoleraL10n.t('nat.ajus_salidas_campo'),
+            subtitulo: SoleraL10n.t('nat.ajus_salidas_campo_sub'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const PantallaSalidas()),
             ),
@@ -142,64 +141,49 @@ class _PantallaInicioState extends State<PantallaInicio> {
           const SizedBox(height: 24),
 
           // ─── Código ético ───────────────────────────────
-          const Text('Explora, observa y convive',
+          Text(SoleraL10n.t('nat.ajus_etica_titulo'),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          const Text('Unas pautas para disfrutar de la naturaleza sumando, sin restar.',
+          Text(SoleraL10n.t('nat.ajus_etica_sub'),
               style: TextStyle(fontSize: 13, color: Colors.grey)),
           const SizedBox(height: 12),
           _seccionEtica(
             icono: Icons.pets,
-            titulo: 'Observa con curiosidad y respeto',
-            texto: 'Acércate a los animales con calma, mantén la distancia y disfruta viendo '
-                'cómo se comportan cuando no se sienten amenazados. '
-                'Unos prismáticos o el zoom de la cámara te darán mejores recuerdos '
-                'que intentar tocarlos. Si se van, es que estabas demasiado cerca.',
+            titulo: SoleraL10n.t('nat.ajus_etica1_titulo'),
+            texto: SoleraL10n.t('nat.ajus_etica1_texto'),
           ),
           _seccionEtica(
             icono: Icons.eco,
-            titulo: 'Las plantas también son protagonistas',
-            texto: 'Muchas especies son frágiles y tardan años en florecer. Fotografíalas '
-                'en su sitio: la imagen dura para siempre y la planta sigue viva. '
-                'Quédate en los senderos en zonas sensibles; las raíces y los brotes '
-                'te lo agradecerán.',
+            titulo: SoleraL10n.t('nat.ajus_etica2_titulo'),
+            texto: SoleraL10n.t('nat.ajus_etica2_texto'),
           ),
           _seccionEtica(
             icono: Icons.volunteer_activism,
-            titulo: 'Cada observación tuya suma',
-            texto: 'Tus registros ayudan a científicas y conservacionistas a entender '
-                'cómo se mueven, cuándo florecen o dónde anidan las especies. '
-                'La app te permite identificar y geolocalizar. Es ciencia ciudadana: '
-                'tú exploras, la ciencia avanza.',
+            titulo: SoleraL10n.t('nat.ajus_etica3_titulo'),
+            texto: SoleraL10n.t('nat.ajus_etica3_texto'),
           ),
           _seccionEtica(
             icono: Icons.wb_sunny,
-            titulo: 'Disfruta con seguridad',
-            texto: 'Lleva agua, protección solar y calzado cómodo. Consulta la previsión '
-                'meteorológica antes de salir — la app te la da. '
-                'Comparte tu ruta con alguien si vas a zonas sin cobertura. '
-                'Una buena excursión es la que termina con una sonrisa.',
+            titulo: SoleraL10n.t('nat.ajus_etica4_titulo'),
+            texto: SoleraL10n.t('nat.ajus_etica4_texto'),
           ),
           _seccionEtica(
             icono: Icons.forest,
-            titulo: 'Que tu paso sea invisible',
-            texto: 'Llévate tu basura… y alguna más si la encuentras. No hagas fuego. '
-                'Deja piedras, plumas y restos donde estaban: forman parte del paisaje '
-                'y del ciclo de la vida. La naturaleza no necesita recuerdos; '
-                'tú ya te llevas la experiencia.',
+            titulo: SoleraL10n.t('nat.ajus_etica5_titulo'),
+            texto: SoleraL10n.t('nat.ajus_etica5_texto'),
           ),
 
           const SizedBox(height: 24),
 
           // ─── Cómo usar la app ─────────────────────────
-          const Text('Cómo usar Naturaleza',
+          Text(SoleraL10n.t('nat.ajus_como_usar'),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          _paso(1, 'Explora el mapa', 'Activa los lugares de interés (miradores, humedales, reservas) y consulta observaciones GBIF cercanas.'),
-          _paso(2, 'Registra un hallazgo', 'Toca + para añadir una especie con foto, coordenadas y categoría (animal, insecto, planta).'),
-          _paso(3, 'Identifica con IA', 'La app identifica la especie por imagen usando Claude o Pl@ntNet.'),
-          _paso(4, 'Consulta la guía', 'Accede a la guía de especies con fotos de Wikipedia, distintivos, hábitat y usos.'),
-          _paso(5, 'Haz el quiz', 'Pon a prueba tus conocimientos con el quiz de identificación por imagen.'),
+          _paso(1, SoleraL10n.t('fos.ajus_paso1_titulo'), SoleraL10n.t('nat.ajus_paso1_texto')),
+          _paso(2, SoleraL10n.t('fos.ajus_paso2_titulo'), SoleraL10n.t('nat.ajus_paso2_texto')),
+          _paso(3, SoleraL10n.t('nat.ajus_paso3_titulo'), SoleraL10n.t('nat.ajus_paso3_texto')),
+          _paso(4, SoleraL10n.t('nat.ajus_paso4_titulo'), SoleraL10n.t('nat.ajus_paso4_texto')),
+          _paso(5, SoleraL10n.t('nat.ajus_paso5_titulo'), SoleraL10n.t('nat.ajus_paso5_texto')),
 
           const SizedBox(height: 32),
         ],
@@ -247,11 +231,11 @@ class _PantallaInicioState extends State<PantallaInicio> {
 
   Widget _bannerSalidaActiva(
       BuildContext context, int idSalida, String titulo, int inicioMs) {
-    final fmt = DateFormat('HH:mm', 'es_ES');
+    final fmt = DateFormat('HH:mm', SoleraL10n.idioma);
     final etiquetaInicio =
         fmt.format(DateTime.fromMillisecondsSinceEpoch(inicioMs));
     final etiquetaTitulo =
-        titulo.isNotEmpty ? titulo : 'Salida sin título';
+        titulo.isNotEmpty ? titulo : SoleraL10n.t('nat.ajus_salida_sin_titulo');
     return Material(
       color: Colors.orange.shade50,
       borderRadius: BorderRadius.circular(12),
@@ -274,7 +258,7 @@ class _PantallaInicioState extends State<PantallaInicio> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Salida en curso · desde $etiquetaInicio',
+                      SoleraL10n.tf('nat.ajus_salida_en_curso', {'hora': etiquetaInicio}),
                       style: TextStyle(
                         fontSize: 11,
                         color: Colors.orange.shade900,

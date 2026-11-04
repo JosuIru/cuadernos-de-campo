@@ -151,7 +151,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       if (!permitido) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Falta permiso de ubicación.')),
+            SnackBar(content: Text(SoleraL10n.t('acei.falta_permiso_ubicacion'))),
           );
         }
         return;
@@ -167,7 +167,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error GPS: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.hall_error_gps', {'error': e}))));
     } finally {
       if (mounted) setState(() => _capturandoGps = false);
     }
@@ -205,7 +205,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Escribe primero la especie o el nombre común para buscar.',
+            SoleraL10n.t('nat.hall_escribe_especie_para_buscar'),
           ),
         ),
       );
@@ -236,7 +236,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   Future<void> _identificarConIa() async {
     if (_rutasFotos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Añade una foto primero.')),
+        SnackBar(content: Text(SoleraL10n.t('nat.hall_anade_foto_primero'))),
       );
       return;
     }
@@ -274,7 +274,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       });
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Identificación falló: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('nat.hall_identificacion_fallo', {'error': e}))));
     } finally {
       if (mounted) setState(() => _identificando = false);
     }
@@ -284,13 +284,13 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     final clave = _claveApiKeyPlantNetCacheada;
     if (clave == null || clave.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Configura tu clave de Pl@ntNet en Ajustes → Inteligencia artificial.')),
+        SnackBar(content: Text(SoleraL10n.t('nat.hall_configura_clave_plantnet'))),
       );
       return;
     }
     if (_rutasFotos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Añade una foto primero.')),
+        SnackBar(content: Text(SoleraL10n.t('nat.hall_anade_foto_primero'))),
       );
       return;
     }
@@ -306,7 +306,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       if (!mounted) return;
       if (resultado.candidatos.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Pl@ntNet no encontró candidatos. Prueba con otra foto u otro órgano.')),
+          SnackBar(content: Text(SoleraL10n.t('nat.hall_plantnet_sin_candidatos'))),
         );
         return;
       }
@@ -330,7 +330,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       });
       if (resultado.quedanHoy != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Pl@ntNet: te quedan ${resultado.quedanHoy} identificaciones hoy.')),
+          SnackBar(content: Text(SoleraL10n.tf('nat.hall_plantnet_quedan_hoy', {'n': resultado.quedanHoy}))),
         );
       }
     } on PlantNetClaveInvalida catch (e) {
@@ -341,7 +341,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.mensaje)));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Pl@ntNet falló: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('nat.hall_plantnet_fallo', {'error': e}))));
     } finally {
       if (mounted) setState(() => _identificandoPlantNet = false);
     }
@@ -357,21 +357,21 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             Padding(
               padding: EdgeInsets.all(16),
               child: Text(
-                '¿Qué órgano se ve mejor en la foto?',
+                SoleraL10n.t('nat.hall_que_organo_se_ve'),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
             for (final entrada in const [
-              (OrganoPlantNet.hoja, 'Hoja'),
-              (OrganoPlantNet.flor, 'Flor'),
-              (OrganoPlantNet.fruto, 'Fruto'),
-              (OrganoPlantNet.corteza, 'Corteza'),
-              (OrganoPlantNet.habito, 'Hábito (planta entera)'),
-              (OrganoPlantNet.otro, 'Otro / no estoy seguro'),
+              (OrganoPlantNet.hoja, 'nat.hall_organo_hoja'),
+              (OrganoPlantNet.flor, 'nat.hall_organo_flor'),
+              (OrganoPlantNet.fruto, 'nat.hall_organo_fruto'),
+              (OrganoPlantNet.corteza, 'nat.hall_organo_corteza'),
+              (OrganoPlantNet.habito, 'nat.hall_organo_habito'),
+              (OrganoPlantNet.otro, 'nat.hall_organo_otro'),
             ])
               ListTile(
                 leading: Icon(Icons.local_florist),
-                title: Text(entrada.$2),
+                title: Text(SoleraL10n.t(entrada.$2)),
                 onTap: () => Navigator.of(sheetContext).pop(entrada.$1),
               ),
           ],
@@ -392,12 +392,12 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              'Candidatos de Pl@ntNet',
+              SoleraL10n.t('nat.hall_candidatos_plantnet'),
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
             ),
             SizedBox(height: 4),
             Text(
-              'Pulsa el que mejor se ajuste para rellenar la ficha.',
+              SoleraL10n.t('nat.hall_pulsa_el_que_mejor_se_ajuste'),
               style: TextStyle(fontSize: 12, color: Colors.black54),
             ),
             SizedBox(height: 12),
@@ -438,7 +438,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   Future<void> _guardar() async {
     if (_latitud == null || _longitud == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Falta la posición GPS.')),
+        SnackBar(content: Text(SoleraL10n.t('nat.hall_falta_posicion_gps'))),
       );
       return;
     }
@@ -474,7 +474,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         final idHallazgo = hallazgoExistente.id;
         if (idHallazgo == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: el hallazgo no tiene ID.')),
+            SnackBar(content: Text(SoleraL10n.t('fos.hall_error_sin_id'))),
           );
           return;
         }
@@ -523,7 +523,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       // throw burbujeaba y desmontaba la pantalla.
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo guardar el hallazgo: $e')),
+        SnackBar(content: Text(SoleraL10n.tf('nat.hall_error_guardar_hallazgo', {'error': e}))),
       );
       return;
     }
@@ -600,9 +600,9 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.esEdicion ? 'Editar hallazgo' : 'Nuevo hallazgo'),
+        title: Text(SoleraL10n.t(widget.esEdicion ? 'fos.hall_editar_hallazgo' : 'fos.hall_nuevo_hallazgo')),
         actions: [
-          IconButton(icon: Icon(Icons.check), tooltip: 'Guardar', onPressed: _guardar),
+          IconButton(icon: Icon(Icons.check), tooltip: SoleraL10n.t('guardar'), onPressed: _guardar),
         ],
       ),
       body: ListView(
@@ -655,12 +655,11 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Tipo de evidencia',
+            Text(SoleraL10n.t('nat.hall_tipo_evidencia'),
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            const Text(
-              'Si no viste el bicho, no pasa nada. Una huella, una '
-              'pluma o un canto son hallazgo de pleno derecho.',
+            Text(
+              SoleraL10n.t('nat.hall_explicacion_evidencia'),
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 12),
@@ -702,38 +701,36 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Tu hipótesis',
+            Text(SoleraL10n.t('nat.hall_tu_hipotesis'),
                 style: TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 4),
-            const Text(
-              'Lo que crees que es y por qué. Útil para revisar después '
-              'qué pistas usaste y cuándo aciertas.',
+            Text(
+              SoleraL10n.t('nat.hall_explicacion_hipotesis'),
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _controladorHipotesis,
-              decoration: const InputDecoration(
-                labelText: 'Hipótesis',
-                hintText:
-                    'creo que es X porque…  (vuelo, canto, hábitat…)',
+              decoration: InputDecoration(
+                labelText: SoleraL10n.t('nat.hall_hipotesis'),
+                hintText: SoleraL10n.t('nat.hall_hipotesis_hint'),
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
               textCapitalization: TextCapitalization.sentences,
             ),
             const SizedBox(height: 12),
-            const Text('Confianza',
+            Text(SoleraL10n.t('agro.confianza'),
                 style:
                     TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Wrap(
               spacing: 6,
               children: [
-                _chipConfianza('Sin marcar', null),
-                _chipConfianza('Tentativa', ConfianzaIdentificacion.tentativa),
-                _chipConfianza('Probable', ConfianzaIdentificacion.probable),
-                _chipConfianza('Segura', ConfianzaIdentificacion.segura),
+                _chipConfianza(SoleraL10n.t('nat.hall_confianza_sin_marcar'), null),
+                _chipConfianza(SoleraL10n.t('nat.hall_confianza_tentativa'), ConfianzaIdentificacion.tentativa),
+                _chipConfianza(SoleraL10n.t('nat.hall_confianza_probable'), ConfianzaIdentificacion.probable),
+                _chipConfianza(SoleraL10n.t('nat.hall_confianza_segura'), ConfianzaIdentificacion.segura),
               ],
             ),
           ],
@@ -788,7 +785,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   Widget _bannerSalidaAsociacion(Salida salida) {
     final etiqueta = salida.titulo.isNotEmpty
         ? salida.titulo
-        : (salida.zona.isNotEmpty ? salida.zona : 'Salida sin título');
+        : (salida.zona.isNotEmpty ? salida.zona : SoleraL10n.t('nat.hall_salida_sin_titulo'));
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
       decoration: BoxDecoration(
@@ -805,9 +802,9 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _asociarASalida
-                      ? 'Esta observación entrará en la salida'
-                      : 'Se guardará como hallazgo suelto',
+                  SoleraL10n.t(_asociarASalida
+                      ? 'nat.hall_entrara_en_salida'
+                      : 'nat.hall_se_guardara_suelto'),
                   style: TextStyle(
                       fontSize: 11,
                       color: Colors.orange.shade900,
@@ -843,7 +840,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Categoría', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(SoleraL10n.t('nat.hall_categoria'), style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
             Wrap(
               spacing: 6,
@@ -882,7 +879,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Fotos', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(SoleraL10n.t('fos.iden_fotos'), style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
             if (_rutasFotos.isNotEmpty)
               SizedBox(
@@ -987,7 +984,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
               child: OutlinedButton.icon(
                 icon: Icon(Icons.image_search_outlined),
                 onPressed: _anadirFotoDeArchivo,
-                label: Text('Foto de archivo'),
+                label: Text(SoleraL10n.t('nat.hall_foto_de_archivo')),
               ),
             ),
           ],
@@ -1003,7 +1000,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Ubicación', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(SoleraL10n.t('fos.hall_ubicacion'), style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
             if (_latitud != null && _longitud != null)
               Text(
@@ -1011,14 +1008,14 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                 '${_precision != null ? "  (±${_precision!.round()} m)" : ""}',
               )
             else
-              Text('Sin ubicación', style: TextStyle(color: Colors.grey)),
+              Text(SoleraL10n.t('api.sin_ubicacion'), style: TextStyle(color: Colors.grey)),
             SizedBox(height: 8),
             FilledButton.tonalIcon(
               icon: _capturandoGps
                   ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : Icon(Icons.gps_fixed),
               onPressed: _capturandoGps ? null : _capturarGps,
-              label: Text('Capturar GPS'),
+              label: Text(SoleraL10n.t('acei.capturar_gps')),
             ),
           ],
         ),
@@ -1036,39 +1033,39 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             Row(
               children: [
                 Expanded(
-                  child: Text('Datos', style: TextStyle(fontWeight: FontWeight.bold)),
+                  child: Text(SoleraL10n.t('seccion_datos'), style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
                 TextButton.icon(
                   icon: Icon(Icons.travel_explore, size: 18),
                   onPressed: _abrirBuscadorInaturalist,
-                  label: Text('Buscar en iNaturalist'),
+                  label: Text(SoleraL10n.t('nat.hall_buscar_en_inaturalist')),
                 ),
               ],
             ),
             SizedBox(height: 8),
             TextField(
               controller: _controladorNombreComun,
-              decoration: InputDecoration(labelText: 'Nombre común', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: SoleraL10n.t('agro.nombre_comun'), border: OutlineInputBorder()),
             ),
             SizedBox(height: 8),
             TextField(
               controller: _controladorEspecie,
-              decoration: InputDecoration(labelText: 'Nombre científico (binomial)', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: SoleraL10n.t('nat.hall_nombre_cientifico_binomial'), border: OutlineInputBorder()),
             ),
             SizedBox(height: 8),
             TextField(
               controller: _controladorTaxonomia,
-              decoration: InputDecoration(labelText: 'Taxonomía', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: SoleraL10n.t('nat.hall_taxonomia'), border: OutlineInputBorder()),
             ),
             SizedBox(height: 8),
             TextField(
               controller: _controladorHabitat,
-              decoration: InputDecoration(labelText: 'Hábitat', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: SoleraL10n.t('nat.hall_habitat'), border: OutlineInputBorder()),
             ),
             SizedBox(height: 8),
             TextField(
               controller: _controladorNotas,
-              decoration: InputDecoration(labelText: 'Notas', border: OutlineInputBorder()),
+              decoration: InputDecoration(labelText: SoleraL10n.t('fos.hall_notas'), border: OutlineInputBorder()),
               maxLines: 3,
             ),
           ],
@@ -1086,7 +1083,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Detalles de $etiquetaCategoria', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(SoleraL10n.tf('nat.hall_detalles_de', {'categoria': etiquetaCategoria}), style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
             ..._camposAtributosParaCategoria(_categoria),
           ],
@@ -1100,30 +1097,30 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       case 'planta':
         return [
           _menuDesplegable(
-            etiqueta: 'Fenología',
+            etiqueta: SoleraL10n.t('arb.fenologia'),
             clave: 'fenologia',
             opciones: const ['vegetativa', 'flor', 'fruto', 'semilla', 'senescente'],
           ),
           SizedBox(height: 8),
           _menuDesplegable(
-            etiqueta: 'Porte',
+            etiqueta: SoleraL10n.t('nat.hall_porte'),
             clave: 'porte',
             opciones: const ['árbol', 'arbusto', 'mata', 'herbácea', 'trepadora', 'suculenta'],
           ),
           SizedBox(height: 8),
-          _campoNumero(etiqueta: 'Altura aprox. (cm)', clave: 'altura_estimada_cm'),
+          _campoNumero(etiqueta: SoleraL10n.t('nat.hall_altura_aprox_cm'), clave: 'altura_estimada_cm'),
         ];
       case 'insecto':
         return [
           _menuDesplegable(
-            etiqueta: 'Estadio',
+            etiqueta: SoleraL10n.t('nat.hall_estadio'),
             clave: 'estadio',
             opciones: const ['huevo', 'larva', 'ninfa', 'pupa', 'adulto'],
           ),
           SizedBox(height: 8),
-          _campoTexto(etiqueta: 'Planta hospedadora', clave: 'planta_hospedadora'),
+          _campoTexto(etiqueta: SoleraL10n.t('nat.hall_planta_hospedadora'), clave: 'planta_hospedadora'),
           SizedBox(height: 8),
-          _campoNumero(etiqueta: 'Número de individuos', clave: 'numero_individuos'),
+          _campoNumero(etiqueta: SoleraL10n.t('nat.hall_numero_individuos'), clave: 'numero_individuos'),
         ];
       case 'animal':
       case 'mamifero':
@@ -1132,19 +1129,19 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       case 'pez':
         return [
           _menuDesplegable(
-            etiqueta: 'Tipo de evidencia',
+            etiqueta: SoleraL10n.t('nat.hall_tipo_evidencia'),
             clave: 'evidencia',
             opciones: const ['avistamiento', 'huella', 'excremento', 'pluma o pelo', 'vocalización', 'nido o madriguera', 'otro'],
           ),
           SizedBox(height: 8),
-          _campoNumero(etiqueta: 'Número de individuos', clave: 'numero_individuos'),
+          _campoNumero(etiqueta: SoleraL10n.t('nat.hall_numero_individuos'), clave: 'numero_individuos'),
           SizedBox(height: 8),
-          _campoTexto(etiqueta: 'Comportamiento', clave: 'comportamiento'),
+          _campoTexto(etiqueta: SoleraL10n.t('nat.hall_comportamiento'), clave: 'comportamiento'),
         ];
       case 'seta':
         return [
           _menuDesplegable(
-            etiqueta: 'Sustrato',
+            etiqueta: SoleraL10n.t('nat.hall_sustrato'),
             clave: 'sustrato',
             opciones: const [
               'suelo / hojarasca',
@@ -1158,7 +1155,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           ),
           SizedBox(height: 8),
           _menuDesplegable(
-            etiqueta: 'Color del sombrero',
+            etiqueta: SoleraL10n.t('nat.hall_color_sombrero'),
             clave: 'color_sombrero',
             opciones: const [
               'blanco / crema',
@@ -1173,9 +1170,9 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             ],
           ),
           SizedBox(height: 8),
-          _campoNumero(etiqueta: 'Diámetro sombrero (cm)', clave: 'sombrero_diametro_cm'),
+          _campoNumero(etiqueta: SoleraL10n.t('nat.hall_diametro_sombrero_cm'), clave: 'sombrero_diametro_cm'),
           SizedBox(height: 8),
-          _campoNumero(etiqueta: 'Número de ejemplares', clave: 'numero_individuos'),
+          _campoNumero(etiqueta: SoleraL10n.t('nat.hall_numero_ejemplares'), clave: 'numero_individuos'),
         ];
     }
     return const [];
@@ -1193,7 +1190,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       items: [
         DropdownMenuItem(value: null, child: Text('—')),
         for (final opcion in opciones)
-          DropdownMenuItem(value: opcion, child: Text(opcion)),
+          DropdownMenuItem(value: opcion, child: Text(_etiquetaOpcion(opcion))),
       ],
       onChanged: (nuevo) => setState(() {
         if (nuevo == null) {
@@ -1203,6 +1200,53 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         }
       }),
     );
+  }
+
+  /// Las opciones se guardan en BD en castellano (valor estable); sólo
+  /// se traduce la etiqueta mostrada.
+  static const Map<String, String> _clavesTraduccionOpciones = {
+    'vegetativa': 'nat.hall_op_vegetativa',
+    'flor': 'nat.hall_op_flor',
+    'fruto': 'nat.hall_op_fruto',
+    'semilla': 'nat.hall_op_semilla',
+    'senescente': 'nat.hall_op_senescente',
+    'árbol': 'nat.hall_op_arbol',
+    'arbusto': 'nat.hall_op_arbusto',
+    'mata': 'nat.hall_op_mata',
+    'herbácea': 'nat.hall_op_herbacea',
+    'trepadora': 'nat.hall_op_trepadora',
+    'suculenta': 'nat.hall_op_suculenta',
+    'huevo': 'nat.hall_op_huevo',
+    'larva': 'nat.hall_op_larva',
+    'ninfa': 'nat.hall_op_ninfa',
+    'pupa': 'nat.hall_op_pupa',
+    'adulto': 'nat.hall_op_adulto',
+    'avistamiento': 'nat.hall_op_avistamiento',
+    'huella': 'nat.hall_op_huella',
+    'excremento': 'nat.hall_op_excremento',
+    'pluma o pelo': 'nat.hall_op_pluma_o_pelo',
+    'vocalización': 'nat.hall_op_vocalizacion',
+    'nido o madriguera': 'nat.hall_op_nido_o_madriguera',
+    'otro': 'nat.hall_op_otro',
+    'suelo / hojarasca': 'nat.hall_op_suelo_hojarasca',
+    'bajo conífera': 'nat.hall_op_bajo_conifera',
+    'bajo planifolio': 'nat.hall_op_bajo_planifolio',
+    'pradera / herbazal': 'nat.hall_op_pradera_herbazal',
+    'madera muerta': 'nat.hall_op_madera_muerta',
+    'tocón': 'nat.hall_op_tocon',
+    'blanco / crema': 'nat.hall_op_blanco_crema',
+    'pardo / marrón': 'nat.hall_op_pardo_marron',
+    'naranja / rojizo': 'nat.hall_op_naranja_rojizo',
+    'amarillo': 'nat.hall_op_amarillo',
+    'rojo escarlata': 'nat.hall_op_rojo_escarlata',
+    'verde oliva': 'nat.hall_op_verde_oliva',
+    'gris / negruzco': 'nat.hall_op_gris_negruzco',
+    'violáceo': 'nat.hall_op_violaceo',
+  };
+
+  String _etiquetaOpcion(String opcion) {
+    final claveTraduccion = _clavesTraduccionOpciones[opcion];
+    return claveTraduccion == null ? opcion : SoleraL10n.t(claveTraduccion);
   }
 
   Widget _campoTexto({required String etiqueta, required String clave}) {
@@ -1243,14 +1287,14 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Identificación con IA', style: TextStyle(fontWeight: FontWeight.bold)),
+            Text(SoleraL10n.t('identificacion_con_ia'), style: TextStyle(fontWeight: FontWeight.bold)),
             SizedBox(height: 8),
             FilledButton.icon(
               icon: _identificando
                   ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : Icon(Icons.auto_awesome),
               onPressed: _identificando ? null : _identificarConIa,
-              label: Text('Identificar con Claude'),
+              label: Text(SoleraL10n.t('fos.hall_identificar_claude')),
             ),
             if (_claveApiKeyPlantNetCacheada != null) ...[
               SizedBox(height: 8),
@@ -1259,14 +1303,21 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                     ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                     : Icon(Icons.local_florist),
                 onPressed: _identificandoPlantNet ? null : _identificarConPlantNet,
-                label: Text('Identificar planta con Pl@ntNet (gratis)'),
+                label: Text(SoleraL10n.t('nat.hall_identificar_plantnet_gratis')),
               ),
             ],
             if (identificacion != null) ...[
               SizedBox(height: 12),
               Text(
-                '${identificacion.nombreComun.isNotEmpty ? identificacion.nombreComun : identificacion.nombreCientifico} '
-                '(confianza: ${identificacion.confianza})',
+                SoleraL10n.tf('nat.hall_nombre_con_confianza', {
+                  'nombre': identificacion.nombreComunParaMostrar.isNotEmpty ? identificacion.nombreComunParaMostrar : identificacion.nombreCientifico,
+                  'confianza': switch (identificacion.confianza) {
+                    'alta' => SoleraL10n.t('fos.hall_confianza_alta'),
+                    'media' => SoleraL10n.t('fos.hall_confianza_media'),
+                    'baja' => SoleraL10n.t('fos.hall_confianza_baja'),
+                    final otra => otra,
+                  },
+                }),
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               if (identificacion.nombreCientifico.isNotEmpty) ...[
@@ -1285,7 +1336,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                 ),
               if (identificacion.alternativas.isNotEmpty) ...[
                 SizedBox(height: 8),
-                Text('Alternativas:', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                Text(SoleraL10n.t('nat.hall_alternativas_dos_puntos'), style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                 SizedBox(height: 4),
                 _AlternativasConFoto(alternativas: identificacion.alternativas),
               ],
@@ -1293,7 +1344,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
-                    'Cómo confirmar: ${identificacion.comoConfirmar}',
+                    SoleraL10n.tf('nat.hall_como_confirmar_texto', {'texto': identificacion.comoConfirmar}),
                     style: TextStyle(fontSize: 12),
                   ),
                 ),
@@ -1385,7 +1436,7 @@ class _BuscadorInaturalistState extends State<_BuscadorInaturalist> {
                       textInputAction: TextInputAction.search,
                       onSubmitted: (_) => _ejecutarBusqueda(),
                       decoration: InputDecoration(
-                        hintText: 'Nombre común o científico…',
+                        hintText: SoleraL10n.t('nat.hall_nombre_comun_o_cientifico'),
                         prefixIcon: Icon(Icons.search),
                         border: OutlineInputBorder(),
                         suffixIcon: _controladorBusqueda.text.isNotEmpty
@@ -1401,7 +1452,7 @@ class _BuscadorInaturalistState extends State<_BuscadorInaturalist> {
                     ),
                   ),
                   SizedBox(width: 8),
-                  FilledButton(onPressed: _ejecutarBusqueda, child: Text('Buscar')),
+                  FilledButton(onPressed: _ejecutarBusqueda, child: Text(SoleraL10n.t('core.buscar'))),
                 ],
               ),
             ),
@@ -1417,7 +1468,7 @@ class _BuscadorInaturalistState extends State<_BuscadorInaturalist> {
                       child: Padding(
                         padding: EdgeInsets.all(24),
                         child: Text(
-                          'Escribe al menos dos letras y pulsa Buscar.',
+                          SoleraL10n.t('nat.hall_escribe_dos_letras'),
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey),
                         ),
@@ -1497,7 +1548,7 @@ class _FotoReferenciaInat extends StatelessWidget {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Foto de referencia (iNaturalist)',
+                  SoleraL10n.t('nat.hall_foto_referencia_inaturalist'),
                   style: TextStyle(fontSize: 11, color: Colors.grey),
                 ),
               ),

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 
 class LugarMeteo {
   final String nombre;
@@ -17,28 +18,28 @@ class LugarMeteo {
   });
 }
 
-String descripcionCodigoMeteo(int code) => switch (code) {
-      0 => 'Despejado',
-      1 => 'Mayormente despejado',
-      2 => 'Parcialmente nublado',
-      3 => 'Nublado',
-      45 || 48 => 'Niebla',
-      51 => 'Llovizna ligera',
-      53 => 'Llovizna moderada',
-      55 => 'Llovizna densa',
-      61 => 'Lluvia ligera',
-      63 => 'Lluvia moderada',
-      65 => 'Lluvia fuerte',
-      71 => 'Nevada ligera',
-      73 => 'Nevada moderada',
-      75 => 'Nevada fuerte',
-      80 => 'Chubascos ligeros',
-      81 => 'Chubascos moderados',
-      82 => 'Chubascos fuertes',
-      95 => 'Tormenta',
-      96 || 99 => 'Tormenta con granizo',
-      _ => 'Desconocido',
-    };
+String descripcionCodigoMeteo(int code) => SoleraL10n.t(switch (code) {
+      0 => 'fos.mapa_meteo_despejado',
+      1 => 'fos.mapa_meteo_mayormente_despejado',
+      2 => 'fos.mapa_meteo_parcialmente_nublado',
+      3 => 'fos.mapa_meteo_nublado',
+      45 || 48 => 'fos.mapa_meteo_niebla',
+      51 => 'fos.mapa_meteo_llovizna_ligera',
+      53 => 'fos.mapa_meteo_llovizna_moderada',
+      55 => 'fos.mapa_meteo_llovizna_densa',
+      61 => 'fos.mapa_meteo_lluvia_ligera',
+      63 => 'fos.mapa_meteo_lluvia_moderada',
+      65 => 'fos.mapa_meteo_lluvia_fuerte',
+      71 => 'fos.mapa_meteo_nevada_ligera',
+      73 => 'fos.mapa_meteo_nevada_moderada',
+      75 => 'fos.mapa_meteo_nevada_fuerte',
+      80 => 'fos.mapa_meteo_chubascos_ligeros',
+      81 => 'fos.mapa_meteo_chubascos_moderados',
+      82 => 'fos.mapa_meteo_chubascos_fuertes',
+      95 => 'fos.mapa_meteo_tormenta',
+      96 || 99 => 'fos.mapa_meteo_tormenta_granizo',
+      _ => 'fos.mapa_meteo_desconocido',
+    });
 
 String iconoCodigoMeteo(int code) => switch (code) {
       0 || 1 => '☀️',
@@ -110,7 +111,7 @@ Future<List<LugarMeteo>> buscarLugaresMeteo(String consulta) async {
     final uri = Uri.parse(
       'https://geocoding-api.open-meteo.com/v1/search'
       '?name=${Uri.encodeComponent(consulta.trim())}'
-      '&count=8&language=es&format=json',
+      '&count=8&language=${SoleraL10n.idioma}&format=json',
     );
     final respuesta = await http.get(uri).timeout(const Duration(seconds: 8));
     if (respuesta.statusCode != 200) return const [];

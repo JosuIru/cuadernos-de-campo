@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 
 import '../datos/base_datos.dart';
 import '../utiles/agregados_naturaleza.dart';
@@ -37,7 +38,7 @@ class _PantallaFenologiaState extends State<PantallaFenologia> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi fenología')),
+      appBar: AppBar(title: Text(SoleraL10n.t('nat.hall_mi_fenologia'))),
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : _fenologia.isEmpty
@@ -61,15 +62,13 @@ class _PantallaFenologiaState extends State<PantallaFenologia> {
           children: [
             const Icon(Icons.calendar_today, size: 56, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text(
-              'Aún no hay fenología que mostrar',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Text(
+              SoleraL10n.t('nat.hall_sin_fenologia'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
-              'La fenología compara el primer avistamiento de cada especie '
-              'entre años distintos. Cuando lleves dos primaveras anotando '
-              'la misma especie, verás aquí si llegó antes o después.',
+              SoleraL10n.t('nat.hall_explicacion_fenologia_vacia'),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade700),
             ),
@@ -83,16 +82,14 @@ class _PantallaFenologiaState extends State<PantallaFenologia> {
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(10),
         ),
-        child: const Text(
-          'Para cada especie con observaciones en al menos dos años, '
-          'el primer avistamiento de cada año. La desviación compara '
-          'el año actual con la media de los anteriores.',
-          style: TextStyle(fontSize: 12, color: Colors.black87),
+        child: Text(
+          SoleraL10n.t('nat.hall_explicacion_fenologia'),
+          style: const TextStyle(fontSize: 12, color: Colors.black87),
         ),
       );
 
   Widget _tarjetaEspecie(FenologiaEspecie fenologia) {
-    final fmt = DateFormat('d MMM', 'es_ES');
+    final fmt = DateFormat('d MMM', SoleraL10n.idioma);
     final desviacion = fenologia.desviacionAnioActual;
     return Card(
       child: Padding(
@@ -150,7 +147,7 @@ class _PantallaFenologiaState extends State<PantallaFenologia> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'día ${p.diaDelAnio}',
+                        SoleraL10n.tf('nat.hall_dia_n', {'n': p.diaDelAnio}),
                         style: const TextStyle(
                             fontSize: 11, color: Colors.grey),
                       ),
@@ -172,8 +169,10 @@ class _PantallaFenologiaState extends State<PantallaFenologia> {
         ? (adelanto ? Colors.green.shade700 : Colors.deepOrange)
         : Colors.grey.shade600;
     final etiqueta = dias == 0
-        ? 'en fecha'
-        : (adelanto ? '↑ ${dias}d antes' : '↓ ${dias.abs()}d después');
+        ? SoleraL10n.t('nat.hall_en_fecha')
+        : (adelanto
+            ? SoleraL10n.tf('nat.hall_dias_antes', {'n': dias})
+            : SoleraL10n.tf('nat.hall_dias_despues', {'n': dias.abs()}));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(

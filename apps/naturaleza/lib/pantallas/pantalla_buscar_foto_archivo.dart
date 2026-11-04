@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
 
@@ -70,7 +71,7 @@ class _EstadoPantallaBuscarFotoArchivo
           .get(Uri.parse(foto.urlCompleta))
           .timeout(const Duration(seconds: 30));
       if (respuesta.statusCode != 200) {
-        throw Exception('Descarga falló (${respuesta.statusCode})');
+        throw Exception(SoleraL10n.tf('nat.hall_descarga_fallo', {'codigo': respuesta.statusCode}));
       }
       await destino.writeAsBytes(respuesta.bodyBytes);
 
@@ -90,7 +91,7 @@ class _EstadoPantallaBuscarFotoArchivo
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo descargar la foto: $e')),
+        SnackBar(content: Text(SoleraL10n.tf('nat.hall_error_descargar_foto', {'error': e}))),
       );
       setState(() => _descargando = false);
     }
@@ -108,7 +109,7 @@ class _EstadoPantallaBuscarFotoArchivo
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Foto de archivo · ${widget.consulta}'),
+        title: Text('${SoleraL10n.t('nat.hall_foto_de_archivo')} · ${widget.consulta}'),
       ),
       body: SafeArea(
         child: FutureBuilder<List<ResultadoFotoArchivo>>(
@@ -119,8 +120,7 @@ class _EstadoPantallaBuscarFotoArchivo
             }
             if (snapshot.hasError) {
               return _BloqueError(
-                mensaje:
-                    'No se pudo conectar a los archivos. Comprueba conexión.',
+                mensaje: SoleraL10n.t('nat.hall_error_conectar_archivos'),
                 alReintentar: () {
                   setState(() {
                     _resultados = buscarFotosDeArchivo(widget.consulta);
@@ -283,7 +283,7 @@ class _BloqueError extends StatelessWidget {
             const SizedBox(height: 16),
             FilledButton.tonal(
               onPressed: alReintentar,
-              child: const Text('Reintentar'),
+              child: Text(SoleraL10n.t('fos.ficha_reintentar')),
             ),
           ],
         ),
@@ -297,18 +297,16 @@ class _BloqueVacio extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: Padding(
-        padding: EdgeInsets.all(32),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.image_search_outlined, size: 48),
-            SizedBox(height: 12),
+            const Icon(Icons.image_search_outlined, size: 48),
+            const SizedBox(height: 12),
             Text(
-              'No se encontraron fotos con licencia abierta para esta '
-              'especie. Prueba con el nombre científico exacto o con '
-              'el nombre común.',
+              SoleraL10n.t('nat.hall_sin_fotos_licencia_abierta'),
               textAlign: TextAlign.center,
             ),
           ],

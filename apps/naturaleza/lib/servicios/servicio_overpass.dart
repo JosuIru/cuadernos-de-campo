@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 
 const _endpointsOverpass = [
   'https://overpass-api.de/api/interpreter',
@@ -25,17 +26,17 @@ enum TipoLugarInteres {
 }
 
 extension TipoLugarInteresEtiqueta on TipoLugarInteres {
-  String get etiqueta => switch (this) {
-        TipoLugarInteres.mirador => 'Miradores',
-        TipoLugarInteres.miradorAves => 'Miradores de aves',
-        TipoLugarInteres.reservaNatural => 'Reservas naturales',
-        TipoLugarInteres.cueva => 'Cuevas',
-        TipoLugarInteres.humedal => 'Charcas y humedales',
-        TipoLugarInteres.arbolSingular => 'Árboles singulares',
-        TipoLugarInteres.refugio => 'Refugios',
-        TipoLugarInteres.manantial => 'Manantiales y fuentes',
-        TipoLugarInteres.centroVisitantes => 'Centros de visitantes',
-      };
+  String get etiqueta => SoleraL10n.t(switch (this) {
+        TipoLugarInteres.mirador => 'nat.mapa_lugar_miradores',
+        TipoLugarInteres.miradorAves => 'nat.mapa_lugar_miradores_aves',
+        TipoLugarInteres.reservaNatural => 'nat.mapa_lugar_reservas_naturales',
+        TipoLugarInteres.cueva => 'nat.mapa_lugar_cuevas',
+        TipoLugarInteres.humedal => 'nat.mapa_lugar_humedales',
+        TipoLugarInteres.arbolSingular => 'nat.mapa_lugar_arboles_singulares',
+        TipoLugarInteres.refugio => 'nat.mapa_lugar_refugios',
+        TipoLugarInteres.manantial => 'nat.mapa_lugar_manantiales',
+        TipoLugarInteres.centroVisitantes => 'nat.mapa_lugar_centros_visitantes',
+      });
 
   /// Filtros Overpass que producen este tipo (sin envoltorio de bbox).
   List<String> get filtrosOverpass => switch (this) {

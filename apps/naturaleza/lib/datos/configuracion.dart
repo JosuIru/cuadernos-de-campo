@@ -10,9 +10,10 @@ const String modeloPorDefecto = modeloClaudePotente;
 class ModeloDisponible {
   final String id;
   final String nombre;
-  final String descripcion;
+  /// Clave de traducción de la descripción (se traduce al mostrarla).
+  final String claveDescripcion;
   final double precioOrientativoCentimosPorIdentificacion;
-  const ModeloDisponible(this.id, this.nombre, this.descripcion, this.precioOrientativoCentimosPorIdentificacion);
+  const ModeloDisponible(this.id, this.nombre, this.claveDescripcion, this.precioOrientativoCentimosPorIdentificacion);
 }
 
 // Precio orientativo por foto (USD → céntimos, redondeado hacia arriba):
@@ -21,9 +22,9 @@ class ModeloDisponible {
 // 2/10, Haiku 5.5 0,10/0,50. Escalado desde las estimaciones de la familia
 // 4.x y subido un poco porque los 5.5 razonan antes de responder.
 const List<ModeloDisponible> modelosDisponibles = [
-  ModeloDisponible(modeloClaudePotente, 'Claude Opus 5.5', 'Máxima precisión. Recomendado.', 4),
-  ModeloDisponible(modeloClaudeEquilibrado, 'Claude Sonnet 5.5', 'Buen equilibrio precisión/coste.', 2),
-  ModeloDisponible(modeloClaudeRapido, 'Claude Haiku 5.5', 'Mucho más barato. Aciertos algo menores.', 0.1),
+  ModeloDisponible(modeloClaudePotente, 'Claude Opus 5.5', 'fos.ajus_modelo_opus_desc', 4),
+  ModeloDisponible(modeloClaudeEquilibrado, 'Claude Sonnet 5.5', 'fos.ajus_modelo_sonnet_desc', 2),
+  ModeloDisponible(modeloClaudeRapido, 'Claude Haiku 5.5', 'fos.ajus_modelo_haiku_desc', 0.1),
 ];
 
 class Configuracion {

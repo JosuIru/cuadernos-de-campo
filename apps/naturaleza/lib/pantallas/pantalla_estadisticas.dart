@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/base_datos.dart';
 import '../datos/datos_guia.dart';
 import '../modelos/hallazgo.dart';
@@ -55,20 +56,20 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
   Widget build(BuildContext context) {
     if (_cargando) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Estadísticas')),
+        appBar: AppBar(title: Text(SoleraL10n.t('fos.hall_estadisticas'))),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
     if (_hallazgos.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Estadísticas')),
-        body: const Center(
+        appBar: AppBar(title: Text(SoleraL10n.t('fos.hall_estadisticas'))),
+        body: Center(
           child: Padding(
-            padding: EdgeInsets.all(24),
+            padding: const EdgeInsets.all(24),
             child: Text(
-              'Aún no hay hallazgos para analizar.',
+              SoleraL10n.t('fos.hall_sin_hallazgos_analizar'),
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey),
+              style: const TextStyle(color: Colors.grey),
             ),
           ),
         ),
@@ -80,7 +81,7 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
     final fechas = _hallazgos.map((hallazgo) => hallazgo.fechaMs).toList()..sort();
     final primero = DateTime.fromMillisecondsSinceEpoch(fechas.first);
     final ultimo = DateTime.fromMillisecondsSinceEpoch(fechas.last);
-    final formato = DateFormat('dd MMM yyyy', 'es_ES');
+    final formato = DateFormat('dd MMM yyyy', SoleraL10n.idioma);
     final especiesUnicas = _hallazgos
         .map((hallazgo) => hallazgo.especie.trim())
         .where((especie) => especie.isNotEmpty)
@@ -89,20 +90,20 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
     final topHabitats = _topConteo((hallazgo) => hallazgo.habitat);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Estadísticas')),
+      appBar: AppBar(title: Text(SoleraL10n.t('fos.hall_estadisticas'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _filaTotales([
-            ('Hallazgos', _hallazgos.length.toString()),
-            ('Especies', especiesUnicas.length.toString()),
-            ('Con foto', _hallazgos.where((hallazgo) => hallazgo.rutaFoto != null).length.toString()),
+            (SoleraL10n.t('fos.hall_titulo'), _hallazgos.length.toString()),
+            (SoleraL10n.t('fos.hall_especies'), especiesUnicas.length.toString()),
+            (SoleraL10n.t('fos.hall_con_foto'), _hallazgos.where((hallazgo) => hallazgo.rutaFoto != null).length.toString()),
           ]),
           const SizedBox(height: 16),
           _atajosCuaderno(),
           const SizedBox(height: 16),
           _tarjeta(
-            titulo: 'Por categoría',
+            titulo: SoleraL10n.t('nat.hall_por_categoria'),
             child: Column(
               children: [
                 for (final categoria in categoriasGuia)
@@ -118,7 +119,7 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
           const SizedBox(height: 16),
           if (topEspecies.isNotEmpty)
             _tarjeta(
-              titulo: 'Top especies',
+              titulo: SoleraL10n.t('fos.hall_top_especies'),
               child: Column(
                 children: topEspecies.entries
                     .map((entrada) => _filaTexto(entrada.key, '${entrada.value}'))
@@ -128,7 +129,7 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
           const SizedBox(height: 16),
           if (topHabitats.isNotEmpty)
             _tarjeta(
-              titulo: 'Top hábitats',
+              titulo: SoleraL10n.t('nat.hall_top_habitats'),
               child: Column(
                 children: topHabitats.entries
                     .map((entrada) => _filaTexto(entrada.key, '${entrada.value}'))
@@ -137,13 +138,13 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
             ),
           const SizedBox(height: 16),
           _tarjeta(
-            titulo: 'Cronología',
+            titulo: SoleraL10n.t('fos.hall_cronologia'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _filaTexto('Primer hallazgo', formato.format(primero)),
-                _filaTexto('Último hallazgo', formato.format(ultimo)),
-                _filaTexto('Días activo', '${ultimo.difference(primero).inDays + 1}'),
+                _filaTexto(SoleraL10n.t('fos.hall_primer_hallazgo'), formato.format(primero)),
+                _filaTexto(SoleraL10n.t('fos.hall_ultimo_hallazgo'), formato.format(ultimo)),
+                _filaTexto(SoleraL10n.t('fos.hall_dias_activo'), '${ultimo.difference(primero).inDays + 1}'),
               ],
             ),
           ),
@@ -216,8 +217,8 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
         Expanded(
           child: _tarjetaAtajo(
             icono: Icons.calendar_today,
-            titulo: 'Mi fenología',
-            subtitulo: 'Primer registro de cada especie por año',
+            titulo: SoleraL10n.t('nat.hall_mi_fenologia'),
+            subtitulo: SoleraL10n.t('nat.hall_mi_fenologia_subtitulo'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => const PantallaFenologia(),
@@ -229,8 +230,8 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
         Expanded(
           child: _tarjetaAtajo(
             icono: Icons.fact_check_outlined,
-            titulo: 'Tasa de acierto',
-            subtitulo: 'Tu calibración tras validar identificaciones',
+            titulo: SoleraL10n.t('nat.hall_tasa_acierto'),
+            subtitulo: SoleraL10n.t('nat.hall_tasa_acierto_subtitulo'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => const PantallaTasaAcierto(),

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:path/path.dart' as path_lib;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart' show SoleraL10n;
 import 'package:path_provider/path_provider.dart';
 import '../datos/base_datos.dart';
 
@@ -53,10 +54,10 @@ Future<ResultadoRestauracion> restaurarBackup(File ficheroBackup) async {
   final decoder = ZipDecoder();
   final archivo = decoder.decodeBytes(bytes);
 
-  final manifiesto = archivo.firstWhere((f) => f.name == _nombreManifiesto, orElse: () => throw Exception('No es un fichero de copia válido'));
+  final manifiesto = archivo.firstWhere((f) => f.name == _nombreManifiesto, orElse: () => throw Exception(SoleraL10n.t('fos.ajus_fichero_no_valido')));
   final contenido = String.fromCharCodes(manifiesto.content as List<int>);
   if (!contenido.contains('naturaleza-flutter-backup')) {
-    throw Exception('Versión de copia desconocida');
+    throw Exception(SoleraL10n.t('fos.ajus_version_desconocida'));
   }
 
   final dirDocs = await getApplicationDocumentsDirectory();

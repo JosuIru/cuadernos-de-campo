@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/datos_guia.dart';
 import '../servicios/servicio_inaturalist.dart';
 import '../servicios/servicio_wikipedia.dart';
@@ -66,7 +67,7 @@ class _PantallaGuiaState extends State<PantallaGuia> with SingleTickerProviderSt
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Guía'),
+        title: Text(SoleraL10n.t('fos.hall_guia')),
         bottom: TabBar(
           controller: _controladorTab,
           isScrollable: true,
@@ -78,7 +79,7 @@ class _PantallaGuiaState extends State<PantallaGuia> with SingleTickerProviderSt
         actions: [
           IconButton(
             icon: const Icon(Icons.quiz),
-            tooltip: 'Quiz',
+            tooltip: SoleraL10n.t('fos.hall_quiz'),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const PantallaQuiz()),
             ),
@@ -91,10 +92,10 @@ class _PantallaGuiaState extends State<PantallaGuia> with SingleTickerProviderSt
             padding: const EdgeInsets.all(8),
             child: TextField(
               controller: _controladorBusqueda,
-              decoration: const InputDecoration(
-                hintText: 'Buscar…',
-                prefixIcon: Icon(Icons.search),
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                hintText: SoleraL10n.t('fos.hall_buscar'),
+                prefixIcon: const Icon(Icons.search),
+                border: const OutlineInputBorder(),
               ),
             ),
           ),
@@ -182,14 +183,14 @@ class _ListaEspeciesCategoria extends StatelessWidget {
               Icon(categoria.icono, size: 64, color: categoria.color),
               const SizedBox(height: 16),
               Text(
-                'Sin especies en la guía de ${categoria.nombre.toLowerCase()}',
+                SoleraL10n.tf('nat.hall_guia_sin_especies', {'categoria': categoria.nombre.toLowerCase()}),
                 style: Theme.of(context).textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Añade entradas en lib/datos/datos_guia.dart',
-                style: TextStyle(fontSize: 12, color: Colors.grey),
+              Text(
+                SoleraL10n.t('nat.hall_guia_anade_entradas'),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
                 textAlign: TextAlign.center,
               ),
             ],

@@ -34,12 +34,16 @@ class CapaBase {
   final String urlPlantilla;
   final int maxZoom;
   final String atribucion;
+  final String claveNombre;
   CapaBase({
     required this.nombre,
     required this.urlPlantilla,
     required this.maxZoom,
     required this.atribucion,
+    this.claveNombre = '',
   });
+
+  String get nombreVisible => claveNombre.isEmpty ? nombre : SoleraL10n.t(claveNombre);
 }
 
 final List<CapaBase> capasBaseDisponibles = [
@@ -48,18 +52,21 @@ final List<CapaBase> capasBaseDisponibles = [
     urlPlantilla: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     maxZoom: 19,
     atribucion: '© OpenStreetMap',
+    claveNombre: 'fos.mapa_capa_callejero',
   ),
   CapaBase(
     nombre: 'Satélite',
     urlPlantilla: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 19,
     atribucion: '© Esri',
+    claveNombre: 'fos.mapa_capa_satelite',
   ),
   CapaBase(
     nombre: 'Topográfico',
     urlPlantilla: 'https://tile.opentopomap.org/{z}/{x}/{y}.png',
     maxZoom: 17,
     atribucion: '© OpenTopoMap',
+    claveNombre: 'fos.mapa_capa_topografico',
   ),
 ];
 
@@ -224,7 +231,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
     final permitido = await asegurarPermisoUbicacion();
     if (!permitido) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Falta permiso de ubicación.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.t('nat.mapa_falta_permiso_ubicacion'))));
       }
       return;
     }
@@ -235,7 +242,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
       _controladorMapa.move(LatLng(posicion.latitude, posicion.longitude), 15);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error GPS: $e')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.hall_error_gps', {'error': '$e'}))));
       }
     }
   }
@@ -278,12 +285,12 @@ class _PantallaMapaState extends State<PantallaMapa> {
       });
       if (lugares.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sin lugares de interés en esta zona.')),
+          SnackBar(content: Text(SoleraL10n.t('nat.mapa_sin_lugares_zona'))),
         );
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error Overpass: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${SoleraL10n.t('error')} Overpass: $e')));
     } finally {
       if (mounted) setState(() => _cargandoLugares = false);
     }
@@ -325,7 +332,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
             if (lugar.tags['operator'] != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Gestor: ${lugar.tags['operator']}', style: TextStyle(fontSize: 12)),
+                child: Text(SoleraL10n.tf('nat.mapa_gestor', {'gestor': '${lugar.tags['operator']}'}), style: TextStyle(fontSize: 12)),
               ),
             if (lugar.tags['website'] != null)
               Padding(
@@ -381,14 +388,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
       });
       if (ocurrencias.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Sin observaciones GBIF en esta zona.')),
+          SnackBar(content: Text(SoleraL10n.t('nat.mapa_sin_gbif_zona'))),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${ocurrencias.length} observaciones de la comunidad cargadas.'),
+            content: Text(SoleraL10n.tf('nat.mapa_gbif_cargadas', {'n': '${ocurrencias.length}'})),
             action: SnackBarAction(
-              label: 'Ocultar',
+              label: SoleraL10n.t('nat.mapa_ocultar'),
               onPressed: () => setState(() {
                 _ocurrenciasGbif = const [];
                 _recalcularMarkersGbif();
@@ -399,7 +406,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error GBIF: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${SoleraL10n.t('error')} GBIF: $e')));
     } finally {
       if (mounted) setState(() => _cargandoGbif = false);
     }
@@ -434,7 +441,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
         }
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Track guardado (${resultado.puntos.length} puntos).')),
+            SnackBar(content: Text(SoleraL10n.tf('nat.mapa_track_guardado_puntos', {'n': '${resultado.puntos.length}'}))),
           );
         }
       }
@@ -442,7 +449,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
       final permisoUbicacion = await asegurarPermisoUbicacion();
       if (!permisoUbicacion) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Falta permiso de ubicación.')));
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.t('nat.mapa_falta_permiso_ubicacion'))));
         }
         return;
       }
@@ -467,7 +474,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Observación GBIF',
+                    SoleraL10n.t('nat.mapa_observacion_gbif'),
                     style: TextStyle(fontSize: 14, color: Colors.deepOrange, fontWeight: FontWeight.bold),
                   ),
                 ),
@@ -475,28 +482,28 @@ class _PantallaMapaState extends State<PantallaMapa> {
             ),
             SizedBox(height: 8),
             Text(
-              ocurrencia.nombreCientifico ?? '(sin nombre)',
+              ocurrencia.nombreCientifico ?? SoleraL10n.t('agro.sin_nombre_parentesis'),
               style: TextStyle(fontSize: 18, fontStyle: FontStyle.italic, fontWeight: FontWeight.bold),
             ),
             if (ocurrencia.familia != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Familia: ${ocurrencia.familia}', style: TextStyle(fontSize: 13)),
+                child: Text(SoleraL10n.tf('nat.mapa_familia', {'familia': '${ocurrencia.familia}'}), style: TextStyle(fontSize: 13)),
               ),
             if (ocurrencia.fechaEvento != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Fecha: ${ocurrencia.fechaEvento}', style: TextStyle(fontSize: 13)),
+                child: Text('${SoleraL10n.t('fos.mapa_fecha')}: ${ocurrencia.fechaEvento}', style: TextStyle(fontSize: 13)),
               ),
             if (ocurrencia.localidad != null && ocurrencia.localidad!.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Localidad: ${ocurrencia.localidad}', style: TextStyle(fontSize: 13)),
+                child: Text(SoleraL10n.tf('nat.mapa_localidad', {'localidad': '${ocurrencia.localidad}'}), style: TextStyle(fontSize: 13)),
               ),
             if (ocurrencia.baseRegistro != null)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text('Tipo: ${ocurrencia.baseRegistro}', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                child: Text(SoleraL10n.tf('fos.mapa_tipo', {'tipo': '${ocurrencia.baseRegistro}'}), style: TextStyle(fontSize: 12, color: Colors.grey)),
               ),
           ],
         ),
@@ -573,7 +580,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                                   Text(
                                     h.nombreComun.isNotEmpty
                                         ? h.nombreComun
-                                        : (h.especie.isNotEmpty ? h.especie : 'Hallazgo'),
+                                        : (h.especie.isNotEmpty ? h.especie : SoleraL10n.t('nat.mapa_observacion')),
                                     style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                                   ),
                                   if (h.especie.isNotEmpty && h.especie != h.nombreComun)
@@ -583,10 +590,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
                             ),
                           ]),
                           SizedBox(height: 12),
-                          _filaNaturaleza('Categoría', cat?.nombre ?? h.categoria),
-                          if (h.habitat.isNotEmpty) _filaNaturaleza('Hábitat', h.habitat),
-                          if (h.taxonomia.isNotEmpty) _filaNaturaleza('Taxonomía', h.taxonomia),
-                          _filaNaturaleza('Coordenadas',
+                          _filaNaturaleza(SoleraL10n.t('nat.mapa_categoria'), cat?.nombre ?? h.categoria),
+                          if (h.habitat.isNotEmpty) _filaNaturaleza(SoleraL10n.t('nat.mapa_habitat'), h.habitat),
+                          if (h.taxonomia.isNotEmpty) _filaNaturaleza(SoleraL10n.t('nat.mapa_taxonomia'), h.taxonomia),
+                          _filaNaturaleza(SoleraL10n.t('fos.mapa_coordenadas'),
                               '${h.latitud.toStringAsFixed(5)}, ${h.longitud.toStringAsFixed(5)}'),
                           if (h.notas.isNotEmpty)
                             Padding(
@@ -594,7 +601,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('Notas', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                  Text(SoleraL10n.t('fos.mapa_notas'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                                   SizedBox(height: 4),
                                   Text(h.notas),
                                 ],
@@ -624,14 +631,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
                                   final ok = await showDialog<bool>(
                                     context: context,
                                     builder: (_) => AlertDialog(
-                                      content: Text('¿Borrar este hallazgo?'),
+                                      content: Text(SoleraL10n.t('nat.mapa_borrar_observacion_pregunta')),
                                       actions: [
                                         TextButton(
                                             onPressed: () => Navigator.pop(context, false),
                                             child: Text(SoleraL10n.t('cancelar'))),
                                         TextButton(
                                             onPressed: () => Navigator.pop(context, true),
-                                            child: Text('Borrar',
+                                            child: Text(SoleraL10n.t('borrar'),
                                                 style: TextStyle(color: Colors.red))),
                                       ],
                                     ),
@@ -642,7 +649,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                                   Navigator.of(sheetContext).pop();
                                   _cargarHallazgos();
                                 },
-                                label: Text('Borrar', style: TextStyle(color: Colors.red)),
+                                label: Text(SoleraL10n.t('borrar'), style: TextStyle(color: Colors.red)),
                               ),
                             ),
                           ]),
@@ -695,7 +702,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                       children: [
                         Icon(Icons.cloud_off, color: Colors.white, size: 16),
                         SizedBox(width: 6),
-                        Text('Sin conexión — usando datos en caché',
+                        Text(SoleraL10n.t('fos.mapa_sin_conexion_cache'),
                             style: TextStyle(color: Colors.white, fontSize: 12)),
                       ],
                     ),
@@ -955,28 +962,28 @@ class _BotonesAccion extends StatelessWidget {
                   color: capa.nombre == capaActual.nombre ? Colors.green.shade700 : null,
                 ),
                 const SizedBox(width: 8),
-                Text(capa.nombre),
+                Text(capa.nombreVisible),
               ],
             ),
           ),
         const PopupMenuDivider(),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: valorOffline,
           child: Row(
             children: [
-              Icon(Icons.download_for_offline, size: 18),
-              SizedBox(width: 8),
-              Text('Mapas offline…'),
+              const Icon(Icons.download_for_offline, size: 18),
+              const SizedBox(width: 8),
+              Text(SoleraL10n.t('nat.mapa_mapas_offline_menu')),
             ],
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: valorTracks,
           child: Row(
             children: [
-              Icon(Icons.route, size: 18),
-              SizedBox(width: 8),
-              Text('Tracks guardados…'),
+              const Icon(Icons.route, size: 18),
+              const SizedBox(width: 8),
+              Text('${SoleraL10n.t('fos.mapa_tracks_guardados')}…'),
             ],
           ),
         ),
@@ -1012,31 +1019,31 @@ class _BotonesAccion extends StatelessWidget {
               ),
               const SizedBox(width: 8),
               Text(hayLugaresActivos
-                  ? 'Lugares de interés (activos)…'
-                  : 'Lugares de interés…'),
+                  ? SoleraL10n.t('nat.mapa_lugares_interes_activos')
+                  : SoleraL10n.t('nat.mapa_lugares_interes_menu')),
             ],
           ),
         ),
         if (hayLugaresActivos)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: valorRecargarLugares,
             child: Row(
               children: [
-                Icon(Icons.refresh, size: 18),
-                SizedBox(width: 8),
-                Text('Recargar lugares en la vista'),
+                const Icon(Icons.refresh, size: 18),
+                const SizedBox(width: 8),
+                Text(SoleraL10n.t('nat.mapa_recargar_lugares')),
               ],
             ),
           ),
         const PopupMenuDivider(),
         if (!hayGbif)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: valorGbifVer,
             child: Row(
               children: [
-                Icon(Icons.public, size: 18),
-                SizedBox(width: 8),
-                Text('Observaciones GBIF cerca'),
+                const Icon(Icons.public, size: 18),
+                const SizedBox(width: 8),
+                Text(SoleraL10n.t('nat.mapa_gbif_cerca')),
               ],
             ),
           )
@@ -1047,7 +1054,7 @@ class _BotonesAccion extends StatelessWidget {
               children: [
                 Icon(Icons.layers_clear, size: 18, color: Colors.deepOrange),
                 const SizedBox(width: 8),
-                const Text('Ocultar observaciones GBIF'),
+                Text(SoleraL10n.t('nat.mapa_ocultar_gbif')),
               ],
             ),
           ),
@@ -1076,21 +1083,21 @@ class _BotonesAccion extends StatelessWidget {
       children: [
         FloatingActionButton.small(
           heroTag: 'buscar',
-          tooltip: 'Buscar un lugar',
+          tooltip: SoleraL10n.t('agro.buscar_un_lugar'),
           onPressed: onBuscar,
           child: const Icon(Icons.search),
         ),
         const SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'gps',
-          tooltip: 'Centrar en mi ubicación',
+          tooltip: SoleraL10n.t('nat.mapa_centrar_ubicacion'),
           onPressed: onCentrar,
           child: const Icon(Icons.my_location),
         ),
         const SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'track',
-          tooltip: estaGrabando ? 'Detener grabación de track' : 'Grabar track',
+          tooltip: estaGrabando ? SoleraL10n.t('nat.mapa_detener_grabacion') : SoleraL10n.t('nat.mapa_grabar_track'),
           backgroundColor: estaGrabando ? Colors.red : null,
           foregroundColor: estaGrabando ? Colors.white : null,
           onPressed: onAlternarGrabacion,
@@ -1099,14 +1106,14 @@ class _BotonesAccion extends StatelessWidget {
         const SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'capas',
-          tooltip: 'Capas del mapa, mapas offline y tracks guardados',
+          tooltip: SoleraL10n.t('nat.mapa_tooltip_capas'),
           onPressed: () => _abrirMenuCapas(context),
           child: const Icon(Icons.layers),
         ),
         const SizedBox(height: 8),
         FloatingActionButton.small(
           heroTag: 'datos',
-          tooltip: 'Lugares de interés y observaciones',
+          tooltip: SoleraL10n.t('nat.mapa_tooltip_datos'),
           backgroundColor: hayDatosCargados ? Colors.green.shade700 : null,
           foregroundColor: hayDatosCargados ? Colors.white : null,
           onPressed: (cargandoLugares || cargandoGbif) ? null : () => _abrirMenuDatos(context),
@@ -1149,10 +1156,10 @@ class _SelectorTiposLugaresState extends State<_SelectorTiposLugares> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Capas de lugares de interés', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(SoleraL10n.t('nat.mapa_capas_lugares'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             SizedBox(height: 4),
             Text(
-              'Datos de OpenStreetMap. Las capas se cargan en la vista visible del mapa.',
+              SoleraL10n.t('nat.mapa_capas_lugares_ayuda'),
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
             SizedBox(height: 12),
@@ -1178,12 +1185,12 @@ class _SelectorTiposLugaresState extends State<_SelectorTiposLugares> {
               children: [
                 TextButton(
                   onPressed: () => setState(() => _seleccion = {}),
-                  child: Text('Quitar todas'),
+                  child: Text(SoleraL10n.t('nat.mapa_quitar_todas')),
                 ),
                 Spacer(),
                 FilledButton(
                   onPressed: () => Navigator.of(context).pop(_seleccion),
-                  child: Text('Aplicar'),
+                  child: Text(SoleraL10n.t('nat.mapa_aplicar')),
                 ),
               ],
             ),

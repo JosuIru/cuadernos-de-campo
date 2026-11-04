@@ -42,7 +42,7 @@ class _PantallaTracksState extends State<PantallaTracks> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _cargando = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error cargando tracks: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.mapa_error_cargando_tracks', {'error': '$e'}))));
     }
   }
 
@@ -52,13 +52,13 @@ class _PantallaTracksState extends State<PantallaTracks> {
       puntos = await BaseDatosNaturaleza.instancia.obtenerPuntosTrack(track.id!);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error abriendo track: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.mapa_error_abriendo_track', {'error': '$e'}))));
       return;
     }
     if (!mounted) return;
     if (puntos.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Este track no tiene puntos guardados (la grabación se detuvo antes del primer fix GPS).')),
+        SnackBar(content: Text(SoleraL10n.t('fos.mapa_track_sin_puntos'))),
       );
       return;
     }
@@ -117,7 +117,7 @@ class _PantallaTracksState extends State<PantallaTracks> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(track.nombre.isEmpty ? 'Track' : track.nombre, style: Theme.of(context).textTheme.titleLarge),
+                    Text(track.nombre.isEmpty ? SoleraL10n.t('fos.mapa_track') : track.nombre, style: Theme.of(context).textTheme.titleLarge),
                     SizedBox(height: 8),
                     Text(_resumen(track, puntos.length)),
                     SizedBox(height: 16),
@@ -129,7 +129,7 @@ class _PantallaTracksState extends State<PantallaTracks> {
                             onPressed: () async {
                               final fichero = await _exportarGpx(track, puntos);
                               if (!context.mounted) return;
-                              await Share.shareXFiles([XFile(fichero.path)], subject: 'Track GPX');
+                              await Share.shareXFiles([XFile(fichero.path)], subject: SoleraL10n.t('fos.mapa_asunto_gpx'));
                             },
                             label: Text('GPX'),
                           ),
@@ -139,7 +139,7 @@ class _PantallaTracksState extends State<PantallaTracks> {
                           child: OutlinedButton.icon(
                             icon: Icon(Icons.picture_as_pdf),
                             onPressed: () => _generarYCompartirPdf(track, puntos),
-                            label: Text('Informe PDF'),
+                            label: Text(SoleraL10n.t('fos.mapa_informe_pdf')),
                           ),
                         ),
                         SizedBox(width: 8),
@@ -150,20 +150,20 @@ class _PantallaTracksState extends State<PantallaTracks> {
                               final ok = await showDialog<bool>(
                                 context: context,
                                 builder: (_) => AlertDialog(
-                                  content: Text('¿Borrar este track?'),
+                                  content: Text(SoleraL10n.t('fos.mapa_borrar_track_pregunta')),
                                   actions: [
                                     TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
-                                    TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Borrar', style: TextStyle(color: Colors.red))),
+                                    TextButton(onPressed: () => Navigator.pop(context, true), child: Text(SoleraL10n.t('borrar'), style: TextStyle(color: Colors.red))),
                                   ],
                                 ),
                               );
                               if (ok != true) return;
                               await BaseDatosNaturaleza.instancia.borrarTrack(track.id!);
                               if (!mounted) return;
-                              Navigator.of(sheetCtx).pop();
+                              if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
                               _cargar();
                             },
-                            label: Text('Borrar', style: TextStyle(color: Colors.red)),
+                            label: Text(SoleraL10n.t('borrar'), style: TextStyle(color: Colors.red)),
                           ),
                         ),
                       ],
@@ -199,10 +199,10 @@ class _PantallaTracksState extends State<PantallaTracks> {
       final fichero = File(path_lib.join(dir.path, nombre));
       await fichero.writeAsBytes(pdfBytes);
       if (!mounted) return;
-      await Share.shareXFiles([XFile(fichero.path)], subject: 'Informe de salida');
+      await Share.shareXFiles([XFile(fichero.path)], subject: SoleraL10n.t('fos.mapa_asunto_informe_salida'));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error generando PDF: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.mapa_error_pdf', {'error': '$e'}))));
     }
   }
 
@@ -210,13 +210,13 @@ class _PantallaTracksState extends State<PantallaTracks> {
     final partes = <String>[];
     if (track.distanciaMetros != null) {
       final km = track.distanciaMetros! / 1000;
-      partes.add(km < 1 ? '${track.distanciaMetros!.toStringAsFixed(0)} m' : '${km.toStringAsFixed(2)} km');
+      partes.add(km < 1 ? '${formatearNumero(track.distanciaMetros!)} m' : '${formatearNumero(km, decimales: 2)} km');
     }
     if (track.duracionMs != null) {
       final mins = (track.duracionMs! / 60000).round();
-      partes.add(mins < 60 ? '$mins min' : '${(mins / 60).toStringAsFixed(1)} h');
+      partes.add(mins < 60 ? '$mins min' : '${formatearNumero(mins / 60, decimales: 1)} h');
     }
-    partes.add('$nPuntos puntos');
+    partes.add(SoleraL10n.tf('fos.mapa_n_puntos', {'n': '$nPuntos'}));
     return partes.join(' · ');
   }
 
@@ -230,7 +230,7 @@ class _PantallaTracksState extends State<PantallaTracks> {
       final importado = parsearGpx(contenido, nombrePorDefecto: path_lib.basenameWithoutExtension(ruta));
       if (importado.puntos.isEmpty) {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('El GPX no contiene puntos de track.')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.t('fos.mapa_gpx_sin_puntos'))));
         return;
       }
       double dist = 0;
@@ -245,11 +245,11 @@ class _PantallaTracksState extends State<PantallaTracks> {
       );
       await BaseDatosNaturaleza.instancia.guardarTrack(track, importado.puntos);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Importado: ${importado.nombre} (${importado.puntos.length} puntos)')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.mapa_importado', {'nombre': importado.nombre, 'n': '${importado.puntos.length}'}))));
       _cargar();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error importando GPX: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.mapa_error_importando_gpx', {'error': '$e'}))));
     }
   }
 
@@ -257,11 +257,11 @@ class _PantallaTracksState extends State<PantallaTracks> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Tracks'),
+        title: Text(SoleraL10n.t('fos.mapa_tracks')),
         actions: [
           IconButton(
             icon: Icon(Icons.upload_file),
-            tooltip: 'Importar GPX',
+            tooltip: SoleraL10n.t('fos.mapa_importar_gpx'),
             onPressed: _importarGpx,
           ),
         ],
@@ -272,18 +272,18 @@ class _PantallaTracksState extends State<PantallaTracks> {
               ? Center(
                   child: Padding(
                     padding: EdgeInsets.all(24),
-                    child: Text('Aún no has grabado ningún track.\nUsa el botón ⏺ del mapa para empezar.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+                    child: Text('${SoleraL10n.t('fos.mapa_sin_tracks')}\n${SoleraL10n.t('fos.mapa_sin_tracks_ayuda')}', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
                   ),
                 )
               : ListView.builder(
                   itemCount: _tracks.length,
                   itemBuilder: (_, i) {
                     final t = _tracks[i];
-                    final fecha = DateFormat('dd MMM yyyy HH:mm', 'es_ES').format(DateTime.fromMillisecondsSinceEpoch(t.fechaMs));
-                    final km = t.distanciaMetros != null ? (t.distanciaMetros! / 1000).toStringAsFixed(2) : '–';
+                    final fecha = DateFormat('dd MMM yyyy HH:mm', SoleraL10n.idioma).format(DateTime.fromMillisecondsSinceEpoch(t.fechaMs));
+                    final km = t.distanciaMetros != null ? formatearNumero(t.distanciaMetros! / 1000, decimales: 2) : '–';
                     return ListTile(
                       leading: Icon(Icons.timeline, color: Color(0xFFB54A2A)),
-                      title: Text(t.nombre.isEmpty ? 'Track del $fecha' : t.nombre),
+                      title: Text(t.nombre.isEmpty ? SoleraL10n.tf('fos.mapa_track_del', {'fecha': fecha}) : t.nombre),
                       subtitle: Text('$km km · $fecha'),
                       onTap: () => _verTrack(t),
                     );

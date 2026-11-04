@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart' show SoleraL10n;
 
 const _baseInaturalist = 'https://api.inaturalist.org/v1';
 const _cabecerasInaturalist = {
@@ -100,7 +101,7 @@ Future<List<ResultadoTaxonInaturalist>> buscarTaxones(
   final uri = Uri.parse('$_baseInaturalist/taxa').replace(queryParameters: parametros);
   final respuesta = await http.get(uri, headers: _cabecerasInaturalist);
   if (respuesta.statusCode != 200) {
-    throw Exception('iNaturalist devolvió ${respuesta.statusCode}');
+    throw Exception(SoleraL10n.tf('nat.ajus_servicio_devolvio', {'servicio': 'iNaturalist', 'codigo': '${respuesta.statusCode}'}));
   }
   final cuerpo = jsonDecode(utf8.decode(respuesta.bodyBytes)) as Map<String, dynamic>;
   final resultados = (cuerpo['results'] as List?) ?? const [];

@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../servicios/servicio_inaturalist.dart';
 import '../servicios/servicio_wikipedia.dart';
@@ -9,15 +10,35 @@ class CategoriaGuia {
   /// 'reptil', 'anfibio', 'pez', 'insecto', 'planta', 'seta',
   /// 'animal' (cajón otros animales).
   final String id;
-  final String nombre;
+
+  /// Nombre en castellano, tal como está en el catálogo.
+  final String nombreCastellano;
   final IconData icono;
   final Color color;
   const CategoriaGuia({
     required this.id,
-    required this.nombre,
+    required String nombre,
     required this.icono,
     required this.color,
-  });
+  }) : nombreCastellano = nombre;
+
+  static const _clavesNombre = {
+    'mamifero': 'nat.cat_mamiferos',
+    'ave': 'nat.cat_aves',
+    'reptil': 'nat.cat_reptiles',
+    'anfibio': 'nat.cat_anfibios',
+    'pez': 'nat.cat_peces',
+    'insecto': 'nat.cat_insectos',
+    'planta': 'nat.cat_plantas',
+    'seta': 'nat.cat_setas',
+    'animal': 'nat.cat_otros_animales',
+  };
+
+  /// Nombre en el idioma elegido.
+  String get nombre {
+    final clave = _clavesNombre[id];
+    return clave == null ? nombreCastellano : SoleraL10n.t(clave);
+  }
 }
 
 class EspecieGuia {
@@ -53,15 +74,36 @@ class EspecieGuia {
 /// taxonómico).
 class UsoEspecie {
   final String id;
-  final String nombre;
+
+  /// Nombre en castellano, tal como está en el catálogo.
+  final String nombreCastellano;
   final IconData icono;
   final Color color;
   const UsoEspecie({
     required this.id,
-    required this.nombre,
+    required String nombre,
     required this.icono,
     required this.color,
-  });
+  }) : nombreCastellano = nombre;
+
+  static const _clavesNombre = {
+    'medicinal': 'nat.uso_medicinal',
+    'comestible': 'nat.uso_comestible',
+    'aromatica': 'nat.uso_aromatica',
+    'melifera': 'nat.uso_melifera',
+    'ornamental': 'nat.uso_ornamental',
+    'toxica': 'nat.uso_toxica',
+    'urticante': 'nat.uso_urticante',
+    'protegida': 'nat.uso_protegida',
+    'invasora': 'nat.uso_invasora',
+    'endemica': 'nat.uso_endemica',
+  };
+
+  /// Nombre en el idioma elegido.
+  String get nombre {
+    final clave = _clavesNombre[id];
+    return clave == null ? nombreCastellano : SoleraL10n.t(clave);
+  }
 }
 
 const List<UsoEspecie> usosCatalogo = [

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 
 import '../datos/base_datos.dart';
 import '../modelos/anotacion_diferida.dart';
@@ -61,7 +62,7 @@ class _PantallaSalidaState extends State<PantallaSalida> {
     final controladorTemperatura = TextEditingController(
       text: salida.meteoTemperaturaC == null
           ? ''
-          : salida.meteoTemperaturaC!.toStringAsFixed(1),
+          : formatearNumero(salida.meteoTemperaturaC!, decimales: 1),
     );
     final controladorAltitud = TextEditingController(
       text: salida.altitudAproximada?.toString() ?? '',
@@ -74,27 +75,27 @@ class _PantallaSalidaState extends State<PantallaSalida> {
     final guardado = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Cabecera de la salida'),
+        title: Text(SoleraL10n.t('nat.mapa_cabecera_salida')),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: controladorTitulo,
-                decoration: const InputDecoration(labelText: 'Título'),
+                decoration: InputDecoration(labelText: SoleraL10n.t('nat.mapa_titulo')),
                 textCapitalization: TextCapitalization.sentences,
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: controladorZona,
-                decoration: const InputDecoration(labelText: 'Zona'),
+                decoration: InputDecoration(labelText: SoleraL10n.t('nat.mapa_zona')),
                 textCapitalization: TextCapitalization.sentences,
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: controladorMeteo,
                 decoration:
-                    const InputDecoration(labelText: 'Meteo (resumen)'),
+                    InputDecoration(labelText: SoleraL10n.t('nat.mapa_meteo_resumen')),
                 textCapitalization: TextCapitalization.sentences,
               ),
               const SizedBox(height: 8),
@@ -103,8 +104,8 @@ class _PantallaSalidaState extends State<PantallaSalida> {
                   Expanded(
                     child: TextField(
                       controller: controladorTemperatura,
-                      decoration: const InputDecoration(
-                          labelText: 'Temperatura (°C)'),
+                      decoration: InputDecoration(
+                          labelText: SoleraL10n.t('ques.temperatura_c')),
                       keyboardType: const TextInputType.numberWithOptions(
                           decimal: true, signed: true),
                     ),
@@ -113,8 +114,8 @@ class _PantallaSalidaState extends State<PantallaSalida> {
                   Expanded(
                     child: TextField(
                       controller: controladorAltitud,
-                      decoration: const InputDecoration(
-                          labelText: 'Altitud (m)'),
+                      decoration: InputDecoration(
+                          labelText: SoleraL10n.t('nat.mapa_altitud_m')),
                       keyboardType: TextInputType.number,
                     ),
                   ),
@@ -123,8 +124,8 @@ class _PantallaSalidaState extends State<PantallaSalida> {
               const SizedBox(height: 8),
               TextField(
                 controller: controladorHipotesis,
-                decoration: const InputDecoration(
-                    labelText: 'Hipótesis de jornada'),
+                decoration: InputDecoration(
+                    labelText: SoleraL10n.t('nat.mapa_hipotesis_jornada')),
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 2,
               ),
@@ -132,7 +133,7 @@ class _PantallaSalidaState extends State<PantallaSalida> {
               TextField(
                 controller: controladorNotas,
                 decoration:
-                    const InputDecoration(labelText: 'Notas generales'),
+                    InputDecoration(labelText: SoleraL10n.t('nat.mapa_notas_generales')),
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 4,
               ),
@@ -142,11 +143,11 @@ class _PantallaSalidaState extends State<PantallaSalida> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancelar'),
+            child: Text(SoleraL10n.t('cancelar')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Guardar'),
+            child: Text(SoleraL10n.t('guardar')),
           ),
         ],
       ),
@@ -186,21 +187,20 @@ class _PantallaSalidaState extends State<PantallaSalida> {
     final guardada = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Anotación al margen'),
+        title: Text(SoleraL10n.t('nat.mapa_anotacion_margen')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text(
-              'Esto es para lo que escribes al revisar la salida días '
-              'después: dudas, correcciones, conexiones con otra jornada.',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            Text(
+              SoleraL10n.t('nat.mapa_anotacion_explicacion'),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: controladorTexto,
-              decoration: const InputDecoration(
-                labelText: 'Texto',
-                hintText: 'p. ej. al final era hembra, no macho',
+              decoration: InputDecoration(
+                labelText: SoleraL10n.t('nat.mapa_texto'),
+                hintText: SoleraL10n.t('nat.mapa_anotacion_ejemplo'),
               ),
               textCapitalization: TextCapitalization.sentences,
               maxLines: 5,
@@ -211,11 +211,11 @@ class _PantallaSalidaState extends State<PantallaSalida> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancelar'),
+            child: Text(SoleraL10n.t('cancelar')),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Guardar'),
+            child: Text(SoleraL10n.t('guardar')),
           ),
         ],
       ),
@@ -235,20 +235,17 @@ class _PantallaSalidaState extends State<PantallaSalida> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Borrar anotación'),
-        content: const Text(
-          'Se borrará esta anotación al margen. La salida y los '
-          'hallazgos se mantienen.',
-        ),
+        title: Text(SoleraL10n.t('nat.mapa_borrar_anotacion')),
+        content: Text(SoleraL10n.t('nat.mapa_borrar_anotacion_texto')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancelar'),
+            child: Text(SoleraL10n.t('cancelar')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Borrar'),
+            child: Text(SoleraL10n.t('borrar')),
           ),
         ],
       ),
@@ -268,16 +265,12 @@ class _PantallaSalidaState extends State<PantallaSalida> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (innerCtx, refrescar) => AlertDialog(
-          title: const Text('Cerrar salida'),
+          title: Text(SoleraL10n.t('nat.mapa_cerrar_salida')),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Al cerrar la salida ya no se asociarán hallazgos '
-                'nuevos a ella automáticamente. Puedes seguir añadiendo '
-                'anotaciones al margen después.',
-              ),
+              Text(SoleraL10n.t('nat.mapa_cerrar_salida_texto')),
               if (hayTrackGrabando) ...[
                 const SizedBox(height: 12),
                 InkWell(
@@ -290,10 +283,10 @@ class _PantallaSalidaState extends State<PantallaSalida> {
                         onChanged: (v) =>
                             refrescar(() => detenerTrack = v ?? false),
                       ),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Detener también el track GPS en curso',
-                          style: TextStyle(fontSize: 14),
+                          SoleraL10n.t('nat.mapa_detener_track_tambien'),
+                          style: const TextStyle(fontSize: 14),
                         ),
                       ),
                     ],
@@ -305,11 +298,11 @@ class _PantallaSalidaState extends State<PantallaSalida> {
           actions: [
             TextButton(
               onPressed: () => Navigator.of(innerCtx).pop(false),
-              child: const Text('Seguir abierta'),
+              child: Text(SoleraL10n.t('nat.mapa_seguir_abierta')),
             ),
             FilledButton(
               onPressed: () => Navigator.of(innerCtx).pop(true),
-              child: const Text('Cerrar'),
+              child: Text(SoleraL10n.t('fos.mapa_cerrar')),
             ),
           ],
         ),
@@ -349,21 +342,17 @@ class _PantallaSalidaState extends State<PantallaSalida> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Borrar salida'),
-        content: const Text(
-          'Se borrará el contenedor de la salida y sus anotaciones al '
-          'margen. Los hallazgos y el track quedarán como sueltos, sin '
-          'borrarse.',
-        ),
+        title: Text(SoleraL10n.t('nat.mapa_borrar_salida')),
+        content: Text(SoleraL10n.t('nat.mapa_borrar_salida_texto')),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Cancelar'),
+            child: Text(SoleraL10n.t('cancelar')),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Borrar'),
+            child: Text(SoleraL10n.t('borrar')),
           ),
         ],
       ),
@@ -385,28 +374,28 @@ class _PantallaSalidaState extends State<PantallaSalida> {
     if (salida == null) {
       return Scaffold(
         appBar: AppBar(),
-        body: const Center(child: Text('Salida no encontrada')),
+        body: Center(child: Text(SoleraL10n.t('nat.mapa_salida_no_encontrada'))),
       );
     }
-    final fmt = DateFormat('EEEE d MMM y · HH:mm', 'es_ES');
+    final fmt = DateFormat('EEEE d MMM y · HH:mm', SoleraL10n.idioma);
     final fechaInicio =
         DateTime.fromMillisecondsSinceEpoch(salida.fechaInicioMs);
     final etiquetaInicio = fmt.format(fechaInicio);
     final titulo = salida.titulo.isNotEmpty
         ? salida.titulo
-        : (salida.zona.isNotEmpty ? salida.zona : 'Salida del día');
+        : (salida.zona.isNotEmpty ? salida.zona : SoleraL10n.t('nat.mapa_salida_del_dia'));
 
     return Scaffold(
       appBar: AppBar(
         title: Text(titulo),
         actions: [
           IconButton(
-            tooltip: 'Editar cabecera',
+            tooltip: SoleraL10n.t('nat.mapa_editar_cabecera'),
             icon: const Icon(Icons.edit),
             onPressed: _editarCabecera,
           ),
           IconButton(
-            tooltip: 'Borrar salida',
+            tooltip: SoleraL10n.t('nat.mapa_borrar_salida'),
             icon: const Icon(Icons.delete_outline),
             onPressed: _borrarSalida,
           ),
@@ -415,12 +404,12 @@ class _PantallaSalidaState extends State<PantallaSalida> {
       floatingActionButton: salida.enCurso
           ? FloatingActionButton.extended(
               icon: const Icon(Icons.check),
-              label: const Text('Cerrar salida'),
+              label: Text(SoleraL10n.t('nat.mapa_cerrar_salida')),
               onPressed: _cerrarSalida,
             )
           : FloatingActionButton.extended(
               icon: const Icon(Icons.edit_note),
-              label: const Text('Anotar al margen'),
+              label: Text(SoleraL10n.t('nat.mapa_anotar_margen')),
               onPressed: _aniadirAnotacion,
             ),
       body: ListView(
@@ -451,9 +440,9 @@ class _PantallaSalidaState extends State<PantallaSalida> {
               color: Colors.orange,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: const Text(
-              'EN CURSO',
-              style: TextStyle(
+            child: Text(
+              SoleraL10n.t('nat.mapa_en_curso'),
+              style: const TextStyle(
                 color: Colors.white,
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
@@ -482,7 +471,7 @@ class _PantallaSalidaState extends State<PantallaSalida> {
     if (salida.meteoResumen.isNotEmpty || salida.meteoTemperaturaC != null) {
       final etiquetaMeteo = [
         if (salida.meteoTemperaturaC != null)
-          '${salida.meteoTemperaturaC!.toStringAsFixed(1)} °C',
+          '${formatearNumero(salida.meteoTemperaturaC!, decimales: 1)} °C',
         if (salida.meteoResumen.isNotEmpty) salida.meteoResumen,
       ].join(' · ');
       filas.add(const SizedBox(height: 4));
@@ -498,17 +487,17 @@ class _PantallaSalidaState extends State<PantallaSalida> {
       filas.add(Row(children: [
         const Icon(Icons.terrain, size: 16, color: Colors.grey),
         const SizedBox(width: 6),
-        Text('${salida.altitudAproximada} m aprox.'),
+        Text(SoleraL10n.tf('nat.mapa_altitud_aprox', {'n': '${salida.altitudAproximada}'})),
       ]));
     }
 
     if (salida.hipotesisJornada.isNotEmpty) {
       filas.add(const SizedBox(height: 12));
-      filas.add(_bloqueTexto('Hipótesis de jornada', salida.hipotesisJornada));
+      filas.add(_bloqueTexto(SoleraL10n.t('nat.mapa_hipotesis_jornada'), salida.hipotesisJornada));
     }
     if (salida.notasGenerales.isNotEmpty) {
       filas.add(const SizedBox(height: 12));
-      filas.add(_bloqueTexto('Notas', salida.notasGenerales));
+      filas.add(_bloqueTexto(SoleraL10n.t('fos.mapa_notas'), salida.notasGenerales));
     }
 
     return Container(
@@ -549,7 +538,7 @@ class _PantallaSalidaState extends State<PantallaSalida> {
     final etiquetaDistancia = distancia == null
         ? '—'
         : distancia >= 1000
-            ? '${(distancia / 1000).toStringAsFixed(2)} km'
+            ? '${formatearNumero(distancia / 1000, decimales: 2)} km'
             : '${distancia.round()} m';
     final etiquetaDuracion = duracionMs == null
         ? '—'
@@ -575,15 +564,15 @@ class _PantallaSalidaState extends State<PantallaSalida> {
               children: [
                 Text(
                   estaCorriendoEstaSalida
-                      ? 'Track GPS en curso'
-                      : 'Track GPS de la salida',
+                      ? SoleraL10n.t('nat.mapa_track_en_curso')
+                      : SoleraL10n.t('nat.mapa_track_de_salida'),
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   estaCorriendoEstaSalida
-                      ? '${GrabadorTrack.instancia.puntos.length} puntos · '
-                          'se asociará a la salida al detenerlo'
+                      ? SoleraL10n.tf('nat.mapa_track_puntos_asociara',
+                          {'n': '${GrabadorTrack.instancia.puntos.length}'})
                       : '$etiquetaDistancia · $etiquetaDuracion',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
                 ),
@@ -603,21 +592,20 @@ class _PantallaSalidaState extends State<PantallaSalida> {
   }
 
   Widget _seccionHallazgos() {
-    final fmt = DateFormat('HH:mm', 'es_ES');
+    final fmt = DateFormat('HH:mm', SoleraL10n.idioma);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Hallazgos de la salida (${_hallazgos.length})',
+        Text(SoleraL10n.tf('nat.mapa_observaciones_de_salida', {'n': '${_hallazgos.length}'}),
             style: const TextStyle(
                 fontWeight: FontWeight.bold, fontSize: 16)),
         const SizedBox(height: 8),
         if (_hallazgos.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'Todavía no hay hallazgos en esta salida. Mientras esté '
-              'abierta, los que registres se asociarán automáticamente.',
-              style: TextStyle(color: Colors.grey),
+              SoleraL10n.t('nat.mapa_sin_observaciones_salida'),
+              style: const TextStyle(color: Colors.grey),
             ),
           )
         else
@@ -627,7 +615,7 @@ class _PantallaSalidaState extends State<PantallaSalida> {
                   title: Text(
                     h.nombreComun.isNotEmpty
                         ? h.nombreComun
-                        : (h.especie.isNotEmpty ? h.especie : 'Sin especie'),
+                        : (h.especie.isNotEmpty ? h.especie : SoleraL10n.t('nat.mapa_sin_especie')),
                     style: const TextStyle(fontWeight: FontWeight.w600),
                   ),
                   subtitle: Text(
@@ -642,15 +630,15 @@ class _PantallaSalidaState extends State<PantallaSalida> {
   }
 
   Widget _seccionAnotaciones(Salida salida) {
-    final fmt = DateFormat('d MMM HH:mm', 'es_ES');
+    final fmt = DateFormat('d MMM HH:mm', SoleraL10n.idioma);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Expanded(
-              child: Text('Anotaciones al margen',
-                  style: TextStyle(
+            Expanded(
+              child: Text(SoleraL10n.t('nat.mapa_anotaciones_margen'),
+                  style: const TextStyle(
                       fontWeight: FontWeight.bold, fontSize: 16)),
             ),
             // Si la salida está abierta, el FAB sirve para cerrarla:
@@ -659,18 +647,17 @@ class _PantallaSalidaState extends State<PantallaSalida> {
               TextButton.icon(
                 onPressed: _aniadirAnotacion,
                 icon: const Icon(Icons.add),
-                label: const Text('Añadir'),
+                label: Text(SoleraL10n.t('fos.hall_anadir')),
               ),
           ],
         ),
         const SizedBox(height: 4),
         if (_anotaciones.isEmpty)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Text(
-              'Sin anotaciones todavía. Úsalas para revisar la salida '
-              'días después: dudas, correcciones, conexiones.',
-              style: TextStyle(color: Colors.grey),
+              SoleraL10n.t('nat.mapa_sin_anotaciones'),
+              style: const TextStyle(color: Colors.grey),
             ),
           )
         else
@@ -711,7 +698,7 @@ class _PantallaSalidaState extends State<PantallaSalida> {
                       IconButton(
                         icon: const Icon(Icons.delete_outline,
                             size: 18, color: Colors.grey),
-                        tooltip: 'Borrar anotación',
+                        tooltip: SoleraL10n.t('nat.mapa_borrar_anotacion'),
                         onPressed: () => _borrarAnotacion(a.id),
                         padding: EdgeInsets.zero,
                         constraints: const BoxConstraints(

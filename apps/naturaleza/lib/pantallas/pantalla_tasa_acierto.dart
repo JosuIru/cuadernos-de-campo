@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 
 import '../datos/base_datos.dart';
 import '../datos/datos_guia.dart';
@@ -37,7 +38,7 @@ class _PantallaTasaAciertoState extends State<PantallaTasaAcierto> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Tasa de acierto')),
+      appBar: AppBar(title: Text(SoleraL10n.t('nat.hall_tasa_acierto'))),
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : (_tasa == null || !_tasa!.tieneDatos)
@@ -54,21 +55,18 @@ class _PantallaTasaAciertoState extends State<PantallaTasaAcierto> {
             const Icon(Icons.fact_check_outlined,
                 size: 56, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text(
-              'Aún no has validado identificaciones',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            Text(
+              SoleraL10n.t('nat.hall_sin_validaciones'),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
             Text(
               sinRevisar > 0
-                  ? 'Tienes $sinRevisar hallazgo${sinRevisar == 1 ? '' : 's'} '
-                      'sin revisar. Abre cualquiera desde la lista y pulsa '
-                      '"Confirmar" o "Corregir" tras revisar fotos o consultar '
-                      'bibliografía.'
-                  : 'Cuando empieces a validar identificaciones desde la '
-                      'ficha de cada hallazgo, esta pantalla irá calculando '
-                      'tu tasa de acierto a lo largo del tiempo.',
+                  ? (sinRevisar == 1
+                      ? SoleraL10n.t('nat.hall_un_sin_revisar')
+                      : SoleraL10n.tf('nat.hall_n_sin_revisar', {'n': sinRevisar}))
+                  : SoleraL10n.t('nat.hall_explicacion_tasa_vacia'),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey.shade700),
             ),
@@ -106,9 +104,9 @@ class _PantallaTasaAciertoState extends State<PantallaTasaAcierto> {
                 color: _colorPorcentaje(porcentaje),
               ),
             ),
-            const Text(
-              'de acierto global',
-              style: TextStyle(fontSize: 13, color: Colors.grey),
+            Text(
+              SoleraL10n.t('nat.hall_de_acierto_global'),
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
             ),
             const SizedBox(height: 12),
             Row(
@@ -116,17 +114,17 @@ class _PantallaTasaAciertoState extends State<PantallaTasaAcierto> {
               children: [
                 _miniTotal(
                   '${tasa.global.confirmados}',
-                  'Confirmadas',
+                  SoleraL10n.t('nat.hall_confirmadas'),
                   Colors.green.shade700,
                 ),
                 _miniTotal(
                   '${tasa.global.corregidos}',
-                  'Corregidas',
+                  SoleraL10n.t('nat.hall_corregidas'),
                   Colors.deepOrange,
                 ),
                 _miniTotal(
                   '${tasa.sinRevisar}',
-                  'Sin revisar',
+                  SoleraL10n.t('nat.hall_sin_revisar'),
                   Colors.grey,
                 ),
               ],
@@ -154,7 +152,7 @@ class _PantallaTasaAciertoState extends State<PantallaTasaAcierto> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Por categoría',
+            Text(SoleraL10n.t('nat.hall_por_categoria'),
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             const SizedBox(height: 10),
             ...porCategoria.entries.map(
@@ -179,9 +177,9 @@ class _PantallaTasaAciertoState extends State<PantallaTasaAcierto> {
       ConfianzaIdentificacion.tentativa,
     ];
     final etiquetas = {
-      ConfianzaIdentificacion.segura: 'Cuando dijiste "segura"',
-      ConfianzaIdentificacion.probable: 'Cuando dijiste "probable"',
-      ConfianzaIdentificacion.tentativa: 'Cuando dijiste "tentativa"',
+      ConfianzaIdentificacion.segura: SoleraL10n.t('nat.hall_cuando_dijiste_segura'),
+      ConfianzaIdentificacion.probable: SoleraL10n.t('nat.hall_cuando_dijiste_probable'),
+      ConfianzaIdentificacion.tentativa: SoleraL10n.t('nat.hall_cuando_dijiste_tentativa'),
     };
     return Card(
       child: Padding(
@@ -189,13 +187,12 @@ class _PantallaTasaAciertoState extends State<PantallaTasaAcierto> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Calibración por confianza',
+            Text(SoleraL10n.t('nat.hall_calibracion_por_confianza'),
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             const SizedBox(height: 4),
-            const Text(
-              '¿Te ajustas a tu propia confianza, o eres demasiado optimista '
-              '(o demasiado modesto)?',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+            Text(
+              SoleraL10n.t('nat.hall_pregunta_calibracion'),
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
             const SizedBox(height: 10),
             ...orden.where((c) => porConfianza.containsKey(c)).map(

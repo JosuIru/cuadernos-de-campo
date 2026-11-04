@@ -23,7 +23,12 @@ class ContextoIdentificacion {
 class IdentificacionEspecie {
   final String categoriaDetectada; // 'animal' | 'insecto' | 'planta' | 'seta' | 'desconocido'
   final String nombreCientifico;
+  /// Nombre vulgar en castellano: se guarda en la BD y se usa para buscar
+  /// en iNaturalist/GBIF y en la guía (todo en castellano).
   final String nombreComun;
+  /// Nombre vulgar en el idioma elegido en la app (solo para mostrar).
+  /// Puede venir vacío o coincidir con [nombreComun].
+  final String? nombreComunIdiomaUsuario;
   final String taxonomia; // p.ej. "Animalia › Chordata › Aves › Passeriformes › Turdidae › Turdus › T. merula"
   final String confianza; // 'alta' | 'media' | 'baja'
   final String descripcion;
@@ -38,6 +43,7 @@ class IdentificacionEspecie {
     required this.categoriaDetectada,
     required this.nombreCientifico,
     required this.nombreComun,
+    this.nombreComunIdiomaUsuario,
     required this.taxonomia,
     required this.confianza,
     required this.descripcion,
@@ -48,6 +54,13 @@ class IdentificacionEspecie {
     this.estadoConservacion,
     required this.modeloUsado,
   });
+
+  /// Nombre vulgar para enseñar al usuario: el de su idioma si lo hay,
+  /// si no el castellano.
+  String get nombreComunParaMostrar {
+    final enIdiomaUsuario = nombreComunIdiomaUsuario?.trim() ?? '';
+    return enIdiomaUsuario.isNotEmpty ? enIdiomaUsuario : nombreComun;
+  }
 }
 
 const String _systemPrompt = '''
@@ -61,7 +74,8 @@ Detecta primero la categoría:
 Devuelve nombre científico binomial cuando sea posible, nombre común en español, y la cadena taxonómica desde reino hasta especie.
 Usa las coordenadas y el hábitat para razonar sobre la distribución y ecología probables — en setas, las simbiosis micorrícicas con árboles concretos (encina, pino, haya, castaño, jara) son determinantes.
 ATENCIÓN ESPECIAL EN SETAS: muchas especies tóxicas o mortales se parecen mucho a comestibles (Amanita phalloides vs Agaricus campestris, Cortinarius orellanus vs níscalos, etc.). Si hay cualquier duda, baja la confianza a 'baja' y propón alternativas peligrosas, recordando en como_confirmar que la identificación visual NO es suficiente para consumo — siempre validación con micólogo/asociación local.
-Responde SIEMPRE en español neutro. Sé honesto sobre la confianza: si no estás seguro, dilo y propón alternativas.
+El campo nombre_comun va SIEMPRE en castellano (se usa para buscar en catálogos en castellano); nombre_comun_idioma_usuario lleva el nombre vulgar en el idioma en que se te pide responder. Los nombres científicos y las alternativas van en latín, sin traducir.
+Sé honesto sobre la confianza: si no estás seguro, dilo y propón alternativas.
 Si la foto no contiene un ser vivo reconocible o es de muy mala calidad, indícalo en categoria_detectada="desconocido" y explica por qué en razonamiento.
 ''';
 
@@ -73,7 +87,7 @@ Future<IdentificacionEspecie> identificarEspecie({
   if (apiKey.trim().isEmpty) {
     throw ErrorClaude(
       MotivoErrorClaude.sinClave,
-      'Falta la API key de Anthropic. Configúrala en Ajustes → Inteligencia artificial.',
+      SoleraL10n.t('fos.ajus_falta_api_anthropic'),
     );
   }
   final modelo = await Configuracion.obtenerModelo();
@@ -104,12 +118,20 @@ Future<IdentificacionEspecie> identificarEspecie({
     'properties': {
       'categoria_detectada': {'type': 'string', 'enum': ['animal', 'insecto', 'planta', 'seta', 'desconocido']},
       'nombre_cientifico': {'type': 'string', 'description': 'Binomial Genus species cuando sea posible.'},
-      'nombre_comun': {'type': 'string', 'description': 'Nombre vulgar en español.'},
+      'nombre_comun': {'type': 'string', 'description': 'Nombre vulgar en castellano (siempre en castellano).'},
+      'nombre_comun_idioma_usuario': {
+        'type': 'string',
+        'description': 'Nombre vulgar en el idioma de respuesta pedido (puede coincidir con nombre_comun).',
+      },
       'taxonomia': {'type': 'string', 'description': 'Cadena Reino › Filo › Clase › Orden › Familia › Género › Especie.'},
       'confianza': {'type': 'string', 'enum': ['alta', 'media', 'baja']},
       'descripcion': {'type': 'string'},
       'razonamiento': {'type': 'string'},
-      'alternativas': {'type': 'array', 'items': {'type': 'string'}},
+      'alternativas': {
+        'type': 'array',
+        'items': {'type': 'string'},
+        'description': 'Nombres científicos binomiales de especies alternativas, en latín.',
+      },
       'como_confirmar': {'type': 'string'},
       'habitat_tipico': {'type': 'string'},
       'estado_conservacion': {'type': 'string', 'description': 'Categoría IUCN si es conocida (LC, NT, VU, EN, CR, etc.).'},
@@ -134,7 +156,9 @@ Future<IdentificacionEspecie> identificarEspecie({
   final clienteClaude = ClienteClaude(claveApi: apiKey);
   final datos = await clienteClaude.pedirJson(
     modelo: modelo,
-    sistema: _systemPrompt,
+    // Los textos libres llegan en el idioma elegido en la app; los nombres
+    // que se usan para buscar (científico y común en castellano), no.
+    sistema: '$_systemPrompt\n${instruccionIdiomaRespuestaClaude()}',
     mensajes: [mensajeUsuario],
     maxTokens: 4096,
     esfuerzo: EsfuerzoClaude.medio,
@@ -144,6 +168,7 @@ Future<IdentificacionEspecie> identificarEspecie({
     categoriaDetectada: datos['categoria_detectada'] as String? ?? 'desconocido',
     nombreCientifico: datos['nombre_cientifico'] as String? ?? '',
     nombreComun: datos['nombre_comun'] as String? ?? '',
+    nombreComunIdiomaUsuario: datos['nombre_comun_idioma_usuario'] as String?,
     taxonomia: datos['taxonomia'] as String? ?? '',
     confianza: datos['confianza'] as String? ?? 'baja',
     descripcion: datos['descripcion'] as String? ?? '',

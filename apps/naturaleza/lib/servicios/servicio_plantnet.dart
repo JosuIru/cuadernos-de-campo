@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart' show SoleraL10n;
 
 /// Cliente de Pl@ntNet API v2.
 ///
@@ -88,11 +89,11 @@ Future<ResultadoPlantNet> identificarPlantaConPlantNet({
   int candidatosMaximos = 5,
 }) async {
   if (apiKey.trim().isEmpty) {
-    throw PlantNetClaveInvalida('Falta la clave API de Pl@ntNet.');
+    throw PlantNetClaveInvalida(SoleraL10n.t('nat.ajus_plantnet_falta_clave'));
   }
   final fichero = File(rutaFotoLocal);
   if (!await fichero.exists()) {
-    throw Exception('La foto no existe en disco: $rutaFotoLocal');
+    throw Exception(SoleraL10n.tf('nat.ajus_foto_no_existe', {'ruta': rutaFotoLocal}));
   }
 
   final uri = Uri.parse('$_baseUrlPlantNet/$proyecto').replace(
@@ -112,18 +113,15 @@ Future<ResultadoPlantNet> identificarPlantaConPlantNet({
 
   if (respuesta.statusCode == 401 || respuesta.statusCode == 403) {
     throw PlantNetClaveInvalida(
-      'Pl@ntNet rechazó la clave (HTTP ${respuesta.statusCode}). '
-      'Comprueba la clave en Ajustes → Inteligencia artificial.',
+      SoleraL10n.tf('nat.ajus_plantnet_clave_rechazada', {'codigo': '${respuesta.statusCode}'}),
     );
   }
   if (respuesta.statusCode == 429) {
-    throw PlantNetCuotaAgotada(
-      'Pl@ntNet devolvió cuota agotada para hoy (HTTP 429).',
-    );
+    throw PlantNetCuotaAgotada(SoleraL10n.t('nat.ajus_plantnet_cuota_agotada'));
   }
   if (respuesta.statusCode != 200) {
     throw Exception(
-      'Pl@ntNet devolvió ${respuesta.statusCode}: '
+      '${SoleraL10n.tf('nat.ajus_servicio_devolvio', {'servicio': 'Pl@ntNet', 'codigo': '${respuesta.statusCode}'})}: '
       '${respuesta.body.substring(0, respuesta.body.length.clamp(0, 200))}',
     );
   }

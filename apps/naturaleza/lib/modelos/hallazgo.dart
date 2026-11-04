@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
+
 import 'atribucion_foto.dart';
 
 /// Tipo de evidencia del hallazgo. La práctica real del aficionado
@@ -10,20 +12,26 @@ import 'atribucion_foto.dart';
 /// La persistencia es texto plano (no índice numérico) para que la
 /// base de datos sea legible y los valores fácil de leer en SQL.
 enum TipoEvidencia {
-  avistamiento('avistamiento', 'Avistamiento'),
-  huella('huella', 'Huella'),
-  pluma('pluma', 'Pluma'),
-  excremento('excremento', 'Excremento'),
-  restosAlimentacion('restos_alimentacion', 'Restos de alimentación'),
-  marcaCorteza('marca_corteza', 'Marca en corteza'),
-  nidoVacio('nido_vacio', 'Nido vacío'),
-  refugio('refugio', 'Refugio o madriguera'),
-  sonido('sonido', 'Sonido o canto'),
-  interaccion('interaccion', 'Interacción');
+  avistamiento('avistamiento', 'nat.hall_evidencia_avistamiento'),
+  huella('huella', 'nat.hall_evidencia_huella'),
+  pluma('pluma', 'nat.hall_evidencia_pluma'),
+  excremento('excremento', 'nat.hall_evidencia_excremento'),
+  restosAlimentacion('restos_alimentacion', 'nat.hall_evidencia_restos_alimentacion'),
+  marcaCorteza('marca_corteza', 'nat.hall_evidencia_marca_corteza'),
+  nidoVacio('nido_vacio', 'nat.hall_evidencia_nido_vacio'),
+  refugio('refugio', 'nat.hall_evidencia_refugio'),
+  sonido('sonido', 'nat.hall_evidencia_sonido'),
+  interaccion('interaccion', 'nat.hall_evidencia_interaccion');
 
   final String clave;
-  final String etiqueta;
-  const TipoEvidencia(this.clave, this.etiqueta);
+
+  /// Clave de traducción de la etiqueta visible (la persistencia usa
+  /// [clave], que no cambia con el idioma).
+  final String claveTraduccion;
+  const TipoEvidencia(this.clave, this.claveTraduccion);
+
+  /// Etiqueta en el idioma activo de la app.
+  String get etiqueta => SoleraL10n.t(claveTraduccion);
 
   static TipoEvidencia desdeClave(String? clave) {
     if (clave == null) return TipoEvidencia.avistamiento;

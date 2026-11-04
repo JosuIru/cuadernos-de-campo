@@ -66,9 +66,9 @@ class _PantallaQuizState extends State<PantallaQuiz> {
 
   String _enunciado(EspecieGuia especie) {
     return switch (_modo) {
-      _ModoQuiz.comunACientifico => '¿Cuál es el nombre científico de "${especie.nombreComun}"?',
-      _ModoQuiz.cientificoAComun => '¿Cuál es el nombre común de "${especie.nombreCientifico}"?',
-      _ModoQuiz.distintivos => '${especie.descripcionCorta}\n\n¿Qué especie es?',
+      _ModoQuiz.comunACientifico => SoleraL10n.tf('nat.hall_quiz_pregunta_cientifico', {'nombre': especie.nombreComun}),
+      _ModoQuiz.cientificoAComun => SoleraL10n.tf('nat.hall_quiz_pregunta_comun', {'nombre': especie.nombreCientifico}),
+      _ModoQuiz.distintivos => '${especie.descripcionCorta}\n\n${SoleraL10n.t('nat.hall_quiz_que_especie_es')}',
     };
   }
 
@@ -87,7 +87,7 @@ class _PantallaQuizState extends State<PantallaQuiz> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Quiz'),
+        title: Text(SoleraL10n.t('fos.hall_quiz')),
         actions: [
           if (_intentos > 0)
             Padding(
@@ -151,10 +151,10 @@ class _PantallaQuizState extends State<PantallaQuiz> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: SegmentedButton<_ModoQuiz>(
-                    segments: const [
-                      ButtonSegment(value: _ModoQuiz.comunACientifico, label: Text('Común→Cient.')),
-                      ButtonSegment(value: _ModoQuiz.cientificoAComun, label: Text('Cient.→Común')),
-                      ButtonSegment(value: _ModoQuiz.distintivos, label: Text('Por descripción')),
+                    segments: [
+                      ButtonSegment(value: _ModoQuiz.comunACientifico, label: Text(SoleraL10n.t('nat.hall_quiz_modo_comun_a_cientifico'))),
+                      ButtonSegment(value: _ModoQuiz.cientificoAComun, label: Text(SoleraL10n.t('nat.hall_quiz_modo_cientifico_a_comun'))),
+                      ButtonSegment(value: _ModoQuiz.distintivos, label: Text(SoleraL10n.t('nat.hall_quiz_modo_por_descripcion'))),
                     ],
                     selected: {_modo},
                     onSelectionChanged: (seleccion) {
@@ -255,13 +255,13 @@ class _SinSuficientesEspecies extends StatelessWidget {
             Icon(Icons.quiz_outlined, size: 72, color: Colors.grey),
             SizedBox(height: 16),
             Text(
-              'Hacen falta al menos 3 especies para el quiz',
+              SoleraL10n.t('nat.hall_quiz_faltan_especies'),
               style: Theme.of(context).textTheme.titleLarge,
               textAlign: TextAlign.center,
             ),
             SizedBox(height: 8),
             Text(
-              'Añade más entradas en lib/datos/datos_guia.dart',
+              SoleraL10n.t('nat.hall_quiz_anade_entradas'),
               textAlign: TextAlign.center,
               style: TextStyle(color: Colors.grey),
             ),
@@ -281,7 +281,7 @@ class _PocasEspeciesEnCategoria extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.all(24),
         child: Text(
-          'Esta categoría tiene menos de 3 especies. Cambia a "Todos" o añade más entradas a la guía.',
+          SoleraL10n.t('nat.hall_quiz_pocas_especies_categoria'),
           textAlign: TextAlign.center,
           style: TextStyle(color: Colors.grey),
         ),
