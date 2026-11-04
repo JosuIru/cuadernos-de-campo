@@ -17,7 +17,7 @@ class PantallaChat extends StatefulWidget {
       'Hablas con precisión científica pero en tono accesible y entusiasta. '
       'Cuando no estés seguro de algo, lo dices claramente y sugieres consultar '
       'a un geólogo profesional o a un museo. '
-      'Respondes en castellano. Sé conciso (máximo 3 párrafos salvo que te pidan detalle).';
+      'Sé conciso (máximo 3 párrafos salvo que te pidan detalle).';
 
   static const sistemaNaturaleza =
       'Eres un asistente especializado en naturaleza, fauna, flora y biodiversidad. '
@@ -25,7 +25,7 @@ class PantallaChat extends StatefulWidget {
       'dar consejos de observación responsable y buenas prácticas de campo. '
       'Hablas con precisión científica pero en tono accesible y entusiasta. '
       'Cuando no estés seguro de algo, lo dices claramente. '
-      'Respondes en castellano. Sé conciso (máximo 3 párrafos salvo que te pidan detalle).';
+      'Sé conciso (máximo 3 párrafos salvo que te pidan detalle).';
 
   static const sistemaSolera =
       'Eres un asistente especializado en agricultura, viticultura y apicultura. '
@@ -33,7 +33,7 @@ class PantallaChat extends StatefulWidget {
       'tratamientos (siempre mencionando que consultes a un técnico antes de aplicar), '
       'y dar consejos de manejo agronómico. Hablas con precisión técnica pero en tono '
       'accesible. Cuando no estés seguro, lo dices y sugieres consultar a un especialista. '
-      'Respondes en castellano. Sé conciso (máximo 3 párrafos salvo que te pidan detalle).';
+      'Sé conciso (máximo 3 párrafos salvo que te pidan detalle).';
 
   @override
   State<PantallaChat> createState() => _PantallaChatState();
@@ -108,7 +108,7 @@ class _PantallaChatState extends State<PantallaChat> {
       final nombre = proveedor == ProveedorChat.claude ? 'Claude' : 'DeepSeek';
       setState(() {
         _mensajes.add(MensajeChat(
-          texto: 'Necesitas configurar tu API key de $nombre en Ajustes → Inteligencia artificial.',
+          texto: SoleraL10n.tf('fos.ajus_falta_clave_chat', {'nombre': nombre}),
           esUsuario: false,
           proveedor: proveedor,
         ));
@@ -118,7 +118,7 @@ class _PantallaChatState extends State<PantallaChat> {
 
     setState(() {
       _mensajes.add(MensajeChat(
-        texto: texto.isNotEmpty ? texto : '¿Qué ves en esta imagen?',
+        texto: texto.isNotEmpty ? texto : SoleraL10n.t('fos.ajus_que_ves'),
         esUsuario: true,
         rutaImagen: imagen,
       ));
@@ -129,12 +129,13 @@ class _PantallaChatState extends State<PantallaChat> {
 
     try {
       final respuesta = await _servicio!.enviarMensaje(
-        texto.isNotEmpty ? texto : '¿Qué ves en esta imagen? Identifícala por favor.',
+        texto.isNotEmpty ? texto : SoleraL10n.t('fos.ajus_que_ves_identifica'),
         proveedor: proveedor,
         historial: _mensajes.length > 1
             ? _mensajes.sublist(0, _mensajes.length - 1)
             : null,
-        sistemaPrompt: widget.sistemaPrompt,
+        // Claude y DeepSeek contestan en el idioma elegido en la app.
+        sistemaPrompt: '${widget.sistemaPrompt}\n\n${instruccionIdiomaRespuestaClaude()}',
         rutaImagen: imagen,
       );
       if (!mounted) return;
@@ -151,7 +152,7 @@ class _PantallaChatState extends State<PantallaChat> {
       if (!mounted) return;
       setState(() {
         _mensajes.add(MensajeChat(
-          texto: 'Error: $e',
+          texto: '${SoleraL10n.t('error')}: $e',
           esUsuario: false,
           proveedor: proveedor,
         ));
@@ -179,7 +180,7 @@ class _PantallaChatState extends State<PantallaChat> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Chat'),
+        title: Text(SoleraL10n.t('fos.ajus_chat')),
         actions: [
           SegmentedButton<ProveedorChat>(
             segments: const [
@@ -215,8 +216,8 @@ class _PantallaChatState extends State<PantallaChat> {
                       children: [
                         Icon(Icons.chat_bubble_outline, size: 64, color: esquema.primary.withValues(alpha: 0.3)),
                         const SizedBox(height: 16),
-                        const Text(
-                          'Pregúntame lo que quieras sobre fósiles,\ngeología, identificación, yacimientos…',
+                        Text(
+                          SoleraL10n.t('fos.ajus_chat_vacio'),
                           textAlign: TextAlign.center,
                           style: TextStyle(color: Colors.grey),
                         ),
@@ -282,7 +283,7 @@ class _PantallaChatState extends State<PantallaChat> {
                             Padding(
                               padding: const EdgeInsets.only(top: 2, left: 4),
                               child: Text(
-                                'vía ${m.proveedor == ProveedorChat.claude ? 'Claude' : 'DeepSeek'}',
+                                SoleraL10n.tf('fos.ajus_via', {'proveedor': m.proveedor == ProveedorChat.claude ? 'Claude' : 'DeepSeek'}),
                                 style: TextStyle(fontSize: 10, color: Colors.grey[400]),
                               ),
                             ),
@@ -317,7 +318,7 @@ class _PantallaChatState extends State<PantallaChat> {
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Imagen adjunta — se enviará a Claude',
+                        SoleraL10n.t('fos.ajus_imagen_adjunta'),
                         style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ),
@@ -333,19 +334,19 @@ class _PantallaChatState extends State<PantallaChat> {
                 child: Row(children: [
                   IconButton(
                     icon: const Icon(Icons.camera_alt, size: 22),
-                    tooltip: 'Hacer foto',
+                    tooltip: SoleraL10n.t('fos.ajus_hacer_foto'),
                     onPressed: _hacerFoto,
                   ),
                   IconButton(
                     icon: const Icon(Icons.photo_library, size: 22),
-                    tooltip: 'Galería',
+                    tooltip: SoleraL10n.t('galeria'),
                     onPressed: _elegirDeGaleria,
                   ),
                   Expanded(
                     child: TextField(
                       controller: _controladorMensaje,
                       decoration: InputDecoration(
-                        hintText: 'Escribe tu pregunta…',
+                        hintText: SoleraL10n.t('fos.ajus_escribe_pregunta'),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(24)),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                       ),

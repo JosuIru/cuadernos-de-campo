@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../servicios/servicio_meteo.dart';
 
 class PantallaMeteo extends StatefulWidget {
@@ -36,7 +37,7 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
       _cargarPrevision(
         widget.latitudInicial!,
         widget.longitudInicial!,
-        nombreLugar: widget.nombreInicial ?? 'Ubicación seleccionada',
+        nombreLugar: widget.nombreInicial ?? SoleraL10n.t('fos.mapa_ubicacion_seleccionada'),
       );
     }
   }
@@ -72,7 +73,7 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo obtener la ubicación. Activa el GPS.')),
+        SnackBar(content: Text(SoleraL10n.t('fos.mapa_meteo_sin_ubicacion'))),
       );
     } finally {
       if (mounted) setState(() => _obteniendoUbicacion = false);
@@ -96,7 +97,7 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Meteorología')),
+      appBar: AppBar(title: Text(SoleraL10n.t('fos.mapa_meteorologia'))),
       body: Column(
         children: [
           Padding(
@@ -105,10 +106,10 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
               Expanded(
                 child: TextField(
                   controller: _controladorBusqueda,
-                  decoration: const InputDecoration(
-                    hintText: 'Buscar lugar…',
-                    prefixIcon: Icon(Icons.search),
-                    border: OutlineInputBorder(),
+                  decoration: InputDecoration(
+                    hintText: SoleraL10n.t('fos.mapa_buscar_lugar'),
+                    prefixIcon: const Icon(Icons.search),
+                    border: const OutlineInputBorder(),
                   ),
                   onSubmitted: (_) => _buscar(),
                 ),
@@ -126,7 +127,7 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
                 icon: _obteniendoUbicacion
                     ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
                     : const Icon(Icons.my_location),
-                tooltip: 'Usar mi ubicación',
+                tooltip: SoleraL10n.t('fos.mapa_usar_mi_ubicacion'),
               ),
             ]),
           ),
@@ -172,10 +173,10 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
             children: [
               const Text('🌤️', style: TextStyle(fontSize: 64)),
               const SizedBox(height: 16),
-              const Text(
-                'Busca un lugar o pulsa el botón de ubicación\npara ver la previsión meteorológica',
+              Text(
+                SoleraL10n.t('fos.mapa_meteo_vacio'),
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 15, color: Colors.grey),
+                style: const TextStyle(fontSize: 15, color: Colors.grey),
               ),
             ],
           ),
@@ -184,7 +185,7 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
     }
 
     final hoy = DateTime.now();
-    final formatoDia = DateFormat('EEE d', 'es_ES');
+    final formatoDia = DateFormat('EEE d', SoleraL10n.idioma);
     final formatoHora = DateFormat('HH:mm');
 
     // Filtrar horas: desde la hora actual en adelante
@@ -231,7 +232,7 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
             ]),
             const SizedBox(height: 12),
             Row(children: [
-              _datoMeteo('💧', '${prevision.dias.first.precipitacionMm.toStringAsFixed(1)} mm'),
+              _datoMeteo('💧', '${formatearNumero(prevision.dias.first.precipitacionMm, decimales: 1)} mm'),
               const SizedBox(width: 16),
               _datoMeteo('💨', '${prevision.dias.first.vientoMaxKmh.toStringAsFixed(0)} km/h'),
               const SizedBox(width: 16),
@@ -243,7 +244,7 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
         // ─── Previsión por horas ─────────────────────────
         if (horasFiltradas.isNotEmpty) ...[
           const SizedBox(height: 20),
-          const Text('Próximas horas', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(SoleraL10n.t('fos.mapa_proximas_horas'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           SizedBox(
             height: 108,
@@ -269,7 +270,7 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(esAhora ? 'Ahora' : formatoHora.format(h.fecha),
+                      Text(esAhora ? SoleraL10n.t('fos.mapa_ahora') : formatoHora.format(h.fecha),
                           style: TextStyle(fontSize: 11, fontWeight: esAhora ? FontWeight.bold : FontWeight.normal)),
                       Text(h.icono, style: const TextStyle(fontSize: 22)),
                       Text('${h.temperatura.toStringAsFixed(0)}°',
@@ -289,13 +290,13 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
 
         // ─── Previsión diaria ────────────────────────────
         const SizedBox(height: 20),
-        const Text('Próximos días', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(SoleraL10n.t('fos.mapa_proximos_dias'), style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
         ...prevision.dias.map((dia) {
           final esHoy = dia.fecha.day == hoy.day &&
               dia.fecha.month == hoy.month &&
               dia.fecha.year == hoy.year;
-          final etiqueta = esHoy ? 'Hoy' : formatoDia.format(dia.fecha);
+          final etiqueta = esHoy ? SoleraL10n.t('fos.mapa_hoy') : formatoDia.format(dia.fecha);
           return Card(
             margin: const EdgeInsets.only(bottom: 4),
             child: Padding(
@@ -309,14 +310,14 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
                 const SizedBox(width: 4),
                 Text('${dia.tempMin.toStringAsFixed(0)}°', style: const TextStyle(color: Colors.grey, fontSize: 13)),
                 const SizedBox(width: 8),
-                Text('${dia.precipitacionMm.toStringAsFixed(1)} mm', style: TextStyle(fontSize: 11, color: Colors.blue.shade700)),
+                Text('${formatearNumero(dia.precipitacionMm, decimales: 1)} mm', style: TextStyle(fontSize: 11, color: Colors.blue.shade700)),
               ]),
             ),
           );
         }),
         const SizedBox(height: 24),
         Text(
-          'Datos: Open-Meteo (gratuito, sin API key)',
+          SoleraL10n.t('fos.mapa_datos_open_meteo'),
           style: TextStyle(fontSize: 11, color: Colors.grey[500]),
           textAlign: TextAlign.center,
         ),

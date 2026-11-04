@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:geolocator/geolocator.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/base_datos.dart';
 import '../modelos/track.dart';
 
@@ -27,9 +28,9 @@ class GrabadorTrack {
         ? AndroidSettings(
             accuracy: LocationAccuracy.high,
             distanceFilter: 5,
-            foregroundNotificationConfig: const ForegroundNotificationConfig(
-              notificationTitle: 'Grabando track',
-              notificationText: 'Fósiles está registrando tu ruta',
+            foregroundNotificationConfig: ForegroundNotificationConfig(
+              notificationTitle: SoleraL10n.t('fos.mapa_notificacion_grabando'),
+              notificationText: SoleraL10n.t('fos.mapa_notificacion_registrando_ruta'),
               enableWakeLock: true,
               setOngoing: true,
             ),
@@ -113,9 +114,10 @@ class GrabadorTrack {
         }
         final ultimo = puntos.last.fechaMs;
         final inicio = DateTime.fromMillisecondsSinceEpoch(inicioMs);
-        final nombreAuto =
-            'Track recuperado ${inicio.day.toString().padLeft(2, '0')}/${inicio.month.toString().padLeft(2, '0')} '
-            '${inicio.hour.toString().padLeft(2, '0')}:${inicio.minute.toString().padLeft(2, '0')}';
+        final nombreAuto = SoleraL10n.tf('fos.mapa_track_recuperado', {
+          'fecha': '${inicio.day.toString().padLeft(2, '0')}/${inicio.month.toString().padLeft(2, '0')} '
+              '${inicio.hour.toString().padLeft(2, '0')}:${inicio.minute.toString().padLeft(2, '0')}',
+        });
         final track = Track(
           fechaMs: inicioMs,
           nombre: nombreAuto,
@@ -209,9 +211,9 @@ class GpxImportado {
   GpxImportado({required this.nombre, required this.puntos});
 }
 
-GpxImportado parsearGpx(String contenidoGpx, {String nombrePorDefecto = 'Track importado'}) {
+GpxImportado parsearGpx(String contenidoGpx, {String? nombrePorDefecto}) {
   final nombreMatch = RegExp(r'<name>([^<]+)</name>', dotAll: true).firstMatch(contenidoGpx);
-  final nombre = nombreMatch?.group(1)?.trim() ?? nombrePorDefecto;
+  final nombre = nombreMatch?.group(1)?.trim() ?? nombrePorDefecto ?? SoleraL10n.t('fos.mapa_track_importado');
   final regex = RegExp(r'<trkpt\s+lat="([^"]+)"\s+lon="([^"]+)"\s*>(.*?)</trkpt>', dotAll: true);
   final puntos = <TrackPunto>[];
   for (final m in regex.allMatches(contenidoGpx)) {

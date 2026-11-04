@@ -58,7 +58,11 @@ class CapaBase {
   final String urlPlantilla;
   final int maxZoom;
   final String atribucion;
-  CapaBase({required this.nombre, required this.urlPlantilla, required this.maxZoom, required this.atribucion});
+  /// Clave de traducción del nombre visible (el [nombre] queda como id).
+  final String claveNombre;
+  CapaBase({required this.nombre, required this.urlPlantilla, required this.maxZoom, required this.atribucion, this.claveNombre = ''});
+
+  String get nombreVisible => claveNombre.isEmpty ? nombre : SoleraL10n.t(claveNombre);
 }
 
 final List<CapaBase> capasBaseDisponibles = [
@@ -67,18 +71,21 @@ final List<CapaBase> capasBaseDisponibles = [
     urlPlantilla: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
     maxZoom: 19,
     atribucion: '© OpenStreetMap',
+    claveNombre: 'fos.mapa_capa_callejero',
   ),
   CapaBase(
     nombre: 'Satélite',
     urlPlantilla: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     maxZoom: 19,
     atribucion: '© Esri',
+    claveNombre: 'fos.mapa_capa_satelite',
   ),
   CapaBase(
     nombre: 'Topográfico',
     urlPlantilla: 'https://tile.opentopomap.org/{z}/{x}/{y}.png',
     maxZoom: 17,
     atribucion: '© OpenTopoMap',
+    claveNombre: 'fos.mapa_capa_topografico',
   ),
 ];
 
@@ -291,10 +298,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
       if (yacimiento != null && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('${yacimiento.emoji} Estás en ${yacimiento.nombre}. Toca para ver qué buscar.'),
+            content: Text(SoleraL10n.tf('fos.mapa_estas_en', {'emoji': yacimiento.emoji, 'nombre': yacimiento.nombre})),
             duration: Duration(seconds: 8),
             action: SnackBarAction(
-              label: 'Ver ficha',
+              label: SoleraL10n.t('fos.mapa_ver_ficha'),
               onPressed: () => _mostrarFichaYacimiento(yacimiento),
             ),
           ),
@@ -314,7 +321,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
 
   void _mostrarDistanciaYRumbo(LatLng destino) {
     if (_ubicacionActual == null) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Esperando GPS para calcular distancia.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.t('fos.mapa_esperando_gps'))));
       return;
     }
     final origen = LatLng(_ubicacionActual!.latitude, _ubicacionActual!.longitude);
@@ -322,8 +329,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
     final rumbo = _rumboInicial(origen, destino);
     final cardinal = _puntoCardinal(rumbo);
     final distanciaTexto = distancia < 1000
-        ? '${distancia.toStringAsFixed(0)} m'
-        : '${(distancia / 1000).toStringAsFixed(2)} km';
+        ? '${formatearNumero(distancia)} m'
+        : '${formatearNumero(distancia / 1000, decimales: 2)} km';
     showModalBottomSheet<void>(
       context: context,
       builder: (_) => Padding(
@@ -332,7 +339,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Distancia y rumbo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(SoleraL10n.t('fos.mapa_distancia_y_rumbo'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             SizedBox(height: 12),
             Row(children: [
               Icon(Icons.straighten, size: 32),
@@ -346,7 +353,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
               Text('${rumbo.toStringAsFixed(0)}° ($cardinal)', style: TextStyle(fontSize: 22)),
             ]),
             SizedBox(height: 16),
-            Text('Desde tu posición a ${destino.latitude.toStringAsFixed(5)}, ${destino.longitude.toStringAsFixed(5)}',
+            Text(SoleraL10n.tf('fos.mapa_desde_tu_posicion', {'coordenadas': '${destino.latitude.toStringAsFixed(5)}, ${destino.longitude.toStringAsFixed(5)}'}),
                 style: TextStyle(fontSize: 12, color: Colors.grey)),
           ],
         ),
@@ -377,8 +384,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
   }
 
   String _puntoCardinal(double azimut) {
-    const dir = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO', 'N'];
-    return dir[((azimut / 22.5).round()) % 16];
+    final direcciones = SoleraL10n.t('fos.mapa_rosa_vientos').split(',');
+    return direcciones[((azimut / 22.5).round()) % 16];
   }
 
   Future<void> _alternarTrack() async {
@@ -388,14 +395,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
       final guardar = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          title: Text('Detener track'),
+          title: Text(SoleraL10n.t('fos.mapa_detener_track')),
           content: TextField(
             controller: controlador,
-            decoration: InputDecoration(labelText: 'Nombre (opcional)'),
+            decoration: InputDecoration(labelText: SoleraL10n.t('fos.mapa_nombre_opcional')),
             autofocus: true,
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Descartar')),
+            TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('fos.mapa_descartar'))),
             FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(SoleraL10n.t('guardar'))),
           ],
         ),
@@ -411,7 +418,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
           if (inicioMs != null) {
             await grabador.descartarBufferDeSesion(inicioMs);
           }
-          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Track guardado')));
+          if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.t('fos.mapa_track_guardado'))));
         }
       } else {
         grabador.cancelar();
@@ -423,7 +430,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
       grabador.iniciar();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('🔴 Grabando track. Puedes bloquear la pantalla; el track sigue corriendo.')),
+          SnackBar(content: Text(SoleraL10n.t('fos.mapa_grabando_track_aviso'))),
         );
       }
     }
@@ -576,7 +583,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
     if (camara.zoom < 9) {
       if (esActivacionInicial) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('🗿 Acércate más (zoom ≥ 9) para cargar monumentos.'), duration: Duration(seconds: 4)),
+          SnackBar(content: Text(SoleraL10n.t('fos.mapa_acercate_monumentos')), duration: Duration(seconds: 4)),
         );
       }
       return;
@@ -615,15 +622,15 @@ class _PantallaMapaState extends State<PantallaMapa> {
       });
       if (mounted && esActivacionInicial) {
         final mensaje = monumentos.isEmpty
-            ? '🗿 Sin monumentos OSM en esta vista. Prueba a desplazar el mapa.'
-            : '🗿 ${monumentos.length} monumentos cargados.';
+            ? SoleraL10n.t('fos.mapa_sin_monumentos')
+            : SoleraL10n.tf('fos.mapa_monumentos_cargados', {'n': '${monumentos.length}'});
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje), duration: Duration(seconds: 3)));
       }
     } catch (e) {
       debugPrint('[fosiles] error monumentos: $e');
       if (!mounted) return;
       if (esActivacionInicial) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error monumentos: $e'), duration: Duration(seconds: 6)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.mapa_error_monumentos', {'error': '$e'})), duration: Duration(seconds: 6)));
       }
     } finally {
       if (mounted) setState(() => _cargandoMonumentos = false);
@@ -662,11 +669,11 @@ class _PantallaMapaState extends State<PantallaMapa> {
             SizedBox(height: 16),
             _BloqueMareas(latitud: y.latitud, longitud: y.longitud),
             SizedBox(height: 16),
-            Text('Qué buscar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            Text(SoleraL10n.t('fos.mapa_que_buscar'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             SizedBox(height: 4),
             ...y.queBuscar.map((q) => Padding(padding: const EdgeInsets.only(left: 8, top: 2), child: Text('• $q'))),
             SizedBox(height: 16),
-            Text('Cómo llegar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+            Text(SoleraL10n.t('fos.mapa_como_llegar'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
             SizedBox(height: 4),
             Text(y.comoLlegar),
             SizedBox(height: 12),
@@ -678,13 +685,13 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     Navigator.of(sheetCtx).pop();
                     widget.alPedirNuevoHallazgo(latitud: y.latitud, longitud: y.longitud);
                   },
-                  label: Text('Marcar hallazgo aquí'),
+                  label: Text(SoleraL10n.t('fos.mapa_marcar_hallazgo_aqui')),
                 ),
               ),
             ]),
             if (y.referencias.isNotEmpty) ...[
               SizedBox(height: 12),
-              Text('Fuente: ${y.referencias.join(", ")}', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+              Text(SoleraL10n.tf('fos.mapa_fuente', {'fuente': y.referencias.join(', ')}), style: TextStyle(fontSize: 11, color: Colors.grey[600])),
             ],
           ],
         ),
@@ -712,12 +719,12 @@ class _PantallaMapaState extends State<PantallaMapa> {
             Text(m.tipoLegible, style: TextStyle(fontStyle: FontStyle.italic)),
             SizedBox(height: 12),
             if (m.descripcion != null) Padding(padding: const EdgeInsets.only(bottom: 8), child: Text(m.descripcion!)),
-            if (m.historico != null) Text('Cronología: ${m.historico}'),
+            if (m.historico != null) Text(SoleraL10n.tf('fos.mapa_cronologia', {'valor': '${m.historico}'})),
             SizedBox(height: 16),
             OutlinedButton.icon(
               icon: Icon(Icons.open_in_new),
               onPressed: () => launchUrl(Uri.parse(m.enlaceOSM), mode: LaunchMode.externalApplication),
-              label: Text('Ver en OpenStreetMap'),
+              label: Text(SoleraL10n.t('fos.mapa_ver_en_osm')),
             ),
           ],
         ),
@@ -731,7 +738,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
     if (camara.zoom < 10) {
       if (esActivacionInicial) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('🦇 Acércate más (zoom ≥ 10) para cargar cuevas.'), duration: Duration(seconds: 4)),
+          SnackBar(content: Text(SoleraL10n.t('fos.mapa_acercate_cuevas')), duration: Duration(seconds: 4)),
         );
       }
       return;
@@ -766,15 +773,15 @@ class _PantallaMapaState extends State<PantallaMapa> {
       });
       if (mounted && esActivacionInicial) {
         final mensaje = cuevas.isEmpty
-            ? '🦇 Sin cuevas OSM en esta vista. Prueba a desplazar el mapa.'
-            : '🦇 ${cuevas.length} cuevas cargadas.';
+            ? SoleraL10n.t('fos.mapa_sin_cuevas')
+            : SoleraL10n.tf('fos.mapa_cuevas_cargadas', {'n': '${cuevas.length}'});
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(mensaje), duration: Duration(seconds: 3)));
       }
     } catch (e) {
       debugPrint('[fosiles] error cuevas: $e');
       if (!mounted) return;
       if (esActivacionInicial) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error cuevas: $e'), duration: Duration(seconds: 6)));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.mapa_error_cuevas', {'error': '$e'})), duration: Duration(seconds: 6)));
       }
     } finally {
       if (mounted) setState(() => _cargandoCuevas = false);
@@ -862,22 +869,22 @@ class _PantallaMapaState extends State<PantallaMapa> {
                           _SelloCertificacionAutoridad(hallazgo: h),
                         ],
                         SizedBox(height: 8),
-                        _filaHallazgo('Especie', h.especie.isEmpty ? '—' : h.especie),
-                        _filaHallazgo('Edad', h.edad.isEmpty ? '—' : h.edad),
-                        _filaHallazgo('Formación', h.formacion.isEmpty ? '—' : h.formacion),
+                        _filaHallazgo(SoleraL10n.t('fos.mapa_especie'), h.especie.isEmpty ? '—' : h.especie),
+                        _filaHallazgo(SoleraL10n.t('fos.mapa_edad'), h.edad.isEmpty ? '—' : h.edad),
+                        _filaHallazgo(SoleraL10n.t('fos.mapa_formacion'), h.formacion.isEmpty ? '—' : h.formacion),
                         _filaHallazgo(
-                          'Fecha',
-                          DateFormat('dd MMM yyyy HH:mm', 'es_ES')
+                          SoleraL10n.t('fos.mapa_fecha'),
+                          DateFormat('dd MMM yyyy HH:mm', SoleraL10n.idioma)
                               .format(DateTime.fromMillisecondsSinceEpoch(h.fechaMs)),
                         ),
                         _filaHallazgo(
-                          'Coordenadas',
+                          SoleraL10n.t('fos.mapa_coordenadas'),
                           '${h.latitud.toStringAsFixed(5)}, ${h.longitud.toStringAsFixed(5)}${h.precision != null ? " (±${h.precision!.round()} m)" : ""}',
                         ),
                         if (h.strikeGrados != null && h.dipGrados != null)
-                          _filaHallazgo('Estrato',
+                          _filaHallazgo(SoleraL10n.t('fos.mapa_estrato'),
                               '${h.strikeGrados!.toStringAsFixed(0)}° / ${h.dipGrados!.toStringAsFixed(0)}°'),
-                        _filaHallazgo('Notas', h.notas.isEmpty ? '—' : h.notas),
+                        _filaHallazgo(SoleraL10n.t('fos.mapa_notas'), h.notas.isEmpty ? '—' : h.notas),
                         SizedBox(height: 16),
                         Row(children: [
                           Expanded(
@@ -902,14 +909,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
                                 final ok = await showDialog<bool>(
                                   context: context,
                                   builder: (_) => AlertDialog(
-                                    content: Text('¿Borrar este hallazgo?'),
+                                    content: Text(SoleraL10n.t('fos.mapa_borrar_hallazgo_pregunta')),
                                     actions: [
                                       TextButton(
                                           onPressed: () => Navigator.pop(context, false),
                                           child: Text(SoleraL10n.t('cancelar'))),
                                       TextButton(
                                           onPressed: () => Navigator.pop(context, true),
-                                          child: Text('Borrar',
+                                          child: Text(SoleraL10n.t('borrar'),
                                               style: TextStyle(color: Colors.red))),
                                     ],
                                   ),
@@ -922,7 +929,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                                 }
                                 _cargarHallazgos();
                               },
-                              label: Text('Borrar', style: TextStyle(color: Colors.red)),
+                              label: Text(SoleraL10n.t('borrar'), style: TextStyle(color: Colors.red)),
                             ),
                           ),
                         ]),
@@ -932,7 +939,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                             child: OutlinedButton.icon(
                               icon: Icon(Icons.share),
                               onPressed: () => _compartirHallazgo(h),
-                              label: Text('Compartir texto'),
+                              label: Text(SoleraL10n.t('fos.mapa_compartir_texto')),
                             ),
                           ),
                           SizedBox(width: 8),
@@ -940,7 +947,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                             child: FilledButton.icon(
                               icon: Icon(Icons.image),
                               onPressed: () => _compartirComoTarjeta(h),
-                              label: Text('Tarjeta'),
+                              label: Text(SoleraL10n.t('fos.mapa_tarjeta')),
                             ),
                           ),
                         ]),
@@ -948,7 +955,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                         OutlinedButton.icon(
                           icon: Icon(Icons.verified_user),
                           onPressed: () => _compartirCertificado(h),
-                          label: Text('Certificado verificable'),
+                          label: Text(SoleraL10n.t('fos.mapa_certificado_verificable')),
                           style: OutlinedButton.styleFrom(
                             minimumSize: Size(double.infinity, 40),
                           ),
@@ -957,14 +964,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
                         FilledButton.icon(
                           icon: Icon(Icons.send_outlined),
                           onPressed: () => _enviarComoFosCard(sheetContext, h),
-                          label: Text('Enviar a otra app Fósiles'),
+                          label: Text(SoleraL10n.t('fos.mapa_enviar_otra_app')),
                           style: FilledButton.styleFrom(
                             minimumSize: Size(double.infinity, 40),
                           ),
                         ),
                         SizedBox(height: 16),
                         if (h.historialTrazabilidad.isNotEmpty) ...[
-                          Text('Historial de trazabilidad',
+                          Text(SoleraL10n.t('fos.mapa_historial_trazabilidad'),
                               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                           SizedBox(height: 6),
                           ...h.historialTrazabilidad.map(tarjetaEventoTrazabilidad),
@@ -980,14 +987,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
                               _cargarHallazgos();
                               if (mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(content: Text('Evento añadido al historial.')),
+                                  SnackBar(content: Text(SoleraL10n.t('fos.mapa_evento_anadido'))),
                                 );
                               }
                             }
                           },
                           label: Text(h.historialTrazabilidad.isEmpty
-                              ? 'Añadir trazabilidad'
-                              : 'Añadir evento'),
+                              ? SoleraL10n.t('fos.mapa_anadir_trazabilidad')
+                              : SoleraL10n.t('fos.mapa_anadir_evento')),
                           style: OutlinedButton.styleFrom(
                             minimumSize: Size(double.infinity, 40),
                           ),
@@ -1017,18 +1024,18 @@ class _PantallaMapaState extends State<PantallaMapa> {
       );
 
   Future<void> _compartirHallazgo(Hallazgo hallazgo) async {
-    final fecha = DateFormat('dd MMM yyyy', 'es_ES')
+    final fecha = DateFormat('dd MMM yyyy', SoleraL10n.idioma)
         .format(DateTime.fromMillisecondsSinceEpoch(hallazgo.fechaMs));
     final texto = StringBuffer()
-      ..writeln('Hallazgo de fósil')
-      ..writeln('Especie: ${hallazgo.especie.isEmpty ? "?" : hallazgo.especie}')
-      ..writeln('Edad: ${hallazgo.edad.isEmpty ? "?" : hallazgo.edad}')
-      ..writeln('Formación: ${hallazgo.formacion.isEmpty ? "?" : hallazgo.formacion}')
+      ..writeln(SoleraL10n.t('fos.mapa_compartir_titulo'))
+      ..writeln('${SoleraL10n.t('fos.mapa_especie')}: ${hallazgo.especie.isEmpty ? "?" : hallazgo.especie}')
+      ..writeln('${SoleraL10n.t('fos.mapa_edad')}: ${hallazgo.edad.isEmpty ? "?" : hallazgo.edad}')
+      ..writeln('${SoleraL10n.t('fos.mapa_formacion')}: ${hallazgo.formacion.isEmpty ? "?" : hallazgo.formacion}')
       ..writeln(
-          'Coordenadas: ${hallazgo.latitud.toStringAsFixed(5)}, ${hallazgo.longitud.toStringAsFixed(5)}')
-      ..writeln('Fecha: $fecha')
+          '${SoleraL10n.t('fos.mapa_coordenadas')}: ${hallazgo.latitud.toStringAsFixed(5)}, ${hallazgo.longitud.toStringAsFixed(5)}')
+      ..writeln('${SoleraL10n.t('fos.mapa_fecha')}: $fecha')
       ..writeln(
-          'Mapa: https://www.openstreetmap.org/?mlat=${hallazgo.latitud}&mlon=${hallazgo.longitud}#map=16/${hallazgo.latitud}/${hallazgo.longitud}');
+          '${SoleraL10n.t('mapa')}: https://www.openstreetmap.org/?mlat=${hallazgo.latitud}&mlon=${hallazgo.longitud}#map=16/${hallazgo.latitud}/${hallazgo.longitud}');
     if (hallazgo.notas.isNotEmpty) {
       texto
         ..writeln()
@@ -1036,9 +1043,9 @@ class _PantallaMapaState extends State<PantallaMapa> {
     }
     if (hallazgo.rutaFoto != null) {
       await Share.shareXFiles([XFile(hallazgo.rutaFoto!)],
-          text: texto.toString(), subject: 'Hallazgo: ${hallazgo.especie}');
+          text: texto.toString(), subject: SoleraL10n.tf('fos.mapa_asunto_hallazgo', {'especie': hallazgo.especie}));
     } else {
-      await Share.share(texto.toString(), subject: 'Hallazgo: ${hallazgo.especie}');
+      await Share.share(texto.toString(), subject: SoleraL10n.tf('fos.mapa_asunto_hallazgo', {'especie': hallazgo.especie}));
     }
   }
 
@@ -1052,12 +1059,12 @@ class _PantallaMapaState extends State<PantallaMapa> {
       if (!mounted) return;
       Navigator.of(context).pop();
       await Share.shareXFiles([XFile(fichero.path)],
-          subject: 'Hallazgo: ${hallazgo.especie}');
+          subject: SoleraL10n.tf('fos.mapa_asunto_hallazgo', {'especie': hallazgo.especie}));
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error generando tarjeta: $e')));
+          .showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.mapa_error_tarjeta', {'error': '$e'}))));
     }
   }
 
@@ -1075,19 +1082,17 @@ class _PantallaMapaState extends State<PantallaMapa> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('Precisión de las coordenadas',
+              Text(SoleraL10n.t('fos.mapa_precision_coordenadas'),
                   style: Theme.of(context).textTheme.titleLarge),
               SizedBox(height: 8),
               Text(
-                'Las coordenadas precisas pueden facilitar el saqueo de yacimientos. '
-                'Para colegas de confianza o el Instituto, manda precisas; para aficionados '
-                'desconocidos o público en general, difuminadas (precisión ~1 km).',
+                SoleraL10n.t('fos.mapa_precision_explicacion'),
                 style: TextStyle(fontSize: 13, color: Colors.black54),
               ),
               SizedBox(height: 16),
               FilledButton.icon(
                 icon: Icon(Icons.blur_on),
-                label: Text('Difuminadas (~1 km)  ·  recomendado'),
+                label: Text(SoleraL10n.t('fos.mapa_difuminadas_recomendado')),
                 onPressed: () =>
                     Navigator.pop(sheetContext, ModoCompartirCoordenadas.difuminadas),
                 style: FilledButton.styleFrom(minimumSize: Size(double.infinity, 48)),
@@ -1095,7 +1100,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
               SizedBox(height: 8),
               OutlinedButton.icon(
                 icon: Icon(Icons.gps_fixed),
-                label: Text('Precisas (~11 cm)'),
+                label: Text(SoleraL10n.t('fos.mapa_precisas')),
                 onPressed: () =>
                     Navigator.pop(sheetContext, ModoCompartirCoordenadas.precisas),
                 style: OutlinedButton.styleFrom(minimumSize: Size(double.infinity, 48)),
@@ -1122,19 +1127,23 @@ class _PantallaMapaState extends State<PantallaMapa> {
       final resultado = await exportarFosCard(hallazgo: hallazgo, modoCoordenadas: modo);
       if (!mounted) return;
       Navigator.of(context).pop(); // cerrar spinner
-      final tamMb = (resultado.bytesTotales / (1024 * 1024)).toStringAsFixed(1);
+      final tamMb = formatearNumero(resultado.bytesTotales / (1024 * 1024), decimales: 1);
       await Share.shareXFiles(
         [XFile(resultado.archivo.path, mimeType: 'application/x-fos-card')],
-        subject: 'Card de hallazgo: ${hallazgo.especie.isEmpty ? "(sin especie)" : hallazgo.especie}',
-        text: 'Card de Fósiles ($tamMb MB · ${resultado.fotosIncluidas} fotos · '
-            '${modo == ModoCompartirCoordenadas.difuminadas ? "coords difuminadas" : "coords precisas"}). '
-            'Para importarlo, abre el archivo en otra instalación de la app Fósiles.',
+        subject: SoleraL10n.tf('fos.mapa_asunto_card', {'especie': hallazgo.especie.isEmpty ? SoleraL10n.t('fos.mapa_sin_especie') : hallazgo.especie}),
+        text: SoleraL10n.tf('fos.mapa_texto_card', {
+          'mb': tamMb,
+          'fotos': '${resultado.fotosIncluidas}',
+          'modo': modo == ModoCompartirCoordenadas.difuminadas
+              ? SoleraL10n.t('fos.mapa_coords_difuminadas')
+              : SoleraL10n.t('fos.mapa_coords_precisas'),
+        }),
       );
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop(); // cerrar spinner
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error generando card: $e')),
+        SnackBar(content: Text(SoleraL10n.tf('fos.mapa_error_card', {'error': '$e'}))),
       );
     }
   }
@@ -1145,7 +1154,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Configura primero tu nombre en Ajustes → Perfil e identidad.'),
+          content: Text(SoleraL10n.t('fos.mapa_configura_nombre')),
           duration: Duration(seconds: 4),
         ),
       );
@@ -1187,14 +1196,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
               ],
             ),
             SizedBox(height: 12),
-            if (cueva.profundidadMetros != null) Text('Profundidad: ${cueva.profundidadMetros} m'),
-            if (cueva.longitudMetros != null) Text('Longitud: ${cueva.longitudMetros} m'),
-            if (cueva.tipo != null) Text('Tipo: ${cueva.tipo}'),
+            if (cueva.profundidadMetros != null) Text(SoleraL10n.tf('fos.mapa_profundidad', {'n': '${cueva.profundidadMetros}'})),
+            if (cueva.longitudMetros != null) Text(SoleraL10n.tf('fos.mapa_longitud', {'n': '${cueva.longitudMetros}'})),
+            if (cueva.tipo != null) Text(SoleraL10n.tf('fos.mapa_tipo', {'tipo': '${cueva.tipo}'})),
             SizedBox(height: 16),
             OutlinedButton.icon(
               icon: Icon(Icons.open_in_new),
               onPressed: () => launchUrl(Uri.parse(cueva.enlaceOSM), mode: LaunchMode.externalApplication),
-              label: Text('Ver en OpenStreetMap'),
+              label: Text(SoleraL10n.t('fos.mapa_ver_en_osm')),
             ),
           ],
         ),
@@ -1378,10 +1387,10 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 return ListView(
                   controller: scrollController,
                   padding: const EdgeInsets.all(16),
-                  children: const [
-                    Text('Sin datos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                    SizedBox(height: 8),
-                    Text('El IGME no devuelve información en este punto.'),
+                  children: [
+                    Text(SoleraL10n.t('fos.mapa_sin_datos'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 8),
+                    Text(SoleraL10n.t('fos.mapa_igme_sin_info')),
                   ],
                 );
               }
@@ -1416,20 +1425,20 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 controller: scrollController,
                 padding: const EdgeInsets.all(16),
                 children: [
-                  Text('Geología en este punto', style: Theme.of(context).textTheme.titleLarge),
+                  Text(SoleraL10n.t('fos.mapa_geologia_en_punto'), style: Theme.of(context).textTheme.titleLarge),
                   SizedBox(height: 12),
                   if (contexto?.edad != null) ...[
-                    _filaGeo('Edad', contexto!.edad!),
+                    _filaGeo(SoleraL10n.t('fos.mapa_edad'), contexto!.edad!),
                     if (rangoMaDeEdad(contexto.edad) != null)
-                      _filaGeo('Antigüedad', '≈ ${rangoMaDeEdad(contexto.edad)!.formatear()}'),
+                      _filaGeo(SoleraL10n.t('fos.mapa_antiguedad'), '≈ ${rangoMaDeEdad(contexto.edad)!.formatear()}'),
                   ],
                   if (periodo != null)
-                    _filaGeo('Era / Período', '${periodo.nombre} · ${periodo.edadMa}'),
-                  if (contexto?.formacion != null) _filaGeo('Formación', contexto!.formacion!),
-                  if (contexto?.litologia != null) _filaGeo('Litología', contexto!.litologia!),
+                    _filaGeo(SoleraL10n.t('fos.mapa_era_periodo'), '${periodo.nombre} · ${periodo.edadMa}'),
+                  if (contexto?.formacion != null) _filaGeo(SoleraL10n.t('fos.mapa_formacion'), contexto!.formacion!),
+                  if (contexto?.litologia != null) _filaGeo(SoleraL10n.t('fos.mapa_litologia'), contexto!.litologia!),
                   if (ligs.isNotEmpty) ...[
                     SizedBox(height: 16),
-                    Text('Lugares de Interés Geológico cerca', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(SoleraL10n.t('fos.mapa_lig_cerca'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     SizedBox(height: 6),
                     ...ligs.take(8).map((lig) => Card(
                           margin: const EdgeInsets.only(bottom: 6),
@@ -1446,7 +1455,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                   ],
                   if (yacimientosProximos.isNotEmpty) ...[
                     SizedBox(height: 16),
-                    Text('Yacimientos curados cercanos', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(SoleraL10n.t('fos.mapa_yacimientos_cercanos'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                     SizedBox(height: 6),
                     ...yacimientosProximos.take(5).map((entrada) => Card(
                           margin: const EdgeInsets.only(bottom: 6),
@@ -1470,7 +1479,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: periodo?.color, borderRadius: BorderRadius.circular(4)),
                       child: Text(
-                        'Fósiles probables aquí · ${periodo?.nombre ?? ''}',
+                        SoleraL10n.tf('fos.mapa_fosiles_probables', {'periodo': periodo?.nombre ?? ''}),
                         style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D3A2E), fontSize: 13),
                       ),
                     ),
@@ -1488,7 +1497,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                   ] else if (contexto?.edad != null) ...[
                     Padding(
                       padding: EdgeInsets.only(top: 8),
-                      child: Text('No hay fósiles asociados en la guía para esta edad.', style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
+                      child: Text(SoleraL10n.t('fos.mapa_sin_fosiles_edad'), style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12)),
                     ),
                   ],
                   if (minerales.isNotEmpty) ...[
@@ -1497,7 +1506,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: Colors.blueGrey.shade200, borderRadius: BorderRadius.circular(4)),
                       child: Text(
-                        '💎 Minerales probables aquí',
+                        SoleraL10n.t('fos.mapa_minerales_probables'),
                         style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF2D3A2E), fontSize: 13),
                       ),
                     ),
@@ -1519,7 +1528,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     OutlinedButton.icon(
                       icon: Icon(Icons.public),
                       label: Text(
-                        'Fotos de la comunidad en ${formacionCatalogada.id}',
+                        SoleraL10n.tf('fos.mapa_fotos_comunidad', {'formacion': formacionCatalogada.id}),
                       ),
                       onPressed: () {
                         Navigator.of(sheetContext).pop();
@@ -1532,7 +1541,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     ),
                   ],
                   SizedBox(height: 12),
-                  Text('Fuente: IGME GEODE 50', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                  Text(SoleraL10n.tf('fos.mapa_fuente', {'fuente': 'IGME GEODE 50'}), style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                 ],
               );
             },
@@ -1569,16 +1578,16 @@ class _PantallaMapaState extends State<PantallaMapa> {
               Expanded(child: Text(lig.nombre, style: Theme.of(context).textTheme.titleLarge)),
             ]),
             SizedBox(height: 12),
-            if (lig.interesPrincipal != null) _filaGeo('Interés principal', lig.interesPrincipal!),
-            if (lig.edad != null) _filaGeo('Edad', lig.edad!),
+            if (lig.interesPrincipal != null) _filaGeo(SoleraL10n.t('fos.mapa_interes_principal'), lig.interesPrincipal!),
+            if (lig.edad != null) _filaGeo(SoleraL10n.t('fos.mapa_edad'), lig.edad!),
             if (lig.descripcion != null) ...[
               SizedBox(height: 12),
-              Text('Descripción', style: TextStyle(fontWeight: FontWeight.bold)),
+              Text(SoleraL10n.t('fos.mapa_descripcion'), style: TextStyle(fontWeight: FontWeight.bold)),
               SizedBox(height: 4),
               Text(lig.descripcion!),
             ],
             SizedBox(height: 16),
-            Text('Fuente: IGME · Inventario Español de LIG', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+            Text(SoleraL10n.tf('fos.mapa_fuente', {'fuente': 'IGME · Inventario Español de LIG'}), style: TextStyle(fontSize: 11, color: Colors.grey[600])),
           ],
         ),
       ),
@@ -1590,9 +1599,9 @@ class _PantallaMapaState extends State<PantallaMapa> {
   /// decimal por consistencia con el resto de la UI castellana.
   static String _formatearDistanciaKm(double distancia) {
     if (distancia < 10) {
-      return 'a ${distancia.toStringAsFixed(1).replaceAll('.', ',')} km';
+      return SoleraL10n.tf('fos.mapa_a_distancia_km', {'km': formatearNumero(distancia, decimales: 1)});
     }
-    return 'a ${distancia.toStringAsFixed(0)} km';
+    return SoleraL10n.tf('fos.mapa_a_distancia_km', {'km': formatearNumero(distancia)});
   }
 
   Widget _filaGeo(String clave, String valor) => Padding(
@@ -1794,20 +1803,20 @@ class _PantallaMapaState extends State<PantallaMapa> {
         actions: [
           IconButton(
             icon: Icon(Icons.search),
-            tooltip: 'Buscar un lugar',
+            tooltip: SoleraL10n.t('core.buscar_un_lugar'),
             onPressed: _buscarLugar,
           ),
           PopupMenuButton<CapaBase>(
             icon: Icon(Icons.layers),
-            tooltip: 'Capa base',
+            tooltip: SoleraL10n.t('fos.mapa_capa_base'),
             onSelected: (capa) => setState(() => _capaBaseActual = capa),
             itemBuilder: (_) => capasBaseDisponibles
-                .map((c) => PopupMenuItem(value: c, child: Text(c.nombre + (c == _capaBaseActual ? ' ✓' : ''))))
+                .map((c) => PopupMenuItem(value: c, child: Text(c.nombreVisible + (c == _capaBaseActual ? ' ✓' : ''))))
                 .toList(),
           ),
           PopupMenuButton<String>(
             icon: Icon(_capaGeologicaActual == null ? Icons.terrain_outlined : Icons.terrain),
-            tooltip: 'Capa geológica',
+            tooltip: SoleraL10n.t('fos.mapa_capa_geologica'),
             onSelected: (valor) => setState(() {
               if (valor == '__off__') {
                 _capaGeologicaActual = null;
@@ -1818,7 +1827,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
             itemBuilder: (_) => [
               PopupMenuItem(
                 value: '__off__',
-                child: Text('Sin geología' + (_capaGeologicaActual == null ? ' ✓' : '')),
+                child: Text(SoleraL10n.t('fos.mapa_sin_geologia') + (_capaGeologicaActual == null ? ' ✓' : '')),
               ),
               PopupMenuDivider(),
               ...capasGeologicasWms.map((c) {
@@ -1833,12 +1842,12 @@ class _PantallaMapaState extends State<PantallaMapa> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          c.nombre + (activa ? ' ✓' : ''),
+                          c.nombreVisible + (activa ? ' ✓' : ''),
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          c.descripcion,
+                          c.descripcionVisible,
                           style: const TextStyle(fontSize: 11, color: Colors.black54, height: 1.2),
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
@@ -1853,34 +1862,34 @@ class _PantallaMapaState extends State<PantallaMapa> {
           IconButton(
             icon: Icon(GrabadorTrack.instancia.grabando ? Icons.stop_circle : Icons.fiber_manual_record),
             color: GrabadorTrack.instancia.grabando ? Colors.red : null,
-            tooltip: GrabadorTrack.instancia.grabando ? 'Detener track' : 'Iniciar track',
+            tooltip: GrabadorTrack.instancia.grabando ? SoleraL10n.t('fos.mapa_detener_track') : SoleraL10n.t('fos.mapa_iniciar_track'),
             onPressed: _alternarTrack,
           ),
           // Los interruptores de capas y los tracks guardados van en un
           // menú: en la barra no caben (en un móvil se comían el título).
           PopupMenuButton<_OpcionMenuMapa>(
-            tooltip: 'Más capas y opciones',
+            tooltip: SoleraL10n.t('fos.mapa_mas_capas'),
             onSelected: _alElegirOpcionMenu,
             itemBuilder: (_) => [
               CheckedPopupMenuItem(
                 value: _OpcionMenuMapa.lig,
                 checked: _mostrarLig,
-                child: Text('Lugares de Interés Geológico'),
+                child: Text(SoleraL10n.t('fos.mapa_lig')),
               ),
               CheckedPopupMenuItem(
                 value: _OpcionMenuMapa.relieve,
                 checked: _mostrarHillshade,
-                child: Text('Relieve sombreado'),
+                child: Text(SoleraL10n.t('fos.mapa_relieve_sombreado')),
               ),
               CheckedPopupMenuItem(
                 value: _OpcionMenuMapa.mapaDeCalor,
                 checked: _modoHeatmap,
-                child: Text('Hallazgos como mapa de calor'),
+                child: Text(SoleraL10n.t('fos.mapa_mapa_de_calor')),
               ),
               CheckedPopupMenuItem(
                 value: _OpcionMenuMapa.yacimientos,
                 checked: _mostrarYacimientos,
-                child: Text('Yacimientos curados'),
+                child: Text(SoleraL10n.t('fos.mapa_yacimientos_curados')),
               ),
               PopupMenuDivider(),
               PopupMenuItem(
@@ -1888,7 +1897,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.timeline),
-                  title: Text('Tracks guardados'),
+                  title: Text(SoleraL10n.t('fos.mapa_tracks_guardados')),
                 ),
               ),
               PopupMenuItem(
@@ -1896,7 +1905,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 child: ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.help_outline),
-                  title: Text('Cómo leer el mapa'),
+                  title: Text(SoleraL10n.t('fos.mapa_como_leer_mapa')),
                 ),
               ),
             ],
@@ -1922,7 +1931,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                       children: [
                         Icon(Icons.cloud_off, color: Colors.white, size: 16),
                         SizedBox(width: 6),
-                        Text('Sin conexión — usando datos en caché',
+                        Text(SoleraL10n.t('fos.mapa_sin_conexion_cache'),
                             style: TextStyle(color: Colors.white, fontSize: 12)),
                       ],
                     ),
@@ -2133,8 +2142,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
                   decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(20)),
                   child: Text(
                     _modo == _ModoMapa.marcarPunto
-                        ? '👆 Toca el mapa para marcar el hallazgo'
-                        : '👆 Toca el mapa para ver la geología',
+                        ? SoleraL10n.t('fos.mapa_toca_marcar')
+                        : SoleraL10n.t('fos.mapa_toca_geologia'),
                     style: TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ),
@@ -2156,7 +2165,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _chipFiltro(null, 'Todos', _hallazgos.length),
+                    _chipFiltro(null, SoleraL10n.t('todos'), _hallazgos.length),
                     ...periodos.map((p) {
                       final n = _conteosPorPeriodoCache[p.id] ?? 0;
                       if (n == 0) return const SizedBox.shrink();
@@ -2276,7 +2285,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          'El asistente IGME necesita conexión',
+                          SoleraL10n.t('fos.mapa_asistente_sin_conexion'),
                           style: TextStyle(
                             fontSize: 11,
                             color: Colors.red.shade700,
@@ -2294,8 +2303,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
               Expanded(
                 child: Text(
                   cargando
-                      ? 'Consultando IGME…'
-                      : (_resumenAsistente(ctx) ?? 'Sin datos del IGME en el centro del mapa'),
+                      ? SoleraL10n.t('fos.mapa_consultando_igme')
+                      : (_resumenAsistente(ctx) ?? SoleraL10n.t('fos.mapa_sin_datos_igme_centro')),
                   style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: esquema.onSurface),
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -2450,14 +2459,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
       children: [
         _botonModo(
           icono: Icons.location_on,
-          etiqueta: 'Marcar punto',
+          etiqueta: SoleraL10n.t('fos.mapa_marcar_punto'),
           activo: _modo == _ModoMapa.marcarPunto,
           onTap: () => setState(() => _modo = _modo == _ModoMapa.marcarPunto ? _ModoMapa.ver : _ModoMapa.marcarPunto),
         ),
         SizedBox(height: 6),
         _botonModo(
           icono: Icons.info,
-          etiqueta: 'Explorar geología',
+          etiqueta: SoleraL10n.t('fos.mapa_explorar_geologia'),
           activo: _modo == _ModoMapa.explorarGeologia,
           onTap: () => setState(() => _modo = _modo == _ModoMapa.explorarGeologia ? _ModoMapa.ver : _ModoMapa.explorarGeologia),
         ),
@@ -2465,8 +2474,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
         _botonModo(
           icono: _cargandoCuevas ? Icons.hourglass_top : Icons.bedroom_baby,
           etiqueta: _cargandoCuevas
-              ? 'Cargando…'
-              : (_idsCuevasYaPintadas.isEmpty ? 'Cuevas' : 'Cuevas (${_idsCuevasYaPintadas.length})'),
+              ? SoleraL10n.t('fos.mapa_cargando')
+              : (_idsCuevasYaPintadas.isEmpty ? SoleraL10n.t('fos.mapa_cuevas') : '${SoleraL10n.t('fos.mapa_cuevas')} (${_idsCuevasYaPintadas.length})'),
           activo: _mostrarCuevas,
           onTap: _alternarCuevas,
         ),
@@ -2474,22 +2483,22 @@ class _PantallaMapaState extends State<PantallaMapa> {
         _botonModo(
           icono: _cargandoMonumentos ? Icons.hourglass_top : Icons.account_balance,
           etiqueta: _cargandoMonumentos
-              ? 'Cargando…'
-              : (_idsMonumentosYaPintados.isEmpty ? 'Megalitos' : 'Megalitos (${_idsMonumentosYaPintados.length})'),
+              ? SoleraL10n.t('fos.mapa_cargando')
+              : (_idsMonumentosYaPintados.isEmpty ? SoleraL10n.t('fos.mapa_megalitos') : '${SoleraL10n.t('fos.mapa_megalitos')} (${_idsMonumentosYaPintados.length})'),
           activo: _mostrarMonumentos,
           onTap: _alternarMonumentos,
         ),
         SizedBox(height: 6),
         _botonModo(
           icono: _cargandoAsistente ? Icons.hourglass_top : Icons.assistant,
-          etiqueta: _mostrarAsistente ? 'Asistente activo' : 'Asistente',
+          etiqueta: _mostrarAsistente ? SoleraL10n.t('fos.mapa_asistente_activo') : SoleraL10n.t('fos.mapa_asistente'),
           activo: _mostrarAsistente,
           onTap: _alternarAsistente,
         ),
         SizedBox(height: 6),
         _botonModo(
           icono: Icons.close,
-          etiqueta: 'Cerrar',
+          etiqueta: SoleraL10n.t('fos.mapa_cerrar'),
           activo: false,
           onTap: () => setState(() => _menuModosExpandido = false),
         ),
@@ -2582,10 +2591,10 @@ class _BloqueMareas extends StatelessWidget {
               Row(children: [
                 Icon(Icons.waves, size: 18, color: esquema.primary),
                 SizedBox(width: 6),
-                Text('Mareas', style: Theme.of(context).textTheme.titleSmall),
+                Text(SoleraL10n.t('fos.mapa_mareas'), style: Theme.of(context).textTheme.titleSmall),
                 Spacer(),
                 if (bajamarSiguiente.esBajamar)
-                  Text('Bajamar: ${_formatearHora(bajamarSiguiente.fecha)}',
+                  Text(SoleraL10n.tf('fos.mapa_bajamar_hora', {'hora': _formatearHora(bajamarSiguiente.fecha)}),
                       style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: esquema.primary)),
               ]),
               SizedBox(height: 6),
@@ -2595,10 +2604,10 @@ class _BloqueMareas extends StatelessWidget {
                       Icon(e.esBajamar ? Icons.arrow_downward : Icons.arrow_upward,
                           size: 14, color: e.esBajamar ? colorBajar : colorSubir),
                       SizedBox(width: 6),
-                      Text(e.esBajamar ? 'Bajamar' : 'Pleamar',
+                      Text(e.esBajamar ? SoleraL10n.t('fos.mapa_bajamar') : SoleraL10n.t('fos.mapa_pleamar'),
                           style: TextStyle(fontSize: 12, color: esquema.onSurface)),
                       Spacer(),
-                      Text('${_formatearDiaHora(e.fecha)}  ·  ${e.alturaM.toStringAsFixed(2)} m',
+                      Text('${_formatearDiaHora(e.fecha)}  ·  ${formatearNumero(e.alturaM, decimales: 2)} m',
                           style: TextStyle(fontSize: 12, color: esquema.onSurface)),
                     ]),
                   )),
@@ -2617,7 +2626,7 @@ class _BloqueMareas extends StatelessWidget {
     final esHoy = f.year == hoy.year && f.month == hoy.month && f.day == hoy.day;
     final manana = hoy.add(Duration(days: 1));
     final esManana = f.year == manana.year && f.month == manana.month && f.day == manana.day;
-    final etiqueta = esHoy ? 'hoy' : (esManana ? 'mañana' : '${f.day}/${f.month}');
+    final etiqueta = esHoy ? SoleraL10n.t('fos.mapa_hoy_minusculas') : (esManana ? SoleraL10n.t('fos.mapa_manana_minusculas') : '${f.day}/${f.month}');
     return '$etiqueta ${_formatearHora(f)}';
   }
 }
@@ -2724,25 +2733,25 @@ class _BadgeFirmaHallazgoState extends State<_BadgeFirmaHallazgo> {
             colorFondo = Colors.green.shade50;
             colorTexto = Colors.green.shade900;
             icono = Icons.verified;
-            texto = '✓ Firmado por ti';
+            texto = SoleraL10n.t('fos.mapa_firmado_por_ti');
             break;
           case _TipoFirma.otraValida:
             colorFondo = Colors.blue.shade50;
             colorTexto = Colors.blue.shade900;
             icono = Icons.south;
-            texto = 'Firmado por otra persona';
+            texto = SoleraL10n.t('fos.mapa_firmado_por_otra');
             break;
           case _TipoFirma.sinFirma:
             colorFondo = Colors.grey.shade200;
             colorTexto = Colors.grey.shade800;
             icono = Icons.help_outline;
-            texto = 'Sin firma criptográfica';
+            texto = SoleraL10n.t('fos.mapa_sin_firma');
             break;
           case _TipoFirma.rota:
             colorFondo = Colors.red.shade50;
             colorTexto = Colors.red.shade900;
             icono = Icons.error_outline;
-            texto = '✗ Firma rota — los datos han sido modificados';
+            texto = SoleraL10n.t('fos.mapa_firma_rota');
             break;
         }
         return InkWell(
@@ -2852,7 +2861,7 @@ class _SelloCertificacionAutoridadState
               color: Colors.amber.shade50,
               borderRadius: BorderRadius.circular(6),
             ),
-            child: Text('Verificando certificación…',
+            child: Text(SoleraL10n.t('fos.mapa_verificando_certificacion'),
                 style: TextStyle(color: Colors.amber.shade900)),
           );
         }
@@ -2870,7 +2879,7 @@ class _SelloCertificacionAutoridadState
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Cadena de certificación inválida — al menos un eslabón está roto.',
+                    SoleraL10n.t('fos.mapa_cadena_invalida'),
                     style: TextStyle(color: Colors.red.shade900, fontSize: 13),
                   ),
                 ),
@@ -2911,7 +2920,7 @@ class _SelloCertificacionAutoridadState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Certificada por ${ultimaCert.nombreAutoridad}',
+                      SoleraL10n.tf('fos.mapa_certificada_por', {'autoridad': ultimaCert.nombreAutoridad}),
                       style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
@@ -2923,7 +2932,9 @@ class _SelloCertificacionAutoridadState
                         style: const TextStyle(fontSize: 12, color: Colors.black54),
                       ),
                     Text(
-                      'Firmada $fechaTexto · ${certs.length} certificación${certs.length == 1 ? "" : "es"}',
+                      certs.length == 1
+                          ? SoleraL10n.tf('fos.mapa_firmada_una', {'fecha': fechaTexto})
+                          : SoleraL10n.tf('fos.mapa_firmada_varias', {'fecha': fechaTexto, 'n': '${certs.length}'}),
                       style: const TextStyle(fontSize: 11, color: Colors.black54),
                     ),
                   ],

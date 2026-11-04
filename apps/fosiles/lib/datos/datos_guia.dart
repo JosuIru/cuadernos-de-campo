@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../servicios/servicio_wikipedia.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl, LaunchMode;
 
@@ -1522,10 +1523,10 @@ Widget _contenidoFosil(BuildContext context, FosilGuia fosil, PeriodoGeologico? 
       const SizedBox(height: 12),
       Text(fosil.descripcionCorta),
       const SizedBox(height: 16),
-      Text('Distintivos para reconocerlo', style: Theme.of(context).textTheme.titleSmall),
+      Text(SoleraL10n.t('fos.ficha_distintivos'), style: Theme.of(context).textTheme.titleSmall),
       ...fosil.distintivos.map((d) => Padding(padding: const EdgeInsets.only(left: 8, top: 2), child: Text('• $d'))),
       const SizedBox(height: 16),
-      Text('Dónde encontrarlo', style: Theme.of(context).textTheme.titleSmall),
+      Text(SoleraL10n.t('fos.ficha_donde_encontrarlo'), style: Theme.of(context).textTheme.titleSmall),
       const SizedBox(height: 4),
       Text(fosil.dondeEncontrar),
       const SizedBox(height: 16),
@@ -1546,7 +1547,7 @@ Widget _contenidoFosil(BuildContext context, FosilGuia fosil, PeriodoGeologico? 
                     child: OutlinedButton.icon(
                       onPressed: () => launchUrl(Uri.parse(enlace), mode: LaunchMode.externalApplication),
                       icon: const Icon(Icons.open_in_new),
-                      label: const Text('Leer más en Wikipedia'),
+                      label: Text(SoleraL10n.t('fos.ficha_leer_wikipedia')),
                     ),
                   ),
                 ),
@@ -1616,7 +1617,7 @@ class _GaleriaFosilWikipediaState extends State<_GaleriaFosilWikipedia> {
                     _futuroGaleria = obtenerGaleriaWikipedia(widget.tituloWikipedia);
                   }),
                   icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Reintentar'),
+                  label: Text(SoleraL10n.t('fos.ficha_reintentar')),
                 ),
               ],
             ),

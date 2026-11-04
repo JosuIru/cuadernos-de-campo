@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'cliente_comunidad.dart';
 import 'modelo_foto_comunidad.dart';
 
@@ -34,10 +35,11 @@ class _PantallaFotosComunidadState extends State<PantallaFotosComunidad> {
   @override
   Widget build(BuildContext context) {
     final titulo = widget.nombreFormacionParaCabecera ??
-        'Formación · ${widget.formacionCodigo}';
+        SoleraL10n.tf('fos.iden_com_formacion_codigo',
+            {'codigo': widget.formacionCodigo});
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Fotos de la comunidad'),
+        title: Text(SoleraL10n.t('fos.iden_com_fotos_comunidad')),
       ),
       body: FutureBuilder<List<FotoComunidad>>(
         future: _futuroFotos,
@@ -95,12 +97,10 @@ class _PantallaFotosComunidadState extends State<PantallaFotosComunidad> {
             Text(tituloFormacion,
                 style: const TextStyle(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text(
-              'Aún no hay fotos de la comunidad para esta formación. '
-              'Si encuentras algo aquí, puedes ser el primero — comparte '
-              'tu hallazgo desde la pestaña Lista.',
+            Text(
+              SoleraL10n.t('fos.iden_com_sin_fotos_formacion'),
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black54, fontSize: 13),
+              style: const TextStyle(color: Colors.black54, fontSize: 13),
             ),
           ],
         ),
@@ -155,7 +155,7 @@ class _TarjetaFotoComunidad extends StatelessWidget {
                 children: [
                   Text(
                     foto.especieCurada.isEmpty
-                        ? '(sin especie)'
+                        ? SoleraL10n.t('fos.iden_com_sin_especie')
                         : foto.especieCurada,
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 12),

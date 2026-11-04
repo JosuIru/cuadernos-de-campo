@@ -85,10 +85,9 @@ class _PantallaCertificarState extends State<PantallaCertificar> {
       if (!mounted) return;
       await Share.shareXFiles(
         [XFile(resultado.archivo.path, mimeType: 'application/x-fos-card')],
-        subject:
-            'Card certificada — ${cert.nombreAutoridad}',
-        text: 'Card revisada y certificada por la autoridad. '
-            'Importa este archivo en tu app Fósiles para ver el sello.',
+        subject: SoleraL10n.tf('fos.iden_card_certificada_asunto',
+            {'autoridad': cert.nombreAutoridad}),
+        text: SoleraL10n.t('fos.iden_card_certificada_texto'),
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -96,7 +95,7 @@ class _PantallaCertificarState extends State<PantallaCertificar> {
       if (!mounted) return;
       setState(() => _firmando = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error firmando: $e')),
+        SnackBar(content: Text('${SoleraL10n.t('fos.iden_error_firmando')}: $e')),
       );
     }
   }
@@ -105,7 +104,7 @@ class _PantallaCertificarState extends State<PantallaCertificar> {
   Widget build(BuildContext context) {
     final h = widget.parseada.hallazgo;
     return Scaffold(
-      appBar: AppBar(title: const Text('Certificar hallazgo')),
+      appBar: AppBar(title: Text(SoleraL10n.t('fos.iden_certificar_hallazgo'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -119,7 +118,8 @@ class _PantallaCertificarState extends State<PantallaCertificar> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Descubridor: ${widget.parseada.nombreRemitente}',
+                  SoleraL10n.tf('fos.iden_descubridor_valor',
+                      {'nombre': widget.parseada.nombreRemitente}),
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
                     color: Colors.amber.shade900,
@@ -132,64 +132,61 @@ class _PantallaCertificarState extends State<PantallaCertificar> {
                           fontSize: 12, color: Colors.amber.shade700)),
                 const SizedBox(height: 6),
                 Text(
-                  'Coords: ${h.latitud.toStringAsFixed(widget.parseada.coordenadasDifuminadas ? 2 : 5)}, '
+                  '${SoleraL10n.t('fos.iden_coords')}: ${h.latitud.toStringAsFixed(widget.parseada.coordenadasDifuminadas ? 2 : 5)}, '
                   '${h.longitud.toStringAsFixed(widget.parseada.coordenadasDifuminadas ? 2 : 5)}'
-                  '${widget.parseada.coordenadasDifuminadas ? "  (difuminadas)" : ""}',
+                  '${widget.parseada.coordenadasDifuminadas ? "  ${SoleraL10n.t('fos.iden_difuminadas')}" : ""}',
                   style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
                 ),
                 Text(
-                  'Fotos: ${widget.parseada.fotosJpeg.length}',
+                  '${SoleraL10n.t('fos.iden_fotos')}: ${widget.parseada.fotosJpeg.length}',
                   style: TextStyle(fontSize: 12, color: Colors.amber.shade900),
                 ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Revisa o corrige los campos. Lo que dejes en cada caja entrará '
-            'en la certificación firmada. Si un campo ya está correcto, '
-            'déjalo como está.',
-            style: TextStyle(fontSize: 13, color: Colors.black54),
+          Text(
+            SoleraL10n.t('fos.iden_revisa_campos'),
+            style: const TextStyle(fontSize: 13, color: Colors.black54),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _especie,
-            decoration: const InputDecoration(
-              labelText: 'Especie / determinación',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: SoleraL10n.t('fos.iden_especie_determinacion'),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _edad,
-            decoration: const InputDecoration(
-              labelText: 'Edad / época geológica',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: SoleraL10n.t('fos.iden_edad_epoca'),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _formacion,
-            decoration: const InputDecoration(
-              labelText: 'Formación geológica',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: SoleraL10n.t('fos.iden_formacion_geologica'),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 12),
           TextField(
             controller: _comentarios,
             maxLines: 5,
-            decoration: const InputDecoration(
-              labelText: 'Comentarios del experto',
-              hintText: 'Ej: pieza relevante para colección regional, '
-                  'recomiendo enviar a museo X para depósito',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: SoleraL10n.t('fos.iden_comentarios_experto'),
+              hintText: SoleraL10n.t('fos.iden_comentarios_ejemplo'),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 24),
           FilledButton.icon(
             icon: const Icon(Icons.verified),
-            label: const Text('Firmar y devolver al descubridor'),
+            label: Text(SoleraL10n.t('fos.iden_firmar_y_devolver')),
             onPressed: _firmando ? null : _firmarYDevolver,
             style: FilledButton.styleFrom(
               minimumSize: const Size(double.infinity, 48),

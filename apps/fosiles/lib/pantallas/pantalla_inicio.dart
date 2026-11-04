@@ -47,10 +47,10 @@ class PantallaInicio extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               const Text('🦴', style: TextStyle(fontSize: 40)),
               const SizedBox(height: 8),
-              const Text('Cuaderno de campo de fósiles',
+              Text(SoleraL10n.t('fos.ajus_cabecera_titulo'),
                   style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text('Para el aficionado a la paleontología',
+              Text(SoleraL10n.t('fos.ajus_cabecera_sub'),
                   style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 14)),
             ]),
           ),
@@ -63,8 +63,8 @@ class PantallaInicio extends StatelessWidget {
               child: _tarjetaAccion(
                 context,
                 icono: Icons.explore,
-                titulo: 'Explorar mapa',
-                subtitulo: 'Yacimientos y geología',
+                titulo: SoleraL10n.t('fos.ajus_explorar_mapa'),
+                subtitulo: SoleraL10n.t('fos.ajus_explorar_mapa_sub'),
                 onTap: () => alIrAMapa?.call(),
               ),
             ),
@@ -73,8 +73,8 @@ class PantallaInicio extends StatelessWidget {
               child: _tarjetaAccion(
                 context,
                 icono: Icons.wb_cloudy,
-                titulo: 'Meteorología',
-                subtitulo: 'Previsión para tu excursión',
+                titulo: SoleraL10n.t('fos.ajus_meteo'),
+                subtitulo: SoleraL10n.t('fos.ajus_meteo_sub'),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const PantallaMeteo()),
                 ),
@@ -85,8 +85,8 @@ class PantallaInicio extends StatelessWidget {
           _tarjetaAccion(
             context,
             icono: Icons.chat_bubble,
-            titulo: 'Chat IA',
-            subtitulo: 'Resuelve dudas, identifica hallazgos, pide consejos de campo',
+            titulo: SoleraL10n.t('fos.ajus_chat_ia'),
+            subtitulo: SoleraL10n.t('fos.ajus_chat_ia_sub'),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const PantallaChat()),
             ),
@@ -96,62 +96,49 @@ class PantallaInicio extends StatelessWidget {
           const SizedBox(height: 24),
 
           // ─── Guía ética ────────────────────────────────
-          const Text('Explora, descubre y comparte',
+          Text(SoleraL10n.t('fos.ajus_etica_titulo'),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          const Text('Unas pautas para que tu afición sume y deje huella solo en el conocimiento.',
+          Text(SoleraL10n.t('fos.ajus_etica_sub'),
               style: TextStyle(fontSize: 13, color: Colors.grey)),
           const SizedBox(height: 12),
           _seccionEtica(
             icono: Icons.museum,
-            titulo: 'Tu hallazgo puede ser importante',
-            texto: 'Cada fósil cuenta una historia. Si encuentras algo que te parezca especial, '
-                'compártelo con un museo, una universidad o una sociedad geológica. '
-                'Ellos sabrán valorarlo y tú formarás parte del descubrimiento. '
-                'La app te ayuda a documentarlo con certificado verificable.',
+            titulo: SoleraL10n.t('fos.ajus_etica1_titulo'),
+            texto: SoleraL10n.t('fos.ajus_etica1_texto'),
           ),
           _seccionEtica(
             icono: Icons.camera_alt,
-            titulo: 'Primero observa y fotografía',
-            texto: 'El contexto es tan valioso como la pieza. Fotografía el fósil en su capa, '
-                'mide la orientación del estrato, registra la formación. '
-                'Una buena documentación multiplica el valor científico de lo que encuentras. '
-                'Y muchas veces la foto es suficiente: no siempre hace falta recoger.',
+            titulo: SoleraL10n.t('fos.ajus_etica2_titulo'),
+            texto: SoleraL10n.t('fos.ajus_etica2_texto'),
           ),
           _seccionEtica(
             icono: Icons.auto_awesome,
-            titulo: 'Infórmate para disfrutar más',
-            texto: 'Cada comunidad autónoma tiene sus propias normas de protección del patrimonio. '
-                'Conocerlas te convierte en mejor aficionado: sabrás dónde puedes recoger '
-                'y dónde es mejor solo fotografiar. Ante la duda, disfruta del hallazgo in situ.',
+            titulo: SoleraL10n.t('fos.ajus_etica3_titulo'),
+            texto: SoleraL10n.t('fos.ajus_etica3_texto'),
           ),
           _seccionEtica(
             icono: Icons.eco,
-            titulo: 'Deja el lugar como te gustaría encontrarlo',
-            texto: 'No excaves sin permiso del propietario. No dañes afloramientos. '
-                'Cierra las cancelas. Llévate tu basura… y quizá alguna ajena. '
-                'Cada persona que pasa después de ti merece la misma emoción del descubrimiento.',
+            titulo: SoleraL10n.t('fos.ajus_etica4_titulo'),
+            texto: SoleraL10n.t('fos.ajus_etica4_texto'),
           ),
           _seccionEtica(
             icono: Icons.share,
-            titulo: 'Comparte para que la ciencia avance',
-            texto: 'Usa el certificado verificable de la app para compartir tus hallazgos. '
-                'Cada registro documentado ayuda a completar el mapa paleontológico '
-                'de tu región. Tu contribución, sumada a la de otros aficionados, '
-                'es ciencia ciudadana real.',
+            titulo: SoleraL10n.t('fos.ajus_etica5_titulo'),
+            texto: SoleraL10n.t('fos.ajus_etica5_texto'),
           ),
 
           const SizedBox(height: 24),
 
           // ─── Cómo usar la app ─────────────────────────
-          const Text('Cómo usar Fósiles',
+          Text(SoleraL10n.t('fos.ajus_como_usar'),
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
-          _paso(1, 'Explora el mapa', 'Activa las capas geológicas (MAGNA, GEODE) para ver qué edad tiene el suelo que pisas.'),
-          _paso(2, 'Registra un hallazgo', 'Toca + para añadir un fósil con foto, coordenadas, edad y formación. La app consulta al IGME automáticamente.'),
-          _paso(3, 'Identifica con Claude', 'Con tu API key de Anthropic, la app identifica el fósil por imagen y te da pistas para confirmar.'),
-          _paso(4, 'Genera un certificado', 'Cada hallazgo recibe un hash SHA-256 verificable. Compártelo con quien quieras; nadie podrá alterarlo.'),
-          _paso(5, 'Registra su trazabilidad', 'Si el fósil acaba en un museo o lo estudia un geólogo, añade eventos a su historial.'),
+          _paso(1, SoleraL10n.t('fos.ajus_paso1_titulo'), SoleraL10n.t('fos.ajus_paso1_texto')),
+          _paso(2, SoleraL10n.t('fos.ajus_paso2_titulo'), SoleraL10n.t('fos.ajus_paso2_texto')),
+          _paso(3, SoleraL10n.t('fos.ajus_paso3_titulo'), SoleraL10n.t('fos.ajus_paso3_texto')),
+          _paso(4, SoleraL10n.t('fos.ajus_paso4_titulo'), SoleraL10n.t('fos.ajus_paso4_texto')),
+          _paso(5, SoleraL10n.t('fos.ajus_paso5_titulo'), SoleraL10n.t('fos.ajus_paso5_texto')),
 
           const SizedBox(height: 32),
         ],

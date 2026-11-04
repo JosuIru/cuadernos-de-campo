@@ -29,12 +29,15 @@ class EventoTrazabilidad {
         autor: json['a'] as String,
       );
 
+  /// (valor guardado en BD, clave de traducción de la etiqueta). El valor
+  /// se guarda siempre igual; la etiqueta se traduce al mostrarla con
+  /// `SoleraL10n.t(clave)`.
   static const tiposDisponibles = [
-    ('deposito_museo', 'Depositado en museo / colección'),
-    ('estudio', 'Estudiado por'),
-    ('publicacion', 'Citado en publicación'),
-    ('prestamo', 'Préstamo / consulta'),
-    ('otro', 'Otro evento'),
+    ('deposito_museo', 'fos.hall_tipo_deposito_museo'),
+    ('estudio', 'fos.hall_tipo_estudio'),
+    ('publicacion', 'fos.hall_tipo_publicacion'),
+    ('prestamo', 'fos.hall_tipo_prestamo'),
+    ('otro', 'fos.hall_tipo_otro'),
   ];
 }
 

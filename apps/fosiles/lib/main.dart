@@ -38,7 +38,7 @@ Future<void> main() async {
   // Idioma elegido en Ajustes la última vez (si no, castellano).
   await cargarIdiomaSolera();
   _inicializarAccesosDirectos();
-  await initializeDateFormatting('es_ES', null);
+  await initializeDateFormatting();
 
   // Restaurar backup automático si la BD está vacía
   final restaurado = await _autoBackup.restaurarSiProcede();
@@ -70,7 +70,7 @@ class _AplicacionFosilesState extends State<AplicacionFosiles> with WidgetsBindi
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _claveMensajes.currentState?.showSnackBar(
-            const SnackBar(content: Text('Datos restaurados desde copia de seguridad.')),
+            SnackBar(content: Text(SoleraL10n.t('fos.ajus_datos_restaurados'))),
           );
         }
       });
@@ -292,13 +292,13 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             indiceVistaActual = indice;
           });
         },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: 'Inicio'),
-          NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: 'Mapa'),
-          NavigationDestination(icon: Icon(Icons.list_outlined), selectedIcon: Icon(Icons.list), label: 'Lista'),
+        destinations: [
+          NavigationDestination(icon: Icon(Icons.home_outlined), selectedIcon: Icon(Icons.home), label: SoleraL10n.t('fos.ajus_nav_inicio')),
+          NavigationDestination(icon: Icon(Icons.map_outlined), selectedIcon: Icon(Icons.map), label: SoleraL10n.t('mapa')),
+          NavigationDestination(icon: Icon(Icons.list_outlined), selectedIcon: Icon(Icons.list), label: SoleraL10n.t('fos.ajus_nav_lista')),
           NavigationDestination(icon: Icon(Icons.add_circle, size: 32), label: ''),
-          NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: 'Guía'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Ajustes'),
+          NavigationDestination(icon: Icon(Icons.menu_book_outlined), selectedIcon: Icon(Icons.menu_book), label: SoleraL10n.t('fos.ajus_nav_guia')),
+          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: SoleraL10n.t('fos.ajus_nav_ajustes')),
         ],
       ),
     );

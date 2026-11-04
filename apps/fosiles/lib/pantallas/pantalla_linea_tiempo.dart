@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/datos_guia.dart';
 import '../servicios/servicio_wikipedia.dart';
 
@@ -9,7 +10,7 @@ class PantallaLineaTiempo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Línea del tiempo')),
+      appBar: AppBar(title: Text(SoleraL10n.t('fos.hall_linea_tiempo'))),
       body: ListView.builder(
         padding: const EdgeInsets.symmetric(vertical: 8),
         itemCount: periodos.length,
@@ -49,15 +50,15 @@ class PantallaLineaTiempo extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
-                  child: Text('${fosiles.length} fósiles', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colorTextoSobrePeriodo)),
+                  child: Text(SoleraL10n.tf('fos.hall_n_fosiles', {'n': fosiles.length}), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: colorTextoSobrePeriodo)),
                 ),
               ],
             ),
           ),
           if (fosiles.isEmpty)
-            const Padding(
-              padding: EdgeInsets.fromLTRB(14, 4, 14, 12),
-              child: Text('Sin fósiles en la guía para este período.', style: TextStyle(fontStyle: FontStyle.italic, fontSize: 12, color: colorTextoSobrePeriodo)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 4, 14, 12),
+              child: Text(SoleraL10n.t('fos.hall_sin_fosiles_periodo'), style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 12, color: colorTextoSobrePeriodo)),
             )
           else
             SizedBox(

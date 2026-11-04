@@ -77,7 +77,7 @@ Detecta primero si la imagen muestra un fósil o un mineral, y rellena tipo_dete
 - Si es fósil: rellena grupo_taxonomico, identificacion_tentativa (género/especie tentativa) y edad_estimada cronoestratigráfica.
 - Si es mineral: rellena grupo_taxonomico con la clase Strunz (sulfuros, óxidos, silicatos, carbonatos, sulfatos, halogenuros, fosfatos, elementos), identificacion_tentativa con el nombre del mineral, y dureza_mohs_estimada con un valor o rango aproximado.
 Usa las coordenadas para situar la zona y razonar sobre la geología regional probable.
-Responde SIEMPRE en español neutro. Sé honesto sobre la confianza: si no estás seguro, dilo.
+Sé honesto sobre la confianza: si no estás seguro, dilo.
 Si la foto no contiene un fósil/mineral reconocible o es de muy mala calidad, indícalo en grupo_taxonomico="No identificable" y explica por qué en razonamiento.
 ''';
 
@@ -89,7 +89,7 @@ Future<IdentificacionFosil> identificarFosil({
   if (apiKey.trim().isEmpty) {
     throw ErrorClaude(
       MotivoErrorClaude.sinClave,
-      'Falta la API key de Anthropic. Configúrala en Ajustes → Inteligencia artificial.',
+      SoleraL10n.t('fos.ajus_falta_api_anthropic'),
     );
   }
   final modelo = await Configuracion.obtenerModelo();
@@ -146,15 +146,16 @@ Future<IdentificacionFosil> identificarFosil({
   final clienteClaude = ClienteClaude(claveApi: apiKey);
   final datos = await clienteClaude.pedirJson(
     modelo: modelo,
-    sistema: _systemPrompt,
+    // Los textos libres llegan en el idioma elegido en la app.
+    sistema: '$_systemPrompt\n${instruccionIdiomaRespuestaClaude()}',
     mensajes: [mensajeUsuario],
     maxTokens: 4096,
     esfuerzo: EsfuerzoClaude.medio,
     esquemaJson: esquema,
   );
   return IdentificacionFosil(
-    grupoTaxonomico: datos['grupo_taxonomico'] as String? ?? 'Desconocido',
-    identificacionTentativa: datos['identificacion_tentativa'] as String? ?? 'Sin identificación',
+    grupoTaxonomico: datos['grupo_taxonomico'] as String? ?? SoleraL10n.t('fos.ajus_desconocido'),
+    identificacionTentativa: datos['identificacion_tentativa'] as String? ?? SoleraL10n.t('fos.ajus_sin_identificacion'),
     confianza: datos['confianza'] as String? ?? 'baja',
     descripcion: datos['descripcion'] as String? ?? '',
     razonamiento: datos['razonamiento'] as String? ?? '',

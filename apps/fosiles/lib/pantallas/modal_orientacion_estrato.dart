@@ -76,7 +76,7 @@ class _ModalOrientacionState extends State<_ModalOrientacion> {
   }
 
   String _puntoCardinal(double azimut) {
-    const direcciones = ['N', 'NNE', 'NE', 'ENE', 'E', 'ESE', 'SE', 'SSE', 'S', 'SSO', 'SO', 'OSO', 'O', 'ONO', 'NO', 'NNO', 'N'];
+    final direcciones = SoleraL10n.t('fos.mapa_rosa_vientos').split(',');
     final indice = ((azimut / 22.5).round()) % 16;
     return direcciones[indice];
   }
@@ -92,22 +92,22 @@ class _ModalOrientacionState extends State<_ModalOrientacion> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Orientación del estrato', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(SoleraL10n.t('fos.mapa_orientacion_estrato'), style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           SizedBox(height: 8),
           Text(
-            'Apoya el teléfono plano sobre la superficie de la capa rocosa, pantalla hacia arriba. Mantén estable y pulsa Capturar.',
+            SoleraL10n.t('fos.mapa_orientacion_instrucciones'),
             style: TextStyle(fontSize: 12, color: Colors.grey),
           ),
           SizedBox(height: 16),
-          _filaDato('Strike (rumbo)', '${medida.strike.toStringAsFixed(0)}°', subtitulo: 'Línea horizontal de la capa'),
-          _filaDato('Dip (buzamiento)', '${medida.dip.toStringAsFixed(1)}°', subtitulo: 'Inclinación desde la horizontal'),
-          _filaDato('Dirección de dip', '${medida.dipDir.toStringAsFixed(0)}° ${_puntoCardinal(medida.dipDir)}', subtitulo: 'Hacia dónde cae la capa'),
-          _filaDato('Brújula (top del móvil)', '${_heading.toStringAsFixed(0)}°', subtitulo: 'Sólo referencia'),
+          _filaDato(SoleraL10n.t('fos.mapa_strike'), '${medida.strike.toStringAsFixed(0)}°', subtitulo: SoleraL10n.t('fos.mapa_strike_ayuda')),
+          _filaDato(SoleraL10n.t('fos.mapa_dip'), '${formatearNumero(medida.dip, decimales: 1)}°', subtitulo: SoleraL10n.t('fos.mapa_dip_ayuda')),
+          _filaDato(SoleraL10n.t('fos.mapa_direccion_dip'), '${medida.dipDir.toStringAsFixed(0)}° ${_puntoCardinal(medida.dipDir)}', subtitulo: SoleraL10n.t('fos.mapa_direccion_dip_ayuda')),
+          _filaDato(SoleraL10n.t('fos.mapa_brujula'), '${_heading.toStringAsFixed(0)}°', subtitulo: SoleraL10n.t('fos.mapa_solo_referencia')),
           SizedBox(height: 12),
           if (tiltCasiHorizontal)
-            Text('⚠ La superficie está casi horizontal — el rumbo será impreciso.', style: TextStyle(color: Colors.orange, fontSize: 12)),
+            Text(SoleraL10n.t('fos.mapa_aviso_casi_horizontal'), style: TextStyle(color: Colors.orange, fontSize: 12)),
           if (tiltCasiVertical)
-            Text('⚠ Capa casi vertical — usa otra cara para medir mejor.', style: TextStyle(color: Colors.orange, fontSize: 12)),
+            Text(SoleraL10n.t('fos.mapa_aviso_casi_vertical'), style: TextStyle(color: Colors.orange, fontSize: 12)),
           SizedBox(height: 12),
           Row(
             children: [
@@ -128,7 +128,7 @@ class _ModalOrientacionState extends State<_ModalOrientacion> {
                       dipDireccionGrados: medida.dipDir,
                     ));
                   },
-                  label: Text('Capturar'),
+                  label: Text(SoleraL10n.t('fos.mapa_capturar')),
                 ),
               ),
             ],

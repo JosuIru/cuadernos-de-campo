@@ -28,7 +28,17 @@ class PantallaAjustes extends StatefulWidget {
 }
 
 class _PantallaAjustesState extends State<PantallaAjustes> {
-  String _resumenCache = 'Calculando…';
+  // Se guardan los números y no el texto: así el resumen cambia de idioma
+  // al cambiarlo en esta misma pantalla.
+  int? _ficherosCache;
+  int _bytesCache = 0;
+
+  String get _resumenCache => _ficherosCache == null
+      ? SoleraL10n.t('fos.ajus_calculando')
+      : SoleraL10n.tf('fos.ajus_resumen_cache', {
+          'n': '$_ficherosCache',
+          'mb': formatearNumero(_bytesCache / 1024 / 1024, decimales: 1),
+        });
 
   @override
   void initState() {
@@ -41,7 +51,8 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     final bytes = await CacheTeselasDisco.tamanoTotalBytes();
     if (!mounted) return;
     setState(() {
-      _resumenCache = '$ficheros teselas en caché · ${(bytes / 1024 / 1024).toStringAsFixed(1)} MB';
+      _ficherosCache = ficheros;
+      _bytesCache = bytes;
     });
   }
 
@@ -51,11 +62,12 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
       final fichero = await exportarBackup();
       if (!mounted) return;
       Navigator.of(context).pop();
-      await Share.shareXFiles([XFile(fichero.path)], subject: 'Backup fósiles', text: 'Copia de seguridad de Fósiles (${(await fichero.length()) ~/ 1024} KB)');
+      final kilobytes = (await fichero.length()) ~/ 1024;
+      await Share.shareXFiles([XFile(fichero.path)], subject: SoleraL10n.t('fos.ajus_backup_asunto'), text: SoleraL10n.tf('fos.ajus_backup_texto', {'kb': '$kilobytes'}));
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error backup: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${SoleraL10n.t('fos.ajus_error_backup')}: $e')));
     }
   }
 
@@ -63,8 +75,8 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('Restaurar copia de seguridad'),
-        content: Text('Esto reemplazará TODOS tus hallazgos, tracks y fotos actuales por los del fichero. ¿Continuar?'),
+        title: Text(SoleraL10n.t('fos.ajus_restaurar_titulo')),
+        content: Text(SoleraL10n.t('fos.ajus_restaurar_aviso')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
           FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(SoleraL10n.t('continuar'))),
@@ -82,18 +94,18 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
       final r = await restaurarBackup(File(ruta));
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('✅ Restaurados ${r.hallazgosRestaurados} hallazgos y ${r.fotosRestauradas} fotos. Reinicia la app para ver los cambios.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.ajus_restaurados', {'hallazgos': '${r.hallazgosRestaurados}', 'fotos': '${r.fotosRestauradas}'}))));
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.t('error_restaurando:_$e'))));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${SoleraL10n.t('error_restaurando')}: $e')));
     }
   }
 
   void _resetearGeofencing() {
     Geofencer.instancia.resetear();
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Avisos reactivados. Volverán a sonar al entrar en cada yacimiento.')),
+      SnackBar(content: Text(SoleraL10n.t('fos.ajus_avisos_reactivados'))),
     );
   }
 
@@ -102,7 +114,7 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     final y = yacimientosCurados.first;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${y.emoji} (Prueba) Estás en ${y.nombre}.'),
+        content: Text(SoleraL10n.tf('fos.ajus_prueba_aviso', {'emoji': y.emoji, 'nombre': y.nombre})),
         duration: Duration(seconds: 6),
       ),
     );
@@ -114,15 +126,13 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     final email = await showDialog<String>(
       context: contextoExterior,
       builder: (dialogoContext) => AlertDialog(
-        title: Text('Borrar mis aportaciones'),
+        title: Text(SoleraL10n.t('fos.ajus_borrar_aportaciones')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Introduce el email con el que enviaste las aportaciones. '
-              'Te mandaremos un enlace; al pulsarlo se borrarán todas tus '
-              'fotos (pendientes y aprobadas).',
+              SoleraL10n.t('fos.ajus_borrar_aportaciones_texto'),
               style: TextStyle(fontSize: 13),
             ),
             SizedBox(height: 12),
@@ -130,7 +140,7 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
               controller: controladorEmail,
               keyboardType: TextInputType.emailAddress,
               decoration: InputDecoration(
-                labelText: 'Email',
+                labelText: SoleraL10n.t('fos.ajus_email'),
                 border: OutlineInputBorder(),
               ),
             ),
@@ -144,7 +154,7 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
           FilledButton(
             onPressed: () => Navigator.of(dialogoContext)
                 .pop(controladorEmail.text.trim()),
-            child: Text('Enviar'),
+            child: Text(SoleraL10n.t('fos.ajus_enviar')),
           ),
         ],
       ),
@@ -154,12 +164,11 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
       await ClienteComunidad().solicitarBorradoPorEmail(email);
       if (!mounted || !contextoExterior.mounted) return;
       ScaffoldMessenger.of(contextoExterior).showSnackBar(SnackBar(
-          content: Text(
-              'Solicitud enviada. Revisa tu email para confirmar el borrado.')));
+          content: Text(SoleraL10n.t('fos.ajus_solicitud_enviada'))));
     } catch (e) {
       if (!mounted || !contextoExterior.mounted) return;
       ScaffoldMessenger.of(contextoExterior)
-          .showSnackBar(SnackBar(content: Text('Error: $e')));
+          .showSnackBar(SnackBar(content: Text('${SoleraL10n.t('error')}: $e')));
     }
   }
 
@@ -167,10 +176,10 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        content: Text('¿Vaciar la caché de mapas offline? Tendrás que volver a descargar para usar sin conexión.'),
+        content: Text(SoleraL10n.t('fos.ajus_vaciar_cache_pregunta')),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Vaciar', style: TextStyle(color: Colors.red))),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: Text(SoleraL10n.t('fos.ajus_vaciar'), style: TextStyle(color: Colors.red))),
         ],
       ),
     );
@@ -212,40 +221,37 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
       body: ListView(
         padding: const EdgeInsets.only(bottom: 32),
         children: [
-          const CabeceraSeccionAjustes('General'),
+          CabeceraSeccionAjustes(SoleraL10n.t('fos.ajus_sec_general')),
           _bloque([
-            _subtitulo('Idioma / Language'),
+            _subtitulo(SoleraL10n.t('fos.ajus_idioma')),
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: SelectorIdioma(onCambio: () => setState(() {})),
             ),
           ]),
 
-          const CabeceraSeccionAjustes('Inteligencia artificial'),
+          CabeceraSeccionAjustes(SoleraL10n.t('seccion_integraciones')),
           ListTile(
             leading: Icon(Icons.auto_awesome_outlined),
-            title: Text('Claves y modelo'),
-            subtitle: Text('Anthropic para identificar por foto, DeepSeek para el chat'),
+            title: Text(SoleraL10n.t('fos.ajus_claves_modelo')),
+            subtitle: Text(SoleraL10n.t('fos.ajus_claves_modelo_sub')),
             trailing: Icon(Icons.chevron_right),
             onTap: () => _abrir(const PantallaAjustesIa()),
           ),
 
-          const CabeceraSeccionAjustes('Perfil e identidad'),
+          CabeceraSeccionAjustes(SoleraL10n.t('fos.ajus_sec_perfil')),
           ListTile(
             leading: Icon(Icons.badge_outlined),
-            title: Text('Perfil del descubridor e identidad'),
-            subtitle: Text('Nombre para los certificados, identidad criptográfica, verificar certificados y Modo Experto'),
+            title: Text(SoleraL10n.t('fos.ajus_perfil_titulo')),
+            subtitle: Text(SoleraL10n.t('fos.ajus_perfil_sub')),
             trailing: Icon(Icons.chevron_right),
             onTap: () => _abrir(const PantallaPerfilIdentidad()),
           ),
 
-          const CabeceraSeccionAjustes('Mapas y datos'),
+          CabeceraSeccionAjustes(SoleraL10n.t('fos.ajus_sec_mapas_datos')),
           _bloque([
-            _subtitulo('Mapas sin conexión'),
-            _explicacion(
-              'Las teselas que veas en el mapa se guardan automáticamente en caché. '
-              'Para precachear una zona entera (vista actual del mapa), usa el botón de descarga.',
-            ),
+            _subtitulo(SoleraL10n.t('fos.ajus_mapas_sin_conexion')),
+            _explicacion(SoleraL10n.t('fos.ajus_mapas_explicacion')),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(6)),
@@ -261,29 +267,26 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
                       await Navigator.of(context).push(MaterialPageRoute(builder: (_) => PantallaMapasOffline()));
                       await _refrescarResumenCache();
                     },
-                    label: Text('Descargar zona'),
+                    label: Text(SoleraL10n.t('fos.ajus_descargar_zona')),
                   ),
                 ),
                 SizedBox(width: 8),
                 OutlinedButton.icon(
                   icon: Icon(Icons.delete_outline),
                   onPressed: _vaciarCache,
-                  label: Text('Vaciar'),
+                  label: Text(SoleraL10n.t('fos.ajus_vaciar')),
                 ),
               ],
             ),
             SizedBox(height: 8),
-            _subtitulo('Copia de seguridad'),
-            _explicacion(
-              'Exporta toda tu base (hallazgos + tracks + fotos) en un fichero único .fosbackup. '
-              'Guárdalo en Drive/USB/correo. Para restaurar, selecciona el .fosbackup; reemplazará los datos actuales.',
-            ),
+            _subtitulo(SoleraL10n.t('copia_de_seguridad')),
+            _explicacion(SoleraL10n.t('fos.ajus_backup_explicacion')),
             Row(children: [
               Expanded(
                 child: FilledButton.icon(
                   icon: Icon(Icons.backup),
                   onPressed: _hacerBackup,
-                  label: Text('Hacer copia'),
+                  label: Text(SoleraL10n.t('fos.ajus_hacer_copia')),
                 ),
               ),
               SizedBox(width: 8),
@@ -291,22 +294,19 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
                 child: OutlinedButton.icon(
                   icon: Icon(Icons.restore),
                   onPressed: _restaurarBackup,
-                  label: Text('Restaurar copia'),
+                  label: Text(SoleraL10n.t('fos.ajus_restaurar_copia')),
                 ),
               ),
             ]),
             SizedBox(height: 8),
-            _subtitulo('Asistente de campo'),
-            _explicacion(
-              'Cuando el GPS detecta que estás dentro de un radio de 250 m de un yacimiento curado, '
-              'aparece un aviso en el mapa con el botón "Ver ficha". Cada yacimiento te avisa una sola vez por sesión.',
-            ),
+            _subtitulo(SoleraL10n.t('fos.ajus_asistente_campo')),
+            _explicacion(SoleraL10n.t('fos.ajus_asistente_explicacion')),
             Row(children: [
               Expanded(
                 child: OutlinedButton.icon(
                   icon: Icon(Icons.refresh),
                   onPressed: _resetearGeofencing,
-                  label: Text('Reactivar avisos'),
+                  label: Text(SoleraL10n.t('fos.ajus_reactivar_avisos')),
                 ),
               ),
               SizedBox(width: 8),
@@ -314,34 +314,29 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
                 child: OutlinedButton.icon(
                   icon: Icon(Icons.notifications_active),
                   onPressed: _probarGeofencing,
-                  label: Text('Probar aviso'),
+                  label: Text(SoleraL10n.t('fos.ajus_probar_aviso')),
                 ),
               ),
             ]),
           ]),
 
           if (kFeatureComunidadHabilitada) ...[
-            const CabeceraSeccionAjustes('Privacidad'),
+            CabeceraSeccionAjustes(SoleraL10n.t('fos.ajus_sec_privacidad')),
             _bloque([
-              _subtitulo('Tus aportaciones a la comunidad'),
-              _explicacion(
-                'Si has compartido fotos con la comunidad puedes pedir su '
-                'borrado en cualquier momento (RGPD). Te llegará un enlace '
-                'al email indicado; haciendo click se borrarán todas tus '
-                'aportaciones, incluso las que ya estén publicadas.',
-              ),
+              _subtitulo(SoleraL10n.t('fos.ajus_tus_aportaciones')),
+              _explicacion(SoleraL10n.t('fos.ajus_aportaciones_explicacion')),
               OutlinedButton.icon(
                 icon: Icon(Icons.delete_sweep_outlined),
                 onPressed: () => _solicitarBorradoAportacionesComunidad(context),
-                label: Text('Borrar mis aportaciones'),
+                label: Text(SoleraL10n.t('fos.ajus_borrar_aportaciones')),
               ),
             ]),
           ],
 
-          const CabeceraSeccionAjustes('Acerca de'),
+          CabeceraSeccionAjustes(SoleraL10n.t('acerca_de')),
           ListTile(
             leading: Icon(Icons.system_update),
-            title: Text('Comprobar actualizaciones'),
+            title: Text(SoleraL10n.t('comprobar_actualizaciones')),
             trailing: Icon(Icons.chevron_right),
             onTap: () => _abrir(const PantallaEstadoActualizaciones(
               config: configActualizacionesFosiles,
@@ -350,14 +345,14 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
           ),
           ListTile(
             leading: Icon(Icons.map_outlined),
-            title: Text('Cómo leer el mapa'),
-            subtitle: Text('Capas geológicas, otras capas y sugerencias de fósiles'),
+            title: Text(SoleraL10n.t('fos.ajus_como_leer_mapa')),
+            subtitle: Text(SoleraL10n.t('fos.ajus_como_leer_mapa_sub')),
             trailing: Icon(Icons.chevron_right),
             onTap: () => _abrir(const PantallaAyudaMapa()),
           ),
           ListTile(
             leading: Icon(Icons.help_outline),
-            title: Text('Ver tour de presentación'),
+            title: Text(SoleraL10n.t('fos.ajus_ver_tour')),
             trailing: Icon(Icons.chevron_right),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
@@ -369,32 +364,18 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
             ),
           ),
           _bloque([
-            _subtitulo('Sobre la app'),
-            _explicacion(
-              'Cuaderno de campo de fósiles para adulto aficionado. Anota '
-              'hallazgos georreferenciados con foto, edad, formación, '
-              'strike/dip del estrato; consulta el contexto geológico del '
-              'IGME en el punto donde pinches; y guarda una guía local de '
-              'fósiles y minerales por período.',
-            ),
-            _subtitulo('Apoyar el proyecto'),
-            _explicacion(
-              'La app es y seguirá siendo gratuita y abierta para todos. '
-              'Si te ha sido útil y puedes permitírtelo, una pequeña aportación '
-              'voluntaria ayuda al mantenimiento, soporte y actualizaciones.',
-            ),
+            _subtitulo(SoleraL10n.t('fos.ajus_sobre_app')),
+            _explicacion(SoleraL10n.t('fos.ajus_sobre_app_texto')),
+            _subtitulo(SoleraL10n.t('fos.ajus_apoyar')),
+            _explicacion(SoleraL10n.t('fos.ajus_apoyar_texto')),
             FilledButton.tonalIcon(
               icon: Icon(Icons.favorite_outline),
               onPressed: () => mostrarSheetDonaciones(context),
-              label: Text('Ver formas de apoyar'),
+              label: Text(SoleraL10n.t('fos.ajus_ver_formas_apoyar')),
             ),
-            _subtitulo('Datos y fuentes'),
+            _subtitulo(SoleraL10n.t('fos.ajus_datos_fuentes')),
             Text(
-              'Datos geológicos: IGME (GEODE 50, MAGNA 50, Edades 1M, '
-              'Litologías 1M, IELIG). Mapa base: OpenStreetMap, ESRI, '
-              'OpenTopoMap. Cuevas y megalitos: OpenStreetMap (Overpass). '
-              'Imágenes y descripciones complementarias: Wikipedia '
-              '(CC-BY-SA). Versión Flutter para Android.',
+              SoleraL10n.t('fos.ajus_datos_fuentes_texto'),
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ]),

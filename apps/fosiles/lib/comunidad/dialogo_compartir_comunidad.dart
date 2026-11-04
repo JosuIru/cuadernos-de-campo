@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../modelos/hallazgo.dart';
 import 'cliente_comunidad.dart';
 
@@ -48,7 +49,7 @@ class _DialogoCompartirComunidadState extends State<DialogoCompartirComunidad> {
     if (!_puedeEnviar) return;
     final hallazgo = widget.hallazgo;
     if (hallazgo.rutasFotos.isEmpty) {
-      _mostrarSnack('Este hallazgo no tiene fotos. Edítalo y añade una.');
+      _mostrarSnack(SoleraL10n.t('fos.iden_com_sin_fotos'));
       return;
     }
     setState(() => _enviando = true);
@@ -66,8 +67,8 @@ class _DialogoCompartirComunidadState extends State<DialogoCompartirComunidad> {
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
-      _mostrarSnack(
-          'Enviada (#${resultado.idAportacion}). Si se aprueba, te avisaremos.');
+      _mostrarSnack(SoleraL10n.tf(
+          'fos.iden_com_enviada', {'id': resultado.idAportacion}));
     } on ExcepcionComunidad catch (e) {
       if (!mounted) return;
       setState(() => _enviando = false);
@@ -75,7 +76,7 @@ class _DialogoCompartirComunidadState extends State<DialogoCompartirComunidad> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _enviando = false);
-      _mostrarSnack('Error inesperado: $e');
+      _mostrarSnack('${SoleraL10n.t('fos.iden_com_error_inesperado')}: $e');
     }
   }
 
@@ -88,43 +89,46 @@ class _DialogoCompartirComunidadState extends State<DialogoCompartirComunidad> {
   Widget build(BuildContext context) {
     final hallazgo = widget.hallazgo;
     return AlertDialog(
-      title: const Text('Compartir con la comunidad'),
+      title: Text(SoleraL10n.t('fos.iden_com_compartir_titulo')),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Un geólogo revisará tu aportación. Si la aprueba, '
-              'aparecerá en la app asociada a esta formación geológica, '
-              'para que otros aficionados puedan ver lo que se encuentra '
-              'aquí.',
-              style: TextStyle(fontSize: 13),
+            Text(
+              SoleraL10n.t('fos.iden_com_intro'),
+              style: const TextStyle(fontSize: 13),
             ),
             const SizedBox(height: 12),
             _bloqueInfo(
-              titulo: 'Se envía:',
+              titulo: SoleraL10n.t('fos.iden_com_se_envia'),
               elementos: [
-                'Foto principal del hallazgo',
-                'Tipo (${hallazgo.tipo})',
-                'Especie/grupo declarado: '
-                    '${hallazgo.especie.isEmpty ? "—" : hallazgo.especie}',
-                'Edad declarada: '
-                    '${hallazgo.edad.isEmpty ? "—" : hallazgo.edad}',
-                'Formación declarada: '
-                    '${hallazgo.formacion.isEmpty ? "—" : hallazgo.formacion}',
-                if (hallazgo.notas.isNotEmpty) 'Tus notas',
+                SoleraL10n.t('fos.iden_com_foto_principal'),
+                SoleraL10n.tf('fos.iden_com_tipo_valor', {
+                  'tipo': hallazgo.tipo == 'mineral'
+                      ? SoleraL10n.t('fos.iden_tipo_mineral')
+                      : hallazgo.tipo == 'fosil'
+                          ? SoleraL10n.t('fos.iden_tipo_fosil')
+                          : hallazgo.tipo,
+                }),
+                SoleraL10n.tf('fos.iden_com_especie_declarada',
+                    {'valor': hallazgo.especie.isEmpty ? '—' : hallazgo.especie}),
+                SoleraL10n.tf('fos.iden_com_edad_declarada',
+                    {'valor': hallazgo.edad.isEmpty ? '—' : hallazgo.edad}),
+                SoleraL10n.tf('fos.iden_com_formacion_declarada',
+                    {'valor': hallazgo.formacion.isEmpty ? '—' : hallazgo.formacion}),
+                if (hallazgo.notas.isNotEmpty) SoleraL10n.t('fos.iden_com_tus_notas'),
               ],
               colorFondo: Colors.green.shade50,
               colorTexto: Colors.green.shade900,
             ),
             const SizedBox(height: 8),
             _bloqueInfo(
-              titulo: 'NO se envía:',
-              elementos: const [
-                'Coordenadas',
-                'Tu nombre como autor visible',
-                'Tu identidad criptográfica del hallazgo',
+              titulo: SoleraL10n.t('fos.iden_com_no_se_envia'),
+              elementos: [
+                SoleraL10n.t('fos.iden_coordenadas'),
+                SoleraL10n.t('fos.iden_com_nombre_autor'),
+                SoleraL10n.t('fos.iden_com_identidad_cripto'),
               ],
               colorFondo: Colors.red.shade50,
               colorTexto: Colors.red.shade900,
@@ -136,12 +140,11 @@ class _DialogoCompartirComunidadState extends State<DialogoCompartirComunidad> {
               onChanged: (_) => setState(() {
                 _errorEmail = _emailValido || _controladorEmail.text.isEmpty
                     ? null
-                    : 'Email no válido';
+                    : SoleraL10n.t('fos.iden_com_email_no_valido');
               }),
               decoration: InputDecoration(
-                labelText: 'Email de contacto',
-                helperText:
-                    'Para avisarte si la foto se aprueba o rechaza. NUNCA se publica.',
+                labelText: SoleraL10n.t('fos.iden_com_email_contacto'),
+                helperText: SoleraL10n.t('fos.iden_com_email_ayuda'),
                 helperMaxLines: 2,
                 errorText: _errorEmail,
                 border: const OutlineInputBorder(),
@@ -150,11 +153,11 @@ class _DialogoCompartirComunidadState extends State<DialogoCompartirComunidad> {
             const SizedBox(height: 12),
             TextField(
               controller: _controladorNombre,
-              decoration: const InputDecoration(
-                labelText: 'Tu nombre (opcional)',
-                helperText: 'Solo lo verá el curador. Nunca aparece en la app.',
+              decoration: InputDecoration(
+                labelText: SoleraL10n.t('fos.iden_com_tu_nombre_opcional'),
+                helperText: SoleraL10n.t('fos.iden_com_nombre_ayuda'),
                 helperMaxLines: 2,
-                border: OutlineInputBorder(),
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 12),
@@ -164,12 +167,9 @@ class _DialogoCompartirComunidadState extends State<DialogoCompartirComunidad> {
                   setState(() => _consentimiento = valor ?? false),
               controlAffinity: ListTileControlAffinity.leading,
               contentPadding: EdgeInsets.zero,
-              title: const Text(
-                'Acepto la política de privacidad y entiendo que la app '
-                'no es un canal oficial para reportar patrimonio '
-                'paleontológico — para hallazgos importantes contacta '
-                'también con el servicio de Patrimonio de tu CCAA.',
-                style: TextStyle(fontSize: 12),
+              title: Text(
+                SoleraL10n.t('fos.iden_com_consentimiento'),
+                style: const TextStyle(fontSize: 12),
               ),
             ),
           ],
@@ -178,7 +178,7 @@ class _DialogoCompartirComunidadState extends State<DialogoCompartirComunidad> {
       actions: [
         TextButton(
           onPressed: _enviando ? null : () => Navigator.of(context).pop(false),
-          child: const Text('Cancelar'),
+          child: Text(SoleraL10n.t('cancelar')),
         ),
         FilledButton(
           onPressed: _puedeEnviar ? _enviar : null,
@@ -188,7 +188,7 @@ class _DialogoCompartirComunidadState extends State<DialogoCompartirComunidad> {
                   height: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : const Text('Enviar para revisión'),
+              : Text(SoleraL10n.t('fos.iden_com_enviar_revision')),
         ),
       ],
     );

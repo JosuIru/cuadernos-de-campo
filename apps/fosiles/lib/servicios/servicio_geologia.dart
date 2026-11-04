@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
 
@@ -40,19 +41,30 @@ class CapaGeologicaWms {
   /// Recintos generales). En MAGNA y los servicios 1M la capa con datos
   /// es la `0`.
   final List<int> capasConsulta;
+  /// Claves de traducción del nombre y la descripción visibles. El
+  /// [nombre] sigue siendo el identificador interno de la capa.
+  final String claveNombre;
+  final String claveDescripcion;
   const CapaGeologicaWms({
     required this.nombre,
     required this.descripcion,
+    this.claveNombre = '',
+    this.claveDescripcion = '',
     required this.urlBase,
     required this.capas,
     this.capasConsulta = const [0],
   });
+
+  String get nombreVisible => claveNombre.isEmpty ? nombre : SoleraL10n.t(claveNombre);
+  String get descripcionVisible =>
+      claveDescripcion.isEmpty ? descripcion : SoleraL10n.t(claveDescripcion);
 }
 
 const List<CapaGeologicaWms> capasGeologicasWms = [
   CapaGeologicaWms(
     nombre: 'GEODE 50',
     descripcion: 'Recomendada · continuo geológico nacional. Cada polígono lleva edad, formación y litología; lo que ves y lo que la app sugiere para fósiles van siempre coordinados.',
+    claveDescripcion: 'fos.mapa_capa_geode_desc',
     urlBase: urlWmsIgmeGeode,
     capas: ['1'],
     capasConsulta: [1, 3],
@@ -60,6 +72,7 @@ const List<CapaGeologicaWms> capasGeologicasWms = [
   CapaGeologicaWms(
     nombre: 'MAGNA 50',
     descripcion: 'Color por litología (tipo de roca: caliza, arcilla, granito…). Máximo detalle 1:50.000. Útil para "qué tipo de roca piso", NO para ver edades de un vistazo.',
+    claveDescripcion: 'fos.mapa_capa_magna_desc',
     urlBase: urlWmsIgmeMagna,
     capas: ['0'],
     capasConsulta: [0],
@@ -67,6 +80,8 @@ const List<CapaGeologicaWms> capasGeologicasWms = [
   CapaGeologicaWms(
     nombre: 'Edades 1M',
     descripcion: 'Color directo por edad geológica (era/período). Lo mejor para ver eras de un vistazo. Resolución 1:1.000.000 — más baja, sirve para escala regional.',
+    claveNombre: 'fos.mapa_capa_edades_1m',
+    claveDescripcion: 'fos.mapa_capa_edades_desc',
     urlBase: urlWmsIgmeEdades1M,
     capas: ['0'],
     capasConsulta: [0],
@@ -74,6 +89,8 @@ const List<CapaGeologicaWms> capasGeologicasWms = [
   CapaGeologicaWms(
     nombre: 'Litologías 1M',
     descripcion: 'Litología general (versión simplificada de MAGNA). Resolución 1:1.000.000. Para escala regional cuando MAGNA está demasiado denso.',
+    claveNombre: 'fos.mapa_capa_litologias_1m',
+    claveDescripcion: 'fos.mapa_capa_litologias_desc',
     urlBase: urlWmsIgmeLitologias1M,
     capas: ['0'],
     capasConsulta: [0],
@@ -475,7 +492,7 @@ Future<List<LugarInteresGeologico>> buscarLigsEnExtension({
         return null;
       }
       return LugarInteresGeologico(
-        nombre: lookup(['Nombre', 'NOMBRE', 'Denominación', 'DENOMINACION']) ?? 'LIG sin nombre',
+        nombre: lookup(['Nombre', 'NOMBRE', 'Denominación', 'DENOMINACION']) ?? SoleraL10n.t('fos.mapa_lig_sin_nombre'),
         latitud: lat,
         longitud: lon,
         descripcion: lookup(['Descripción', 'DESCRIPCION', 'Descripcion']),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/configuracion.dart';
 import 'pantalla_identidad.dart';
 import 'pantalla_modo_experto.dart';
@@ -54,30 +55,29 @@ class _PantallaPerfilIdentidadState extends State<PantallaPerfilIdentidad> {
     await Configuracion.guardarEmailDescubridor(_controladorEmail.text);
     await Configuracion.guardarOrganizacionDescubridor(_controladorOrganizacion.text);
     if (!mounted) return;
-    setState(() => _mensajeEstado = '✅ Perfil guardado');
+    setState(() => _mensajeEstado = '✅ ${SoleraL10n.t('fos.iden_perfil_guardado')}');
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Perfil e identidad')),
+      appBar: AppBar(title: Text(SoleraL10n.t('fos.iden_perfil_e_identidad'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Perfil del descubridor', style: Theme.of(context).textTheme.titleLarge),
+          Text(SoleraL10n.t('fos.iden_perfil_descubridor'), style: Theme.of(context).textTheme.titleLarge),
           SizedBox(height: 8),
           Text(
-            'Tu nombre se incluirá en los certificados de hallazgo. '
-            'El email y la organización son opcionales. Estos datos se guardan solo en tu teléfono.',
+            SoleraL10n.t('fos.iden_perfil_ayuda'),
             style: TextStyle(fontSize: 13),
           ),
           SizedBox(height: 12),
           TextField(
             controller: _controladorNombre,
             decoration: InputDecoration(
-              labelText: 'Nombre (obligatorio para certificados)',
+              labelText: SoleraL10n.t('fos.iden_nombre_obligatorio'),
               border: OutlineInputBorder(),
-              hintText: 'Ej: María González',
+              hintText: SoleraL10n.t('fos.iden_nombre_ejemplo'),
             ),
           ),
           SizedBox(height: 8),
@@ -85,35 +85,35 @@ class _PantallaPerfilIdentidadState extends State<PantallaPerfilIdentidad> {
             controller: _controladorEmail,
             keyboardType: TextInputType.emailAddress,
             decoration: InputDecoration(
-              labelText: 'Email (opcional)',
+              labelText: SoleraL10n.t('fos.iden_email_opcional'),
               border: OutlineInputBorder(),
-              hintText: 'contacto@ejemplo.com',
+              hintText: SoleraL10n.t('fos.iden_email_ejemplo'),
             ),
           ),
           SizedBox(height: 8),
           TextField(
             controller: _controladorOrganizacion,
             decoration: InputDecoration(
-              labelText: 'Organización / afiliación (opcional)',
+              labelText: SoleraL10n.t('fos.iden_organizacion_opcional'),
               border: OutlineInputBorder(),
-              hintText: 'Ej: UPV/EHU, Sociedad de Ciencias Aranzadi…',
+              hintText: SoleraL10n.t('fos.iden_organizacion_ejemplo'),
             ),
           ),
           SizedBox(height: 12),
-          FilledButton(onPressed: _cargado ? _guardar : null, child: Text('Guardar perfil')),
+          FilledButton(onPressed: _cargado ? _guardar : null, child: Text(SoleraL10n.t('fos.iden_guardar_perfil'))),
           if (_mensajeEstado != null) ...[
             SizedBox(height: 12),
             Center(child: Text(_mensajeEstado!, style: TextStyle(color: Theme.of(context).colorScheme.primary))),
           ],
           SizedBox(height: 32),
-          Text('Identidad y certificados', style: Theme.of(context).textTheme.titleLarge),
+          Text(SoleraL10n.t('fos.iden_identidad_y_certificados'), style: Theme.of(context).textTheme.titleLarge),
           SizedBox(height: 12),
           OutlinedButton.icon(
             icon: Icon(Icons.fingerprint),
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const PantallaIdentidad()),
             ),
-            label: Text('Mi identidad criptográfica'),
+            label: Text(SoleraL10n.t('fos.iden_mi_identidad_criptografica')),
           ),
           SizedBox(height: 8),
           OutlinedButton.icon(
@@ -121,7 +121,7 @@ class _PantallaPerfilIdentidadState extends State<PantallaPerfilIdentidad> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => PantallaVerificarCertificado()),
             ),
-            label: Text('Verificar un certificado'),
+            label: Text(SoleraL10n.t('fos.iden_verificar_un_certificado')),
           ),
           SizedBox(height: 8),
           OutlinedButton.icon(
@@ -129,7 +129,7 @@ class _PantallaPerfilIdentidadState extends State<PantallaPerfilIdentidad> {
             onPressed: () => Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const PantallaModoExperto()),
             ),
-            label: Text('Modo Experto (autoridades certificadoras)'),
+            label: Text(SoleraL10n.t('fos.iden_modo_experto_autoridades')),
           ),
         ],
       ),

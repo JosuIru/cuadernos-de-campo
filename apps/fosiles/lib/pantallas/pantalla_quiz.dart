@@ -112,7 +112,7 @@ class _PantallaQuizState extends State<PantallaQuiz> {
     final emojiPlaceholder = _correcto.tipo == 'mineral' ? '💎' : '🦴';
     return Scaffold(
       appBar: AppBar(
-        title: Text('Quiz de identificación'),
+        title: Text(SoleraL10n.t('fos.hall_quiz_identificacion')),
         actions: [
           Center(
             child: Padding(
@@ -127,10 +127,10 @@ class _PantallaQuizState extends State<PantallaQuiz> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
             child: SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'fosiles', label: Text('Fósiles'), icon: Icon(Icons.bug_report)),
-                ButtonSegment(value: 'minerales', label: Text('Minerales'), icon: Icon(Icons.diamond)),
-                ButtonSegment(value: 'mixto', label: Text('Mixto')),
+              segments: [
+                ButtonSegment(value: 'fosiles', label: Text(SoleraL10n.t('fos.hall_fosiles')), icon: const Icon(Icons.bug_report)),
+                ButtonSegment(value: 'minerales', label: Text(SoleraL10n.t('fos.hall_minerales')), icon: const Icon(Icons.diamond)),
+                ButtonSegment(value: 'mixto', label: Text(SoleraL10n.t('fos.hall_mixto'))),
               ],
               selected: {_modo},
               onSelectionChanged: (s) => _cambiarModo(s.first),
@@ -222,7 +222,7 @@ class _PantallaQuizState extends State<PantallaQuiz> {
                         }
                       },
                       icon: Icon(Icons.info_outline),
-                      label: Text('Ver ficha'),
+                      label: Text(SoleraL10n.t('fos.hall_ver_ficha')),
                     ),
                   ),
                   SizedBox(width: 8),

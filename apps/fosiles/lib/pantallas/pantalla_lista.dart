@@ -133,7 +133,7 @@ class _PantallaListaState extends State<PantallaLista> {
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: Text(
-              '${indiceEnLista + 1} / $total · desliza ← → para cambiar',
+              SoleraL10n.tf('fos.hall_n_de_total_desliza', {'actual': indiceEnLista + 1, 'total': total}),
               style: const TextStyle(fontSize: 11, color: Colors.black54),
             ),
           ),
@@ -179,14 +179,14 @@ class _PantallaListaState extends State<PantallaLista> {
             ),
           ),
         SizedBox(height: 12),
-        _filaDetalle('Especie', hallazgo.especie.isEmpty ? '—' : hallazgo.especie),
-        _filaDetalle('Edad', hallazgo.edad.isEmpty ? '—' : hallazgo.edad),
-        _filaDetalle('Formación', hallazgo.formacion.isEmpty ? '—' : hallazgo.formacion),
-        _filaDetalle('Fecha', DateFormat('dd MMM yyyy HH:mm', 'es_ES').format(DateTime.fromMillisecondsSinceEpoch(hallazgo.fechaMs))),
-        _filaDetalle('Coordenadas', '${hallazgo.latitud.toStringAsFixed(5)}, ${hallazgo.longitud.toStringAsFixed(5)}${hallazgo.precision != null ? " (±${hallazgo.precision!.round()} m)" : ""}'),
+        _filaDetalle(SoleraL10n.t('fos.hall_especie'), hallazgo.especie.isEmpty ? '—' : hallazgo.especie),
+        _filaDetalle(SoleraL10n.t('fos.hall_edad'), hallazgo.edad.isEmpty ? '—' : hallazgo.edad),
+        _filaDetalle(SoleraL10n.t('fos.hall_formacion'), hallazgo.formacion.isEmpty ? '—' : hallazgo.formacion),
+        _filaDetalle(SoleraL10n.t('fos.hall_fecha'), DateFormat('dd MMM yyyy HH:mm', SoleraL10n.idioma).format(DateTime.fromMillisecondsSinceEpoch(hallazgo.fechaMs))),
+        _filaDetalle(SoleraL10n.t('fos.hall_coordenadas'), '${hallazgo.latitud.toStringAsFixed(5)}, ${hallazgo.longitud.toStringAsFixed(5)}${hallazgo.precision != null ? " (±${hallazgo.precision!.round()} m)" : ""}'),
         if (hallazgo.strikeGrados != null && hallazgo.dipGrados != null)
-          _filaDetalle('Estrato', '${hallazgo.strikeGrados!.toStringAsFixed(0)}° / ${hallazgo.dipGrados!.toStringAsFixed(0)}°'),
-        _filaDetalle('Notas', hallazgo.notas.isEmpty ? '—' : hallazgo.notas),
+          _filaDetalle(SoleraL10n.t('fos.hall_estrato'), '${hallazgo.strikeGrados!.toStringAsFixed(0)}° / ${hallazgo.dipGrados!.toStringAsFixed(0)}°'),
+        _filaDetalle(SoleraL10n.t('fos.hall_notas'), hallazgo.notas.isEmpty ? '—' : hallazgo.notas),
         SizedBox(height: 16),
         if (widget.alVerEnMapa != null) ...[
           FilledButton.tonalIcon(
@@ -195,7 +195,7 @@ class _PantallaListaState extends State<PantallaLista> {
               Navigator.of(sheetContext).pop();
               widget.alVerEnMapa!(hallazgo.latitud, hallazgo.longitud);
             },
-            label: Text('Ver en el mapa'),
+            label: Text(SoleraL10n.t('fos.hall_ver_en_mapa')),
             style: FilledButton.styleFrom(
               minimumSize: Size(double.infinity, 40),
             ),
@@ -211,7 +211,7 @@ class _PantallaListaState extends State<PantallaLista> {
                 builder: (_) => DialogoCompartirComunidad(hallazgo: hallazgo),
               );
             },
-            label: Text('Compartir con la comunidad'),
+            label: Text(SoleraL10n.t('fos.hall_compartir_comunidad')),
             style: OutlinedButton.styleFrom(
               minimumSize: Size(double.infinity, 40),
             ),
@@ -238,14 +238,14 @@ class _PantallaListaState extends State<PantallaLista> {
               child: OutlinedButton.icon(
                 icon: Icon(Icons.delete_outline, color: Colors.red),
                 onPressed: () async {
-                  final confirmar = await _confirmar(context, '¿Borrar este hallazgo?');
+                  final confirmar = await _confirmar(context, SoleraL10n.t('fos.hall_confirmar_borrar'));
                   if (confirmar != true) return;
                   await BaseDatosFosiles.instancia.borrarHallazgo(hallazgo.id!);
                   if (!mounted) return;
                   if (sheetContext.mounted) Navigator.of(sheetContext).pop();
                   _cargar();
                 },
-                label: Text('Borrar', style: TextStyle(color: Colors.red)),
+                label: Text(SoleraL10n.t('borrar'), style: TextStyle(color: Colors.red)),
               ),
             ),
           ],
@@ -257,7 +257,7 @@ class _PantallaListaState extends State<PantallaLista> {
               child: OutlinedButton.icon(
                 icon: Icon(Icons.share),
                 onPressed: () => _compartir(hallazgo),
-                label: Text('Compartir texto'),
+                label: Text(SoleraL10n.t('fos.hall_compartir_texto')),
               ),
             ),
             SizedBox(width: 8),
@@ -265,7 +265,7 @@ class _PantallaListaState extends State<PantallaLista> {
               child: FilledButton.icon(
                 icon: Icon(Icons.image),
                 onPressed: () => _compartirComoTarjeta(hallazgo),
-                label: Text('Tarjeta'),
+                label: Text(SoleraL10n.t('fos.hall_tarjeta')),
               ),
             ),
           ],
@@ -274,14 +274,14 @@ class _PantallaListaState extends State<PantallaLista> {
         OutlinedButton.icon(
           icon: Icon(Icons.verified_user),
           onPressed: () => _compartirCertificado(hallazgo),
-          label: Text('Certificado verificable'),
+          label: Text(SoleraL10n.t('fos.hall_certificado_verificable')),
           style: OutlinedButton.styleFrom(
             minimumSize: Size(double.infinity, 40),
           ),
         ),
         SizedBox(height: 16),
         if (hallazgo.historialTrazabilidad.isNotEmpty) ...[
-          Text('Historial de trazabilidad',
+          Text(SoleraL10n.t('fos.hall_historial_trazabilidad'),
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
           SizedBox(height: 6),
           ...hallazgo.historialTrazabilidad.map(tarjetaEventoTrazabilidad),
@@ -298,14 +298,14 @@ class _PantallaListaState extends State<PantallaLista> {
               _cargar();
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Evento añadido al historial.')),
+                  SnackBar(content: Text(SoleraL10n.t('fos.hall_evento_anadido'))),
                 );
               }
             }
           },
           label: Text(hallazgo.historialTrazabilidad.isEmpty
-              ? 'Añadir trazabilidad'
-              : 'Añadir evento'),
+              ? SoleraL10n.t('fos.hall_anadir_trazabilidad')
+              : SoleraL10n.t('fos.hall_anadir_evento')),
           style: OutlinedButton.styleFrom(
             minimumSize: Size(double.infinity, 40),
           ),
@@ -324,11 +324,11 @@ class _PantallaListaState extends State<PantallaLista> {
       final fichero = await generarZipHallazgos(_hallazgos);
       if (!mounted) return;
       Navigator.of(context).pop(); // cerrar progress
-      await Share.shareXFiles([XFile(fichero.path)], subject: 'Hallazgos de fósiles', text: '${_hallazgos.length} hallazgos exportados.');
+      await Share.shareXFiles([XFile(fichero.path)], subject: SoleraL10n.t('fos.hall_asunto_exportacion'), text: SoleraL10n.tf('fos.hall_n_exportados', {'n': _hallazgos.length}));
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error exportando: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.hall_error_exportando', {'error': e}))));
     }
   }
 
@@ -338,11 +338,11 @@ class _PantallaListaState extends State<PantallaLista> {
       final fichero = await generarTarjetaHallazgo(hallazgo);
       if (!mounted) return;
       Navigator.of(context).pop();
-      await Share.shareXFiles([XFile(fichero.path)], subject: 'Hallazgo: ${hallazgo.especie}');
+      await Share.shareXFiles([XFile(fichero.path)], subject: SoleraL10n.tf('fos.hall_asunto_hallazgo', {'especie': hallazgo.especie}));
     } catch (e) {
       if (!mounted) return;
       Navigator.of(context).pop();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error generando tarjeta: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.hall_error_tarjeta', {'error': e}))));
     }
   }
 
@@ -352,7 +352,7 @@ class _PantallaListaState extends State<PantallaLista> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Configura primero tu nombre en Ajustes → Perfil del descubridor.'),
+          content: Text(SoleraL10n.t('fos.hall_configura_nombre')),
           duration: Duration(seconds: 4),
         ),
       );
@@ -370,30 +370,30 @@ class _PantallaListaState extends State<PantallaLista> {
     await fichero.writeAsString(jsonStr);
     if (!mounted) return;
     await Share.shareXFiles([XFile(fichero.path)],
-        subject: 'Certificado de hallazgo: ${hallazgo.especie}',
-        text: 'Certificado verificable de hallazgo fósil. '
+        subject: SoleraL10n.tf('fos.hall_asunto_certificado', {'especie': hallazgo.especie}),
+        text: '${SoleraL10n.t('fos.hall_certificado_texto')} '
             'Hash: ${certificado['hash']}\n'
-            'Especie: ${hallazgo.especie}\n'
-            'Descubridor: $nombre');
+            '${SoleraL10n.t('fos.hall_especie')}: ${hallazgo.especie}\n'
+            '${SoleraL10n.t('fos.hall_descubridor')}: $nombre');
   }
 
   Future<void> _compartir(Hallazgo hallazgo) async {
-    final fecha = DateFormat('dd MMM yyyy', 'es_ES').format(DateTime.fromMillisecondsSinceEpoch(hallazgo.fechaMs));
+    final fecha = DateFormat('dd MMM yyyy', SoleraL10n.idioma).format(DateTime.fromMillisecondsSinceEpoch(hallazgo.fechaMs));
     final texto = StringBuffer()
-      ..writeln('Hallazgo de fósil')
-      ..writeln('Especie: ${hallazgo.especie.isEmpty ? "?" : hallazgo.especie}')
-      ..writeln('Edad: ${hallazgo.edad.isEmpty ? "?" : hallazgo.edad}')
-      ..writeln('Formación: ${hallazgo.formacion.isEmpty ? "?" : hallazgo.formacion}')
-      ..writeln('Coordenadas: ${hallazgo.latitud.toStringAsFixed(5)}, ${hallazgo.longitud.toStringAsFixed(5)}')
-      ..writeln('Fecha: $fecha')
-      ..writeln('Mapa: https://www.openstreetmap.org/?mlat=${hallazgo.latitud}&mlon=${hallazgo.longitud}#map=16/${hallazgo.latitud}/${hallazgo.longitud}');
+      ..writeln(SoleraL10n.t('fos.hall_hallazgo_de_fosil'))
+      ..writeln('${SoleraL10n.t('fos.hall_especie')}: ${hallazgo.especie.isEmpty ? "?" : hallazgo.especie}')
+      ..writeln('${SoleraL10n.t('fos.hall_edad')}: ${hallazgo.edad.isEmpty ? "?" : hallazgo.edad}')
+      ..writeln('${SoleraL10n.t('fos.hall_formacion')}: ${hallazgo.formacion.isEmpty ? "?" : hallazgo.formacion}')
+      ..writeln('${SoleraL10n.t('fos.hall_coordenadas')}: ${hallazgo.latitud.toStringAsFixed(5)}, ${hallazgo.longitud.toStringAsFixed(5)}')
+      ..writeln('${SoleraL10n.t('fos.hall_fecha')}: $fecha')
+      ..writeln('${SoleraL10n.t('mapa')}: https://www.openstreetmap.org/?mlat=${hallazgo.latitud}&mlon=${hallazgo.longitud}#map=16/${hallazgo.latitud}/${hallazgo.longitud}');
     if (hallazgo.notas.isNotEmpty) {
       texto..writeln()..writeln(hallazgo.notas);
     }
     if (hallazgo.rutaFoto != null) {
-      await Share.shareXFiles([XFile(hallazgo.rutaFoto!)], text: texto.toString(), subject: 'Hallazgo: ${hallazgo.especie}');
+      await Share.shareXFiles([XFile(hallazgo.rutaFoto!)], text: texto.toString(), subject: SoleraL10n.tf('fos.hall_asunto_hallazgo', {'especie': hallazgo.especie}));
     } else {
-      await Share.share(texto.toString(), subject: 'Hallazgo: ${hallazgo.especie}');
+      await Share.share(texto.toString(), subject: SoleraL10n.tf('fos.hall_asunto_hallazgo', {'especie': hallazgo.especie}));
     }
   }
 
@@ -414,7 +414,7 @@ class _PantallaListaState extends State<PantallaLista> {
           content: Text(texto),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
-            TextButton(onPressed: () => Navigator.pop(context, true), child: Text('Borrar', style: TextStyle(color: Colors.red))),
+            TextButton(onPressed: () => Navigator.pop(context, true), child: Text(SoleraL10n.t('borrar'), style: TextStyle(color: Colors.red))),
           ],
         ),
       );
@@ -429,12 +429,12 @@ class _PantallaListaState extends State<PantallaLista> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Hallazgos'),
+          title: Text(SoleraL10n.t('fos.hall_titulo')),
           actions: _accionesAppBar(),
           bottom: TabBar(
             tabs: [
-              Tab(text: 'Mías (${_propios.length})'),
-              Tab(text: 'Compartidas (${_compartidos.length})'),
+              Tab(text: SoleraL10n.tf('fos.hall_tab_mias', {'n': _propios.length})),
+              Tab(text: SoleraL10n.tf('fos.hall_tab_compartidas', {'n': _compartidos.length})),
             ],
           ),
         ),
@@ -447,7 +447,7 @@ class _PantallaListaState extends State<PantallaLista> {
                   _listaHallazgos(_propios, mensajeVacio: _mensajeVacioMias()),
                   _listaHallazgos(
                     _compartidos,
-                    mensajeVacio: 'Ningún hallazgo recibido coincide con la búsqueda.',
+                    mensajeVacio: SoleraL10n.t('fos.hall_ninguno_recibido_coincide'),
                     mostrarBadgeRemitente: true,
                   ),
                 ],
@@ -462,7 +462,7 @@ class _PantallaListaState extends State<PantallaLista> {
   Widget _construirSinTabs() {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Hallazgos'),
+        title: Text(SoleraL10n.t('fos.hall_titulo')),
         actions: _accionesAppBar(),
       ),
       body: Column(
@@ -480,14 +480,14 @@ class _PantallaListaState extends State<PantallaLista> {
     return [
       IconButton(
         icon: const Icon(Icons.bar_chart),
-        tooltip: 'Estadísticas',
+        tooltip: SoleraL10n.t('fos.hall_estadisticas'),
         onPressed: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => PantallaEstadisticas()),
         ),
       ),
       IconButton(
         icon: const Icon(Icons.archive_outlined),
-        tooltip: 'Exportar ZIP',
+        tooltip: SoleraL10n.t('fos.hall_exportar_zip'),
         onPressed: _hallazgos.isEmpty ? null : _exportar,
       ),
     ];
@@ -500,9 +500,9 @@ class _PantallaListaState extends State<PantallaLista> {
           padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
           child: TextField(
             controller: _controladorBusqueda,
-            decoration: const InputDecoration(
-              hintText: 'Buscar por nombre, edad, notas…',
-              prefixIcon: Icon(Icons.search),
+            decoration: InputDecoration(
+              hintText: SoleraL10n.t('fos.hall_buscar_hint'),
+              prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(),
             ),
           ),
@@ -512,8 +512,8 @@ class _PantallaListaState extends State<PantallaLista> {
           child: SegmentedButton<String>(
             segments: [
               ButtonSegment(value: 'todos', label: Text(SoleraL10n.t('todos')), icon: const Icon(Icons.apps)),
-              const ButtonSegment(value: 'fosil', label: Text('Fósiles'), icon: Icon(Icons.bug_report)),
-              const ButtonSegment(value: 'mineral', label: Text('Minerales'), icon: Icon(Icons.diamond)),
+              ButtonSegment(value: 'fosil', label: Text(SoleraL10n.t('fos.hall_fosiles')), icon: const Icon(Icons.bug_report)),
+              ButtonSegment(value: 'mineral', label: Text(SoleraL10n.t('fos.hall_minerales')), icon: const Icon(Icons.diamond)),
             ],
             selected: {_filtroTipo},
             onSelectionChanged: (s) => setState(() => _filtroTipo = s.first),
@@ -525,8 +525,8 @@ class _PantallaListaState extends State<PantallaLista> {
 
   String _mensajeVacioMias() {
     return _hallazgos.isEmpty
-        ? 'Aún no hay hallazgos.\nToca el + para registrar el primero.'
-        : 'Ningún hallazgo coincide con la búsqueda.';
+        ? '${SoleraL10n.t('fos.hall_aun_no_hay_hallazgos')}\n${SoleraL10n.t('fos.hall_toca_mas_primero')}'
+        : SoleraL10n.t('fos.hall_ninguno_coincide');
   }
 
   Widget _listaHallazgos(
@@ -552,7 +552,7 @@ class _PantallaListaState extends State<PantallaLista> {
         itemCount: lista.length,
         itemBuilder: (_, i) {
           final h = lista[i];
-          final fecha = DateFormat('dd MMM yyyy', 'es_ES')
+          final fecha = DateFormat('dd MMM yyyy', SoleraL10n.idioma)
               .format(DateTime.fromMillisecondsSinceEpoch(h.fechaMs));
           return ListTile(
             leading: h.rutaFoto != null
@@ -583,7 +583,7 @@ class _PantallaListaState extends State<PantallaLista> {
                 : const CircleAvatar(child: Icon(Icons.image_not_supported)),
             title: Row(
               children: [
-                Expanded(child: Text(h.especie.isEmpty ? 'Sin nombre' : h.especie)),
+                Expanded(child: Text(h.especie.isEmpty ? SoleraL10n.t('fos.hall_sin_nombre') : h.especie)),
                 if (mostrarBadgeRemitente)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -591,8 +591,8 @@ class _PantallaListaState extends State<PantallaLista> {
                       color: Colors.blue.shade50,
                       borderRadius: BorderRadius.circular(4),
                     ),
-                    child: const Text(
-                      '↓ recibida',
+                    child: Text(
+                      '↓ ${SoleraL10n.t('fos.hall_recibida')}',
                       style: TextStyle(fontSize: 11, color: Colors.blue),
                     ),
                   ),

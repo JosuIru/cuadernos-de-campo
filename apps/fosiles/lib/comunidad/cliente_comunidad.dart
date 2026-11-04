@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'feature_flag_comunidad.dart';
 import 'identidad_dispositivo.dart';
 import 'modelo_foto_comunidad.dart';
@@ -47,7 +48,7 @@ class ClienteComunidad {
       throw const EstadoComunidadInactivo();
     }
     if (!consentimientoExplicito) {
-      throw const ExcepcionComunidad('Falta consentimiento explícito.');
+      throw ExcepcionComunidad(SoleraL10n.t('fos.iden_com_falta_consentimiento'));
     }
     final tokenDispositivo = await IdentidadDispositivo.obtenerToken();
     final solicitud = http.MultipartRequest(
@@ -82,17 +83,14 @@ class ClienteComunidad {
         return ResultadoSubidaAportacion.desdeJson(json);
       }
       if (respuesta.statusCode == 429) {
-        throw const ExcepcionComunidad(
-            'Has alcanzado el límite diario de subidas. Inténtalo mañana.');
+        throw ExcepcionComunidad(SoleraL10n.t('fos.iden_com_limite_diario'));
       }
-      throw ExcepcionComunidad(
-          'El servidor rechazó la subida (HTTP ${respuesta.statusCode}).');
+      throw ExcepcionComunidad(SoleraL10n.tf('fos.iden_com_servidor_rechazo',
+          {'codigo': respuesta.statusCode}));
     } on TimeoutException {
-      throw const ExcepcionComunidad(
-          'El servidor tardó demasiado en responder. Revisa la conexión.');
+      throw ExcepcionComunidad(SoleraL10n.t('fos.iden_com_tiempo_agotado'));
     } on SocketException {
-      throw const ExcepcionComunidad(
-          'No hay conexión con el servidor. Inténtalo más tarde.');
+      throw ExcepcionComunidad(SoleraL10n.t('fos.iden_com_sin_conexion'));
     }
   }
 
@@ -139,9 +137,8 @@ class ClienteComunidad {
         )
         .timeout(_timeout);
     if (respuesta.statusCode != 200 && respuesta.statusCode != 202) {
-      throw ExcepcionComunidad(
-          'El servidor no pudo procesar la solicitud '
-          '(HTTP ${respuesta.statusCode}).');
+      throw ExcepcionComunidad(SoleraL10n.tf('fos.iden_com_no_pudo_procesar',
+          {'codigo': respuesta.statusCode}));
     }
   }
 }
@@ -152,7 +149,7 @@ class ClienteComunidad {
 class EstadoComunidadInactivo implements Exception {
   const EstadoComunidadInactivo();
   @override
-  String toString() => 'La función "comunidad" no está activada en esta build.';
+  String toString() => SoleraL10n.t('fos.iden_com_inactiva');
 }
 
 /// Error de comunicación con el backend de comunidad, mensaje listo para

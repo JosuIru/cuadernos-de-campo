@@ -7,6 +7,7 @@ import 'package:archive/archive.dart';
 import 'package:archive/archive_io.dart';
 import 'package:crypto/crypto.dart' as crypto_sha;
 import 'package:image/image.dart' as img;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
 
@@ -265,24 +266,26 @@ Future<FosCardParseada> parsearFosCard(File ficheroFosCard) async {
   // Manifiesto
   final manifiestoFichero = archivo.files.firstWhere(
     (f) => f.name == _nombreManifest,
-    orElse: () => throw const FormatException('No es un .fos-card válido (sin manifest)'),
+    orElse: () => throw FormatException(SoleraL10n.t('fos.iden_error_sin_manifest')),
   );
   final manifiesto = jsonDecode(utf8.decode(manifiestoFichero.content as List<int>)) as Map<String, dynamic>;
   if (manifiesto['formato'] != _firmaFormato) {
-    throw FormatException('Formato desconocido: ${manifiesto['formato']}');
+    throw FormatException(SoleraL10n.tf('fos.iden_error_formato_desconocido',
+        {'formato': '${manifiesto['formato']}'}));
   }
 
   // Hallazgo
   final hallazgoFichero = archivo.files.firstWhere(
     (f) => f.name == _nombreHallazgo,
-    orElse: () => throw const FormatException('Falta hallazgo.json'),
+    orElse: () => throw FormatException(SoleraL10n.t('fos.iden_error_falta_hallazgo')),
   );
   final hallazgoJson =
       jsonDecode(utf8.decode(hallazgoFichero.content as List<int>)) as Map<String, dynamic>;
   // Aceptamos v1 (sin certificaciones) y v2 (con certificaciones).
   if (hallazgoJson['formato'] != 'hallazgo_fos_card_v1' &&
       hallazgoJson['formato'] != 'hallazgo_fos_card_v2') {
-    throw FormatException('Versión de hallazgo desconocida: ${hallazgoJson['formato']}');
+    throw FormatException(SoleraL10n.tf('fos.iden_error_version_desconocida',
+        {'version': '${hallazgoJson['formato']}'}));
   }
 
   final datos = hallazgoJson['datos'] as Map<String, dynamic>;
@@ -372,7 +375,7 @@ Future<Certificacion> construirCertificacion({
 }) async {
   final autoridad = AutoridadCertificadora.instancia;
   if (!await autoridad.estaActiva()) {
-    throw StateError('Modo Experto no activo: no hay autoridad para firmar.');
+    throw StateError(SoleraL10n.t('fos.iden_error_sin_autoridad'));
   }
 
   // hash anterior = SHA256(firma_descubridor + último eslabón de la cadena

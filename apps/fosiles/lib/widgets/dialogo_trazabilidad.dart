@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/base_datos.dart';
 import '../modelos/hallazgo.dart';
 
@@ -19,7 +20,7 @@ Future<bool> mostrarDialogoAnadirTrazabilidad(
     context: context,
     builder: (_) => StatefulBuilder(
       builder: (_, setStateDialog) => AlertDialog(
-        title: const Text('Añadir evento de trazabilidad'),
+        title: Text(SoleraL10n.t('fos.hall_anadir_evento_trazabilidad')),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -27,30 +28,30 @@ Future<bool> mostrarDialogoAnadirTrazabilidad(
             children: [
               DropdownButtonFormField<String>(
                 value: tipoSeleccionado,
-                decoration: const InputDecoration(
-                    labelText: 'Tipo de evento', border: OutlineInputBorder()),
+                decoration: InputDecoration(
+                    labelText: SoleraL10n.t('fos.hall_tipo_evento'), border: const OutlineInputBorder()),
                 items: EventoTrazabilidad.tiposDisponibles
-                    .map((t) => DropdownMenuItem(value: t.$1, child: Text(t.$2)))
+                    .map((t) => DropdownMenuItem(value: t.$1, child: Text(SoleraL10n.t(t.$2))))
                     .toList(),
                 onChanged: (v) => setStateDialog(() => tipoSeleccionado = v!),
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: controladorDesc,
-                decoration: const InputDecoration(
-                  labelText: 'Descripción',
-                  border: OutlineInputBorder(),
-                  hintText: 'Ej: Depositado en el Museo de Ciencias Naturales de Álava',
+                decoration: InputDecoration(
+                  labelText: SoleraL10n.t('fos.hall_descripcion'),
+                  border: const OutlineInputBorder(),
+                  hintText: SoleraL10n.t('fos.hall_ejemplo_descripcion'),
                 ),
                 maxLines: 2,
               ),
               const SizedBox(height: 8),
               TextField(
                 controller: controladorAutor,
-                decoration: const InputDecoration(
-                  labelText: 'Autor del evento',
-                  border: OutlineInputBorder(),
-                  hintText: 'Ej: Dra. López (UPV/EHU)',
+                decoration: InputDecoration(
+                  labelText: SoleraL10n.t('fos.hall_autor_evento'),
+                  border: const OutlineInputBorder(),
+                  hintText: SoleraL10n.t('fos.hall_ejemplo_autor'),
                 ),
               ),
             ],
@@ -59,10 +60,10 @@ Future<bool> mostrarDialogoAnadirTrazabilidad(
         actions: [
           TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancelar')),
+              child: Text(SoleraL10n.t('cancelar'))),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Añadir'),
+            child: Text(SoleraL10n.t('fos.hall_anadir')),
           ),
         ],
       ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nuevo_ser_core/nuevo_ser_core.dart' show numeroParaEditar;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart' show SoleraL10n, numeroParaEditar;
 import 'package:url_launcher/url_launcher.dart' show launchUrl, LaunchMode;
 import '../datos/configuracion.dart';
 
@@ -54,7 +54,7 @@ class _PantallaAjustesIaState extends State<PantallaAjustesIa> {
     await Configuracion.guardarApiKeyDeepseek(_controladorDeepseekKey.text.trim());
     await Configuracion.guardarModelo(_modeloSeleccionado);
     if (!mounted) return;
-    setState(() => _mensajeEstado = '✅ Ajustes de IA guardados');
+    setState(() => _mensajeEstado = SoleraL10n.t('fos.ajus_ia_guardados'));
   }
 
   /// Abre en el navegador la web donde se saca cada clave.
@@ -64,7 +64,7 @@ class _PantallaAjustesIaState extends State<PantallaAjustesIa> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('No se pudo abrir el navegador. Entra en $direccion')),
+        SnackBar(content: Text(SoleraL10n.tf('fos.ajus_no_abrir_navegador', {'direccion': direccion}))),
       );
     }
   }
@@ -81,24 +81,22 @@ class _PantallaAjustesIaState extends State<PantallaAjustesIa> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Inteligencia artificial')),
+      appBar: AppBar(title: Text(SoleraL10n.t('seccion_integraciones'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Para identificar fósiles automáticamente, introduce tu API key de Anthropic. '
-            'Se guarda solo en tu teléfono y se envía únicamente a api.anthropic.com. '
-            'Consigue una en console.anthropic.com. La de DeepSeek es para el chat.',
+            SoleraL10n.t('fos.ajus_ia_explicacion'),
             style: TextStyle(fontSize: 13),
           ),
-          _botonConseguirClave('Conseguir clave de Anthropic', 'https://console.anthropic.com/settings/keys'),
-          _botonConseguirClave('Conseguir clave de DeepSeek', 'https://platform.deepseek.com/api_keys'),
+          _botonConseguirClave(SoleraL10n.t('fos.ajus_conseguir_anthropic'), 'https://console.anthropic.com/settings/keys'),
+          _botonConseguirClave(SoleraL10n.t('fos.ajus_conseguir_deepseek'), 'https://platform.deepseek.com/api_keys'),
           SizedBox(height: 4),
           TextField(
             controller: _controladorApiKey,
             obscureText: _ocultarClaves,
             decoration: InputDecoration(
-              labelText: 'API key de Anthropic',
+              labelText: SoleraL10n.t('fos.ajus_api_anthropic'),
               border: OutlineInputBorder(),
               hintText: 'sk-ant-…',
               suffixIcon: IconButton(
@@ -112,13 +110,13 @@ class _PantallaAjustesIaState extends State<PantallaAjustesIa> {
             controller: _controladorDeepseekKey,
             obscureText: _ocultarClaves,
             decoration: InputDecoration(
-              labelText: 'API key de DeepSeek (para chat)',
+              labelText: SoleraL10n.t('fos.ajus_api_deepseek'),
               border: OutlineInputBorder(),
               hintText: 'sk-…',
             ),
           ),
           SizedBox(height: 16),
-          Text('Modelo de Claude', style: TextStyle(fontWeight: FontWeight.bold)),
+          Text(SoleraL10n.t('fos.ajus_modelo_claude'), style: TextStyle(fontWeight: FontWeight.bold)),
           SizedBox(height: 8),
           RadioGroup<String>(
             groupValue: _modeloSeleccionado,
@@ -128,13 +126,16 @@ class _PantallaAjustesIaState extends State<PantallaAjustesIa> {
                   .map((modelo) => RadioListTile<String>(
                         value: modelo.id,
                         title: Text(modelo.nombre),
-                        subtitle: Text('${modelo.descripcion} ~${numeroParaEditar(modelo.precioOrientativoCentimosPorIdentificacion)} céntimos por foto.'),
+                        subtitle: Text(SoleraL10n.tf('fos.ajus_modelo_precio', {
+                          'descripcion': SoleraL10n.t(modelo.claveDescripcion),
+                          'precio': numeroParaEditar(modelo.precioOrientativoCentimosPorIdentificacion),
+                        })),
                       ))
                   .toList(),
             ),
           ),
           SizedBox(height: 16),
-          FilledButton(onPressed: _cargado ? _guardar : null, child: Text('Guardar')),
+          FilledButton(onPressed: _cargado ? _guardar : null, child: Text(SoleraL10n.t('guardar'))),
           if (_mensajeEstado != null) ...[
             SizedBox(height: 12),
             Center(child: Text(_mensajeEstado!, style: TextStyle(color: Theme.of(context).colorScheme.primary))),

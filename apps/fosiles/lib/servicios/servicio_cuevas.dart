@@ -1,3 +1,5 @@
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
+
 import 'servicio_overpass.dart';
 
 class CuevaOSM {
@@ -61,7 +63,7 @@ out center;
     final tags = (e['tags'] as Map?)?.cast<String, dynamic>() ?? const {};
     final id = '${e['type']}/${e['id']}';
     final esMina = tags['man_made'] == 'adit' || tags['man_made'] == 'mineshaft';
-    final nombrePorDefecto = esMina ? 'Bocamina sin nombre' : 'Cueva sin nombre';
+    final nombrePorDefecto = esMina ? SoleraL10n.t('fos.mapa_bocamina_sin_nombre') : SoleraL10n.t('fos.mapa_cueva_sin_nombre');
     cuevas.add(CuevaOSM(
       id: id,
       latitud: coords.lat!,

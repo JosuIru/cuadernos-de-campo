@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
 import '../datos/base_datos.dart';
@@ -45,7 +46,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   bool _identificandoFosil = false;
   bool _guardando = false;
   String? _monedaReferencia;
-  String _estadoGps = 'Obteniendo GPS…';
+  String _estadoGps = SoleraL10n.t('fos.hall_obteniendo_gps');
   double? _strikeGrados;
   double? _dipGrados;
   String _tipoHallazgo = 'fosil';
@@ -86,12 +87,12 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     }
     if (widget.latitudPredefinida != null && widget.longitudPredefinida != null) {
       setState(() {
-        _estadoGps = '📍 Punto marcado en mapa';
+        _estadoGps = '📍 ${SoleraL10n.t('fos.hall_punto_marcado_mapa')}';
       });
     } else {
       final permitido = await asegurarPermisoUbicacion();
       if (!permitido) {
-        setState(() => _estadoGps = 'Permiso de ubicación denegado.');
+        setState(() => _estadoGps = SoleraL10n.t('fos.hall_permiso_ubicacion_denegado'));
       } else {
         try {
           final pos = await Geolocator.getCurrentPosition(
@@ -105,7 +106,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           });
         } catch (e) {
           if (!mounted) return;
-          setState(() => _estadoGps = 'Error GPS: $e');
+          setState(() => _estadoGps = SoleraL10n.tf('fos.hall_error_gps', {'error': e}));
         }
       }
     }
@@ -155,7 +156,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     final fotoParaIdentificar = _primeraFotoParaIdentificar;
     if (fotoParaIdentificar == null) return;
     if (!await Configuracion.tieneApiKey()) {
-      _mostrarSnack('Configura primero tu API key en Ajustes → Inteligencia artificial.');
+      _mostrarSnack(SoleraL10n.t('fos.hall_configura_api_key'));
       return;
     }
     setState(() => _identificandoFosil = true);
@@ -179,7 +180,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       if (!mounted) return;
       _mostrarResultadoIdentificacion(identificacion);
     } catch (e) {
-      _mostrarSnack('Error identificando: $e');
+      _mostrarSnack(SoleraL10n.tf('fos.hall_error_identificando', {'error': e}));
     } finally {
       if (mounted) setState(() => _identificandoFosil = false);
     }
@@ -216,7 +217,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                   },
                   borderRadius: BorderRadius.circular(4),
                 ),
-                child: Text('Confianza ${identificacion.confianza}',
+                child: Text(SoleraL10n.tf('fos.hall_confianza', {'nivel': _textoConfianza(identificacion.confianza)}),
                     style: TextStyle(
                       fontSize: 12,
                       color: switch (identificacion.confianza) {
@@ -234,7 +235,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(color: Colors.blueGrey.shade100, borderRadius: BorderRadius.circular(4)),
-                    child: Text('💎 Detectado como mineral',
+                    child: Text('💎 ${SoleraL10n.t('fos.hall_detectado_mineral')}',
                         style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
@@ -242,14 +243,14 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                   ),
                 ),
               if (identificacion.tamanoEstimado != null && identificacion.tamanoEstimado!.isNotEmpty)
-                _bloque('Tamaño estimado', identificacion.tamanoEstimado!),
+                _bloque(SoleraL10n.t('fos.hall_tamano_estimado'), identificacion.tamanoEstimado!),
               if (identificacion.durezaMohsEstimada != null && identificacion.durezaMohsEstimada!.isNotEmpty)
-                _bloque('Dureza Mohs estimada', identificacion.durezaMohsEstimada!),
-              _bloque('Descripción', identificacion.descripcion),
-              _bloque('Razonamiento', identificacion.razonamiento),
+                _bloque(SoleraL10n.t('fos.hall_dureza_mohs_estimada'), identificacion.durezaMohsEstimada!),
+              _bloque(SoleraL10n.t('fos.hall_descripcion'), identificacion.descripcion),
+              _bloque(SoleraL10n.t('fos.hall_razonamiento'), identificacion.razonamiento),
               if (identificacion.alternativas.isNotEmpty)
-                _bloque('Alternativas', identificacion.alternativas.map((a) => '• $a').join('\n')),
-              _bloque('Cómo confirmar', identificacion.comoConfirmar),
+                _bloque(SoleraL10n.t('fos.hall_alternativas'), identificacion.alternativas.map((a) => '• $a').join('\n')),
+              _bloque(SoleraL10n.t('fos.hall_como_confirmar'), identificacion.comoConfirmar),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -259,20 +260,20 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                         _aplicarIdentificacionAlFormulario(identificacion);
                         Navigator.of(sheetContext).pop();
                       },
-                      child: const Text('Aplicar al formulario'),
+                      child: Text(SoleraL10n.t('fos.hall_aplicar_formulario')),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => Navigator.of(sheetContext).pop(),
-                      child: const Text('Descartar'),
+                      child: Text(SoleraL10n.t('fos.hall_descartar')),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
-              Center(child: Text('Modelo: ${identificacion.modeloUsado}', style: const TextStyle(fontSize: 11, color: Colors.grey))),
+              Center(child: Text(SoleraL10n.tf('fos.hall_modelo', {'modelo': identificacion.modeloUsado}), style: const TextStyle(fontSize: 11, color: Colors.grey))),
             ],
           ),
         ),
@@ -290,15 +291,24 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         _controladorEdad.text = identificacion.edadEstimada!;
       }
       final notasPrev = _controladorNotas.text.trim();
-      final adicion = '[Claude · ${identificacion.confianza}] ${identificacion.descripcion}';
+      final adicion = '[Claude · ${_textoConfianza(identificacion.confianza)}] ${identificacion.descripcion}';
       final altLinea = identificacion.alternativas.isNotEmpty ? 'Alt: ${identificacion.alternativas.join(", ")}' : null;
       final durezaLinea = identificacion.durezaMohsEstimada != null && identificacion.durezaMohsEstimada!.isNotEmpty
-          ? 'Dureza Mohs: ${identificacion.durezaMohsEstimada}'
+          ? '${SoleraL10n.t('fos.hall_dureza_mohs')}: ${identificacion.durezaMohsEstimada}'
           : null;
       final partes = <String>[notasPrev, adicion, if (altLinea != null) altLinea, if (durezaLinea != null) durezaLinea].where((s) => s.isNotEmpty).toList();
       _controladorNotas.text = partes.join('\n\n');
     });
   }
+
+  /// La IA devuelve la confianza como valor fijo en castellano
+  /// ('alta' | 'media' | 'baja'); se traduce solo al mostrarlo.
+  String _textoConfianza(String confianza) => switch (confianza) {
+        'alta' => SoleraL10n.t('fos.hall_confianza_alta'),
+        'media' => SoleraL10n.t('fos.hall_confianza_media'),
+        'baja' => SoleraL10n.t('fos.hall_confianza_baja'),
+        _ => confianza,
+      };
 
   Widget _bloque(String titulo, String texto) => Padding(
         padding: const EdgeInsets.only(bottom: 12),
@@ -317,7 +327,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     final lat = h?.latitud ?? widget.latitudPredefinida ?? _ubicacion?.latitude;
     final lon = h?.longitud ?? widget.longitudPredefinida ?? _ubicacion?.longitude;
     if (lat == null || lon == null) {
-      _mostrarSnack('Esperando posición GPS…');
+      _mostrarSnack(SoleraL10n.t('fos.hall_esperando_gps'));
       return;
     }
     setState(() => _guardando = true);
@@ -334,7 +344,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     if (widget.esEdicion) {
       final idHallazgo = h?.id;
       if (idHallazgo == null) {
-        _mostrarSnack('Error: el hallazgo no tiene ID.');
+        _mostrarSnack(SoleraL10n.t('fos.hall_error_sin_id'));
         setState(() => _guardando = false);
         return;
       }
@@ -411,13 +421,13 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.esEdicion ? 'Editar hallazgo' : 'Nuevo hallazgo'),
+        title: Text(widget.esEdicion ? SoleraL10n.t('fos.hall_editar_hallazgo') : SoleraL10n.t('fos.hall_nuevo_hallazgo')),
         actions: [
           TextButton(
             onPressed: _guardando ? null : _guardar,
             child: _guardando
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Guardar'),
+                : Text(SoleraL10n.t('guardar')),
           ),
         ],
       ),
@@ -425,9 +435,9 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         padding: const EdgeInsets.all(16),
         children: [
           SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(value: 'fosil', label: Text('Fósil'), icon: Icon(Icons.bug_report)),
-              ButtonSegment(value: 'mineral', label: Text('Mineral'), icon: Icon(Icons.diamond)),
+            segments: [
+              ButtonSegment(value: 'fosil', label: Text(SoleraL10n.t('fos.hall_fosil')), icon: const Icon(Icons.bug_report)),
+              ButtonSegment(value: 'mineral', label: Text(SoleraL10n.t('fos.hall_mineral')), icon: const Icon(Icons.diamond)),
             ],
             selected: {_tipoHallazgo},
             onSelectionChanged: (s) => setState(() => _tipoHallazgo = s.first),
@@ -435,15 +445,15 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           const SizedBox(height: 12),
           _galeriaFotos(tieneFoto),
           const SizedBox(height: 16),
-          _campoLectura('Ubicación', _estadoGps),
+          _campoLectura(SoleraL10n.t('fos.hall_ubicacion'), _estadoGps),
           const SizedBox(height: 8),
-          _campoLectura('Contexto geológico', _consultandoGeologia ? 'Consultando IGME…' : (partesContexto.isEmpty ? '—' : partesContexto.join(' · '))),
+          _campoLectura(SoleraL10n.t('fos.hall_contexto_geologico'), _consultandoGeologia ? SoleraL10n.t('fos.hall_consultando_igme') : (partesContexto.isEmpty ? '—' : partesContexto.join(' · '))),
           if (_tipoHallazgo == 'fosil') _tiraFosilesProbables(),
           const SizedBox(height: 16),
           TextField(
             controller: _controladorEspecie,
             decoration: InputDecoration(
-              labelText: _tipoHallazgo == 'mineral' ? 'Nombre del mineral' : 'Especie / nombre tentativo',
+              labelText: _tipoHallazgo == 'mineral' ? SoleraL10n.t('fos.hall_nombre_mineral') : SoleraL10n.t('fos.hall_especie_tentativa'),
               border: const OutlineInputBorder(),
             ),
           ),
@@ -453,18 +463,18 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Icon(Icons.auto_awesome),
             onPressed: _tieneAlgunaFoto && !_identificandoFosil ? _identificarConClaude : null,
-            label: Text(_identificandoFosil ? 'Identificando…' : 'Identificar con Claude'),
+            label: Text(_identificandoFosil ? SoleraL10n.t('fos.hall_identificando') : SoleraL10n.t('fos.hall_identificar_claude')),
           ),
           const SizedBox(height: 4),
           Row(
             children: [
-              const Padding(padding: EdgeInsets.only(right: 8), child: Text('Moneda en foto:', style: TextStyle(fontSize: 12))),
+              Padding(padding: const EdgeInsets.only(right: 8), child: Text(SoleraL10n.t('fos.hall_moneda_en_foto'), style: const TextStyle(fontSize: 12))),
               Expanded(
                 child: Wrap(
                   spacing: 4,
                   children: [
                     ChoiceChip(
-                      label: const Text('No', style: TextStyle(fontSize: 11)),
+                      label: Text(SoleraL10n.t('fos.hall_no'), style: const TextStyle(fontSize: 11)),
                       selected: _monedaReferencia == null,
                       onSelected: (_) => setState(() => _monedaReferencia = null),
                     ),
@@ -480,16 +490,16 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             ],
           ),
           const SizedBox(height: 16),
-          TextField(controller: _controladorEdad, decoration: const InputDecoration(labelText: 'Edad / periodo', border: OutlineInputBorder())),
+          TextField(controller: _controladorEdad, decoration: InputDecoration(labelText: SoleraL10n.t('fos.hall_edad_periodo'), border: const OutlineInputBorder())),
           const SizedBox(height: 8),
-          TextField(controller: _controladorFormacion, decoration: const InputDecoration(labelText: 'Formación geológica', border: OutlineInputBorder())),
+          TextField(controller: _controladorFormacion, decoration: InputDecoration(labelText: SoleraL10n.t('fos.hall_formacion_geologica'), border: const OutlineInputBorder())),
           const SizedBox(height: 8),
           _filaOrientacion(),
           const SizedBox(height: 8),
           TextField(
             controller: _controladorNotas,
             maxLines: 4,
-            decoration: const InputDecoration(labelText: 'Notas', border: OutlineInputBorder(), alignLabelWithHint: true),
+            decoration: InputDecoration(labelText: SoleraL10n.t('fos.hall_notas'), border: const OutlineInputBorder(), alignLabelWithHint: true),
           ),
         ],
       ),
@@ -522,12 +532,12 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('📷  Tomar foto', style: TextStyle(fontSize: 18)),
+              Text('📷  ${SoleraL10n.t('fos.hall_tomar_foto')}', style: const TextStyle(fontSize: 18)),
               const SizedBox(height: 8),
               TextButton.icon(
                 icon: const Icon(Icons.photo_library, size: 18),
                 onPressed: _elegirFotoGaleria,
-                label: const Text('o desde galería'),
+                label: Text(SoleraL10n.t('fos.hall_o_desde_galeria')),
               ),
             ],
           ),
@@ -613,7 +623,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                   children: [
                     ListTile(
                       leading: const Icon(Icons.photo_camera),
-                      title: const Text('Tomar foto'),
+                      title: Text(SoleraL10n.t('fos.hall_tomar_foto')),
                       onTap: () {
                         Navigator.of(sheetCtx).pop();
                         _hacerFoto();
@@ -621,7 +631,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                     ),
                     ListTile(
                       leading: const Icon(Icons.photo_library),
-                      title: const Text('Desde galería'),
+                      title: Text(SoleraL10n.t('fos.hall_desde_galeria')),
                       onTap: () {
                         Navigator.of(sheetCtx).pop();
                         _elegirFotoGaleria();
@@ -649,12 +659,12 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           const SizedBox(width: 8),
           Expanded(
             child: tieneMedida
-                ? Text('Estrato: ${_strikeGrados!.toStringAsFixed(0)}°/${_dipGrados!.toStringAsFixed(0)}°', style: const TextStyle(fontSize: 13))
-                : const Text('Orientación del estrato: sin medir', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                ? Text('${SoleraL10n.t('fos.hall_estrato')}: ${_strikeGrados!.toStringAsFixed(0)}°/${_dipGrados!.toStringAsFixed(0)}°', style: const TextStyle(fontSize: 13))
+                : Text(SoleraL10n.t('fos.hall_orientacion_sin_medir'), style: const TextStyle(fontSize: 13, color: Colors.grey)),
           ),
           TextButton.icon(
             icon: const Icon(Icons.explore, size: 18),
-            label: Text(tieneMedida ? 'Re-medir' : 'Medir'),
+            label: Text(tieneMedida ? SoleraL10n.t('fos.hall_remedir') : SoleraL10n.t('fos.hall_medir')),
             onPressed: () async {
               final medida = await mostrarModalOrientacion(context);
               if (medida == null) return;
@@ -667,7 +677,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           if (tieneMedida)
             IconButton(
               icon: const Icon(Icons.close, size: 18),
-              tooltip: 'Borrar medida',
+              tooltip: SoleraL10n.t('fos.hall_borrar_medida'),
               onPressed: () => setState(() {
                 _strikeGrados = null;
                 _dipGrados = null;
@@ -695,7 +705,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                 decoration: BoxDecoration(color: periodo?.color, borderRadius: BorderRadius.circular(4)),
                 child: Text(
-                  'Fósiles probables · ${periodo?.nombre ?? ''}',
+                  SoleraL10n.tf('fos.hall_fosiles_probables', {'periodo': periodo?.nombre ?? ''}),
                   style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF2D3A2E)),
                 ),
               ),
@@ -806,14 +816,14 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Posible incoherencia geológica',
+                Text(SoleraL10n.t('fos.hall_incoherencia_geologica'),
                     style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
                         color: Colors.amber.shade900)),
                 const SizedBox(height: 2),
                 Text(
-                    'Claude propone $nClaude pero el afloramiento IGME es $nIgme. Revisa la identificación o la posición.',
+                    SoleraL10n.tf('fos.hall_incoherencia_detalle', {'claude': nClaude, 'igme': nIgme}),
                     style: TextStyle(
                         fontSize: 12, color: Colors.amber.shade900)),
               ],

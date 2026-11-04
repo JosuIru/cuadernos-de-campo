@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/datos_guia.dart';
 import '../datos/datos_minerales.dart';
 import '../servicios/servicio_wikipedia.dart';
@@ -70,24 +71,24 @@ class _PantallaGuiaState extends State<PantallaGuia> {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Guía'),
-          bottom: const TabBar(
+          title: Text(SoleraL10n.t('fos.hall_guia')),
+          bottom: TabBar(
             tabs: [
-              Tab(icon: Icon(Icons.bug_report), text: 'Fósiles'),
-              Tab(icon: Icon(Icons.diamond), text: 'Minerales'),
+              Tab(icon: const Icon(Icons.bug_report), text: SoleraL10n.t('fos.hall_fosiles')),
+              Tab(icon: const Icon(Icons.diamond), text: SoleraL10n.t('fos.hall_minerales')),
             ],
           ),
           actions: [
             IconButton(
               icon: const Icon(Icons.timeline),
-              tooltip: 'Línea del tiempo',
+              tooltip: SoleraL10n.t('fos.hall_linea_tiempo'),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const PantallaLineaTiempo()),
               ),
             ),
             IconButton(
               icon: const Icon(Icons.quiz),
-              tooltip: 'Quiz',
+              tooltip: SoleraL10n.t('fos.hall_quiz'),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => PantallaQuiz()),
               ),
@@ -100,9 +101,9 @@ class _PantallaGuiaState extends State<PantallaGuia> {
               padding: const EdgeInsets.all(8),
               child: TextField(
                 controller: _controladorBusqueda,
-                decoration: const InputDecoration(
-                  hintText: 'Buscar…',
-                  prefixIcon: Icon(Icons.search),
+                decoration: InputDecoration(
+                  hintText: SoleraL10n.t('fos.hall_buscar'),
+                  prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(),
                 ),
               ),

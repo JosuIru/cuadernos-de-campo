@@ -65,13 +65,13 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
     final nombre = await showDialog<String>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Nombre de la autoridad'),
+        title: Text(SoleraL10n.t('fos.ajus_nombre_autoridad')),
         content: TextField(
           controller: controlador,
           autofocus: true,
-          decoration: const InputDecoration(
-            hintText: 'Ej: Instituto Nacional de Geología',
-            border: OutlineInputBorder(),
+          decoration: InputDecoration(
+            hintText: SoleraL10n.t('fos.ajus_ej_autoridad'),
+            border: const OutlineInputBorder(),
           ),
         ),
         actions: [
@@ -81,7 +81,7 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controlador.text.trim()),
-            child: const Text('Generar'),
+            child: Text(SoleraL10n.t('fos.ajus_generar')),
           ),
         ],
       ),
@@ -92,12 +92,12 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
     await showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Código de activación'),
+        title: Text(SoleraL10n.t('fos.ajus_codigo_activacion')),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Para: $nombre', style: const TextStyle(fontSize: 13, color: Colors.black54)),
+            Text(SoleraL10n.tf('fos.ajus_para_nombre', {'nombre': nombre}), style: const TextStyle(fontSize: 13, color: Colors.black54)),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
@@ -120,9 +120,8 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Mándalo por email institucional al experto. Sólo le sirve a la '
-              'primera persona que lo use — no se puede reusar.',
+            Text(
+              SoleraL10n.t('fos.ajus_codigo_mandalo'),
               style: TextStyle(fontSize: 12, color: Colors.black54),
             ),
           ],
@@ -130,24 +129,24 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
         actions: [
           TextButton.icon(
             icon: const Icon(Icons.copy),
-            label: const Text('Copiar'),
+            label: Text(SoleraL10n.t('fos.ajus_copiar')),
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: codigo));
               if (!mounted) return;
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Código copiado al portapapeles')),
+                SnackBar(content: Text(SoleraL10n.t('fos.ajus_codigo_copiado'))),
               );
             },
           ),
           TextButton.icon(
             icon: const Icon(Icons.share),
-            label: const Text('Compartir'),
+            label: Text(SoleraL10n.t('compartir')),
             onPressed: () async {
               Navigator.pop(context);
               await Share.share(
-                'Código de activación para $nombre:\n\n$codigo',
-                subject: 'Modo Experto — Fósiles',
+                '${SoleraL10n.tf('fos.ajus_compartir_codigo', {'nombre': nombre})}\n\n$codigo',
+                subject: SoleraL10n.t('fos.ajus_asunto_experto'),
               );
             },
           ),
@@ -167,13 +166,8 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Desactivar modo Experto'),
-        content: const Text(
-          'La clave de la autoridad se borrará de este dispositivo. Las cards '
-          'que ya certificaste siguen siendo válidas, pero esta instalación '
-          'no podrá firmar nuevas certificaciones hasta que vuelvas a activar '
-          'con un código nuevo.',
-        ),
+        title: Text(SoleraL10n.t('fos.ajus_desactivar_titulo')),
+        content: Text(SoleraL10n.t('fos.ajus_desactivar_texto')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -182,7 +176,7 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Desactivar'),
+            child: Text(SoleraL10n.t('fos.ajus_desactivar')),
           ),
         ],
       ),
@@ -195,7 +189,7 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Modo Experto')),
+      appBar: AppBar(title: Text(SoleraL10n.t('fos.ajus_modo_experto'))),
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -207,22 +201,18 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
 
   List<Widget> _seccionInactiva() {
     return [
-      const Text(
-        'El Modo Experto permite a una autoridad firmante (Instituto Nacional '
-        'de Geología, museo, sociedad científica) revisar y certificar cards '
-        'compartidas por los descubridores.',
-        style: TextStyle(fontSize: 14),
+      Text(
+        SoleraL10n.t('fos.ajus_experto_intro'),
+        style: const TextStyle(fontSize: 14),
       ),
       const SizedBox(height: 24),
       _seccion(
-        titulo: 'Activar como autoridad',
-        descripcion: 'Si has recibido un código de activación por email '
-            'institucional, pégalo aquí para empezar a recibir cards para '
-            'revisión.',
+        titulo: SoleraL10n.t('fos.ajus_activar_autoridad'),
+        descripcion: SoleraL10n.t('fos.ajus_activar_autoridad_texto'),
         hijos: [
           FilledButton.icon(
             icon: const Icon(Icons.key),
-            label: const Text('Pegar código de activación'),
+            label: Text(SoleraL10n.t('fos.ajus_pegar_codigo')),
             onPressed: _activar,
             style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
           ),
@@ -230,15 +220,12 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
       ),
       const SizedBox(height: 32),
       _seccion(
-        titulo: 'Administrador: generar código',
-        descripcion: 'Si tú gestionas Fósiles y quieres preautorizar a una '
-            'autoridad para que pueda certificar cards, genera un código y '
-            'mándaselo por email institucional. Sólo le sirve a la primera '
-            'persona que lo use.',
+        titulo: SoleraL10n.t('fos.ajus_admin_generar'),
+        descripcion: SoleraL10n.t('fos.ajus_admin_texto'),
         hijos: [
           OutlinedButton.icon(
             icon: const Icon(Icons.qr_code_2),
-            label: const Text('Generar código para una autoridad'),
+            label: Text(SoleraL10n.t('fos.ajus_generar_codigo_autoridad')),
             onPressed: _generarCodigo,
             style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
           ),
@@ -265,7 +252,7 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Modo Experto activo',
+                    SoleraL10n.t('fos.ajus_experto_activo'),
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -288,10 +275,8 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
       ),
       const SizedBox(height: 16),
       _seccion(
-        titulo: 'Huella institucional',
-        descripcion: 'Esta huella criptográfica viaja en cada certificación '
-            'que firmas. Los descubridores la verán al recibir sus cards de '
-            'vuelta.',
+        titulo: SoleraL10n.t('fos.ajus_huella_institucional'),
+        descripcion: SoleraL10n.t('fos.ajus_huella_texto'),
         hijos: [
           Container(
             padding: const EdgeInsets.all(12),
@@ -324,9 +309,9 @@ class _PantallaModoExpertoState extends State<PantallaModoExperto> {
       const SizedBox(height: 24),
       OutlinedButton.icon(
         icon: const Icon(Icons.power_off, color: Colors.red),
-        label: const Text(
-          'Desactivar modo Experto',
-          style: TextStyle(color: Colors.red),
+        label: Text(
+          SoleraL10n.t('fos.ajus_desactivar_titulo'),
+          style: const TextStyle(color: Colors.red),
         ),
         onPressed: _desactivar,
         style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
@@ -380,7 +365,7 @@ class _PantallaActivarState extends State<_PantallaActivar> {
     final nombre = _controladorNombre.text.trim();
     final colegiacion = _controladorColegiacion.text.trim();
     if (codigo.isEmpty || nombre.isEmpty) {
-      setState(() => _error = 'Código y nombre son obligatorios.');
+      setState(() => _error = SoleraL10n.t('fos.ajus_codigo_nombre_obligatorios'));
       return;
     }
     setState(() {
@@ -398,7 +383,7 @@ class _PantallaActivarState extends State<_PantallaActivar> {
     } else {
       setState(() {
         _activando = false;
-        _error = 'Código no válido. Pídele al administrador uno nuevo.';
+        _error = SoleraL10n.t('fos.ajus_codigo_no_valido');
       });
     }
   }
@@ -406,35 +391,35 @@ class _PantallaActivarState extends State<_PantallaActivar> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Activar autoridad')),
+      appBar: AppBar(title: Text(SoleraL10n.t('fos.ajus_activar_autoridad_titulo'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           TextField(
             controller: _controladorCodigo,
             maxLines: 3,
-            decoration: const InputDecoration(
-              labelText: 'Código de activación',
-              hintText: 'Pega aquí el código del email institucional',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: SoleraL10n.t('fos.ajus_codigo_activacion'),
+              hintText: SoleraL10n.t('fos.ajus_pega_codigo_hint'),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _controladorNombre,
-            decoration: const InputDecoration(
-              labelText: 'Nombre de la autoridad *',
-              hintText: 'Ej: Instituto Nacional de Geología',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: '${SoleraL10n.t('fos.ajus_nombre_autoridad')} *',
+              hintText: SoleraL10n.t('fos.ajus_ej_autoridad'),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _controladorColegiacion,
-            decoration: const InputDecoration(
-              labelText: 'Persona responsable / colegiación (opcional)',
-              hintText: 'Ej: Dra. X. Y. (col. nº 1234)',
-              border: OutlineInputBorder(),
+            decoration: InputDecoration(
+              labelText: SoleraL10n.t('fos.ajus_colegiacion'),
+              hintText: SoleraL10n.t('fos.ajus_ej_colegiacion'),
+              border: const OutlineInputBorder(),
             ),
           ),
           const SizedBox(height: 16),
@@ -458,7 +443,7 @@ class _PantallaActivarState extends State<_PantallaActivar> {
                     width: 18,
                     child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                   )
-                : const Text('Activar'),
+                : Text(SoleraL10n.t('fos.ajus_activar')),
           ),
         ],
       ),

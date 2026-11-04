@@ -1,3 +1,4 @@
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'servicio_cuevas.dart' show LimitesGeograficos;
 import 'servicio_overpass.dart';
 
@@ -26,23 +27,25 @@ class MonumentoArqueologico {
   });
 }
 
+/// `legible` guarda la clave de traducción del tipo; se traduce al
+/// construir cada [MonumentoArqueologico].
 const Map<String, ({String legible, String emoji})> _categorias = {
-  'megalith': (legible: 'Megalito (dolmen / cromlech / harrespil)', emoji: '🗿'),
-  'dolmen': (legible: 'Dolmen', emoji: '🗿'),
-  'tumulus': (legible: 'Túmulo', emoji: '⛰️'),
-  'hut_circle': (legible: 'Fondo de cabaña', emoji: '🏚️'),
-  'fortification': (legible: 'Fortificación / castro', emoji: '🏰'),
-  'castle': (legible: 'Castillo', emoji: '🏰'),
-  'settlement': (legible: 'Poblado / asentamiento', emoji: '🏘️'),
-  'menhir': (legible: 'Menhir', emoji: '🪨'),
-  'stone': (legible: 'Piedra antigua', emoji: '🪨'),
-  'stone_circle': (legible: 'Círculo de piedras', emoji: '⭕'),
-  'tomb': (legible: 'Tumba', emoji: '⚰️'),
-  'ruins': (legible: 'Ruinas', emoji: '🏛️'),
-  'monument': (legible: 'Monumento', emoji: '🗽'),
-  'memorial': (legible: 'Memorial', emoji: '🗽'),
-  'wayside_cross': (legible: 'Crucero / cruz de caminos', emoji: '✝️'),
-  'archaeological_site': (legible: 'Yacimiento arqueológico', emoji: '🗿'),
+  'megalith': (legible: 'fos.mapa_monumento_megalito', emoji: '🗿'),
+  'dolmen': (legible: 'fos.mapa_monumento_dolmen', emoji: '🗿'),
+  'tumulus': (legible: 'fos.mapa_monumento_tumulo', emoji: '⛰️'),
+  'hut_circle': (legible: 'fos.mapa_monumento_fondo_cabana', emoji: '🏚️'),
+  'fortification': (legible: 'fos.mapa_monumento_fortificacion', emoji: '🏰'),
+  'castle': (legible: 'fos.mapa_monumento_castillo', emoji: '🏰'),
+  'settlement': (legible: 'fos.mapa_monumento_poblado', emoji: '🏘️'),
+  'menhir': (legible: 'fos.mapa_monumento_menhir', emoji: '🪨'),
+  'stone': (legible: 'fos.mapa_monumento_piedra_antigua', emoji: '🪨'),
+  'stone_circle': (legible: 'fos.mapa_monumento_circulo_piedras', emoji: '⭕'),
+  'tomb': (legible: 'fos.mapa_monumento_tumba', emoji: '⚰️'),
+  'ruins': (legible: 'fos.mapa_monumento_ruinas', emoji: '🏛️'),
+  'monument': (legible: 'fos.mapa_monumento_monumento', emoji: '🗽'),
+  'memorial': (legible: 'fos.mapa_monumento_memorial', emoji: '🗽'),
+  'wayside_cross': (legible: 'fos.mapa_monumento_crucero', emoji: '✝️'),
+  'archaeological_site': (legible: 'fos.mapa_monumento_yacimiento', emoji: '🗿'),
 };
 
 ({String legible, String emoji}) _categorizar(Map<String, dynamic> tags) {
@@ -54,7 +57,7 @@ const Map<String, ({String legible, String emoji})> _categorias = {
   if (_categorias.containsKey(tipoTumba)) return _categorias[tipoTumba]!;
   if (_categorias.containsKey(tipoSitio)) return _categorias[tipoSitio]!;
   if (_categorias.containsKey(hist)) return _categorias[hist]!;
-  return (legible: 'Yacimiento arqueológico', emoji: '🗿');
+  return (legible: 'fos.mapa_monumento_yacimiento', emoji: '🗿');
 }
 
 ({double? lat, double? lon}) _extraerCoordenadas(Map<String, dynamic> elemento) {
@@ -101,9 +104,9 @@ out center;
       id: id,
       latitud: coords.lat!,
       longitud: coords.lon!,
-      nombre: (tags['name'] ?? tags['name:eu'] ?? tags['name:es'] ?? tags['name:fr'] ?? 'Sin nombre').toString(),
+      nombre: (tags['name'] ?? tags['name:eu'] ?? tags['name:es'] ?? tags['name:fr'] ?? SoleraL10n.t('fos.mapa_sin_nombre')).toString(),
       tipoOriginal: (tags['archaeological_site'] ?? tags['tomb'] ?? tags['site_type'] ?? tags['historic'] ?? '').toString(),
-      tipoLegible: categoria.legible,
+      tipoLegible: SoleraL10n.t(categoria.legible),
       emoji: categoria.emoji,
       descripcion: tags['description']?.toString() ?? tags['description:es']?.toString() ?? tags['description:eu']?.toString(),
       historico: tags['heritage']?.toString() ?? tags['start_date']?.toString(),

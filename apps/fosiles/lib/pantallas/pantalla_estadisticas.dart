@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:intl/intl.dart';
 import '../datos/base_datos.dart';
 import '../datos/datos_guia.dart';
@@ -86,39 +87,39 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
   Widget build(BuildContext context) {
     if (_cargando) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Estadísticas')),
+        appBar: AppBar(title: Text(SoleraL10n.t('fos.hall_estadisticas'))),
         body: const Center(child: CircularProgressIndicator()),
       );
     }
     if (_hallazgos.isEmpty) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Estadísticas')),
-        body: const Center(
+        appBar: AppBar(title: Text(SoleraL10n.t('fos.hall_estadisticas'))),
+        body: Center(
           child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text('Aún no hay hallazgos para analizar.', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+            padding: const EdgeInsets.all(24),
+            child: Text(SoleraL10n.t('fos.hall_sin_hallazgos_analizar'), textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
           ),
         ),
       );
     }
 
-    final formato = DateFormat('dd MMM yyyy', 'es_ES');
+    final formato = DateFormat('dd MMM yyyy', SoleraL10n.idioma);
     final primero = _primeraFechaCache!;
     final ultimo = _ultimaFechaCache!;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Estadísticas')),
+      appBar: AppBar(title: Text(SoleraL10n.t('fos.hall_estadisticas'))),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           _filaTotales([
-            ('Hallazgos', _hallazgos.length.toString()),
-            ('Especies', _especiesUnicasCache.toString()),
-            ('Con foto', _conFotoCache.toString()),
+            (SoleraL10n.t('fos.hall_titulo'), _hallazgos.length.toString()),
+            (SoleraL10n.t('fos.hall_especies'), _especiesUnicasCache.toString()),
+            (SoleraL10n.t('fos.hall_con_foto'), _conFotoCache.toString()),
           ]),
           const SizedBox(height: 16),
           _tarjeta(
-            titulo: 'Periodo',
+            titulo: SoleraL10n.t('fos.hall_periodo'),
             child: Column(
               children: [
                 ...periodos.map((p) {
@@ -126,14 +127,14 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
                   return _filaBarra(p.nombre, n, _maxConteoPeriodoCache, color: p.color);
                 }),
                 if ((_conteoPeriodoCache['desconocido'] ?? 0) > 0)
-                  _filaBarra('Sin clasificar', _conteoPeriodoCache['desconocido']!, _maxConteoPeriodoCache, color: Colors.grey.shade400),
+                  _filaBarra(SoleraL10n.t('fos.hall_sin_clasificar'), _conteoPeriodoCache['desconocido']!, _maxConteoPeriodoCache, color: Colors.grey.shade400),
               ],
             ),
           ),
           const SizedBox(height: 16),
           if (_topEspeciesCache.isNotEmpty)
             _tarjeta(
-              titulo: 'Top especies',
+              titulo: SoleraL10n.t('fos.hall_top_especies'),
               child: Column(
                 children: _topEspeciesCache.entries.map((e) => _filaTexto(e.key, '${e.value}')).toList(),
               ),
@@ -141,20 +142,20 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
           const SizedBox(height: 16),
           if (_topFormacionesCache.isNotEmpty)
             _tarjeta(
-              titulo: 'Top formaciones',
+              titulo: SoleraL10n.t('fos.hall_top_formaciones'),
               child: Column(
                 children: _topFormacionesCache.entries.map((e) => _filaTexto(e.key, '${e.value}')).toList(),
               ),
             ),
           const SizedBox(height: 16),
           _tarjeta(
-            titulo: 'Cronología',
+            titulo: SoleraL10n.t('fos.hall_cronologia'),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _filaTexto('Primer hallazgo', formato.format(primero)),
-                _filaTexto('Último hallazgo', formato.format(ultimo)),
-                _filaTexto('Días activo', '${ultimo.difference(primero).inDays + 1}'),
+                _filaTexto(SoleraL10n.t('fos.hall_primer_hallazgo'), formato.format(primero)),
+                _filaTexto(SoleraL10n.t('fos.hall_ultimo_hallazgo'), formato.format(ultimo)),
+                _filaTexto(SoleraL10n.t('fos.hall_dias_activo'), '${ultimo.difference(primero).inDays + 1}'),
               ],
             ),
           ),

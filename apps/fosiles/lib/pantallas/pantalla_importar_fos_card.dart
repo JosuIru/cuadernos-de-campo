@@ -63,7 +63,7 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
       setState(() => _parseada = p);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _errorParseo = e.toString());
+      setState(() => _errorParseo = e is FormatException ? e.message : e.toString());
     }
   }
 
@@ -92,7 +92,7 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
       if (!mounted) return;
       setState(() => _importando = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error importando: $e')),
+        SnackBar(content: Text('${SoleraL10n.t('fos.iden_error_importando')}: $e')),
       );
     }
   }
@@ -100,7 +100,7 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Importar card recibida')),
+      appBar: AppBar(title: Text(SoleraL10n.t('fos.iden_importar_card_recibida'))),
       body: _construirCuerpo(),
     );
   }
@@ -115,9 +115,9 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
             children: [
               const Icon(Icons.error_outline, size: 48, color: Colors.red),
               const SizedBox(height: 12),
-              const Text(
-                'No se pudo abrir el archivo',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                SoleraL10n.t('fos.iden_no_se_pudo_abrir'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               Text(_errorParseo!, textAlign: TextAlign.center),
@@ -144,19 +144,19 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
             children: [
               const Icon(Icons.check_circle_outline, size: 48, color: Colors.green),
               const SizedBox(height: 12),
-              const Text(
-                'Card importada',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                SoleraL10n.t('fos.iden_card_importada'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Aparece en la pestaña "Compartidas conmigo" de tu lista de hallazgos.',
+              Text(
+                SoleraL10n.t('fos.iden_aparece_en_compartidas'),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                child: const Text('Hecho'),
+                child: Text(SoleraL10n.t('fos.iden_hecho')),
               ),
             ],
           ),
@@ -197,8 +197,7 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Estás en Modo Experto. Esta card se procesa para revisión '
-                  '— no entra en tu colección personal.',
+                  SoleraL10n.t('fos.iden_modo_experto_aviso'),
                   style: TextStyle(fontSize: 13, color: Colors.amber.shade900),
                 ),
               ),
@@ -208,23 +207,23 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
         const SizedBox(height: 16),
         FilledButton.icon(
           icon: const Icon(Icons.verified),
-          label: const Text('Certificar'),
+          label: Text(SoleraL10n.t('fos.iden_certificar')),
           onPressed: _importando ? null : () => _abrirCertificacion(p),
           style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           icon: const Icon(Icons.mail_outline),
-          label: const Text('Acusar recibo (revisaré más tarde)'),
+          label: Text(SoleraL10n.t('fos.iden_acusar_recibo')),
           onPressed: _importando ? null : () => _registrarAcuseODescarte(p, esAcuse: true),
           style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
           icon: const Icon(Icons.cancel_outlined, color: Colors.red),
-          label: const Text(
-            'Descartar (no es de interés científico)',
-            style: TextStyle(color: Colors.red),
+          label: Text(
+            SoleraL10n.t('fos.iden_descartar'),
+            style: const TextStyle(color: Colors.red),
           ),
           onPressed: _importando ? null : () => _registrarAcuseODescarte(p, esAcuse: false),
           style: OutlinedButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
@@ -240,7 +239,7 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
     return [
       FilledButton.icon(
         icon: const Icon(Icons.download_done),
-        label: const Text('Importar a mi colección'),
+        label: Text(SoleraL10n.t('fos.iden_importar_a_mi_coleccion')),
         onPressed: _importando ? null : _importar,
         style: FilledButton.styleFrom(minimumSize: const Size(double.infinity, 48)),
       ),
@@ -289,7 +288,9 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
             : ModoCompartirCoordenadas.precisas,
       );
       if (!mounted) return;
-      final etiqueta = esAcuse ? 'Acuse de recibo' : 'Descarte';
+      final etiqueta = esAcuse
+          ? SoleraL10n.t('fos.iden_acuse_de_recibo')
+          : SoleraL10n.t('fos.iden_descarte');
       await _compartir(resultado.archivo.path, etiqueta);
       if (!mounted) return;
       setState(() => _yaImportado = true);
@@ -297,7 +298,7 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
       if (!mounted) return;
       setState(() => _importando = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error firmando: $e')),
+        SnackBar(content: Text('${SoleraL10n.t('fos.iden_error_firmando')}: $e')),
       );
     }
   }
@@ -306,7 +307,7 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
     await Share.shareXFiles(
       [XFile(ruta, mimeType: 'application/x-fos-card')],
       subject: '$etiqueta — Fósiles',
-      text: 'Devolución firmada por la autoridad.',
+      text: SoleraL10n.t('fos.iden_devolucion_firmada'),
     );
   }
 
@@ -326,9 +327,8 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
           Expanded(
             child: Text(
               p.firmaValida
-                  ? 'Firma criptográfica válida — los datos vienen tal cual los firmó el remitente.'
-                  : 'FIRMA INVÁLIDA — los datos del archivo NO coinciden con la firma del remitente. '
-                      'Podrían haber sido modificados.',
+                  ? SoleraL10n.t('fos.iden_firma_valida')
+                  : SoleraL10n.t('fos.iden_firma_invalida'),
               style: TextStyle(color: color.shade900, fontSize: 13),
             ),
           ),
@@ -347,17 +347,18 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Remitente',
-              style: TextStyle(
+          Text(SoleraL10n.t('fos.iden_remitente'),
+              style: const TextStyle(
                   fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 6),
-          _fila('Nombre declarado', p.nombreRemitente.isEmpty ? '(sin rellenar)' : p.nombreRemitente),
+          _fila(SoleraL10n.t('fos.iden_nombre_declarado'),
+              p.nombreRemitente.isEmpty ? SoleraL10n.t('fos.iden_sin_rellenar') : p.nombreRemitente),
           if (p.emailRemitente != null && p.emailRemitente!.isNotEmpty)
-            _fila('Email', p.emailRemitente!),
+            _fila(SoleraL10n.t('fos.iden_email'), p.emailRemitente!),
           if (p.organizacionRemitente != null && p.organizacionRemitente!.isNotEmpty)
-            _fila('Organización', p.organizacionRemitente!),
+            _fila(SoleraL10n.t('fos.iden_organizacion'), p.organizacionRemitente!),
           _fila(
-            'Huella',
+            SoleraL10n.t('fos.iden_huella'),
             // Mostramos primeros 16 chars de la clave pública base64.
             // Hash visual sería más portable; para v1 con esto basta para
             // que dos cards del mismo remitente se reconozcan a ojo.
@@ -369,7 +370,9 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
   }
 
   Widget _bloqueHallazgo(h, FosCardParseada p) {
-    final fecha = DateFormat('dd MMM yyyy HH:mm', 'es_ES')
+    final localeFecha = SoleraL10n.idioma == 'es' ? 'es_ES' : SoleraL10n.idioma;
+    final fecha = DateFormat('dd MMM yyyy HH:mm',
+            DateFormat.localeExists(localeFecha) ? localeFecha : 'es_ES')
         .format(DateTime.fromMillisecondsSinceEpoch(h.fechaMs));
     return Container(
       padding: const EdgeInsets.all(12),
@@ -380,26 +383,32 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Hallazgo',
+          Text(SoleraL10n.t('fos.iden_hallazgo'),
               style: TextStyle(
                   fontWeight: FontWeight.bold, color: Colors.amber.shade900)),
           const SizedBox(height: 6),
-          _fila('Especie', h.especie.isEmpty ? '—' : h.especie),
-          _fila('Edad', h.edad.isEmpty ? '—' : h.edad),
-          _fila('Formación', h.formacion.isEmpty ? '—' : h.formacion),
-          _fila('Tipo', h.tipo),
-          _fila('Fecha', fecha),
+          _fila(SoleraL10n.t('fos.iden_especie'), h.especie.isEmpty ? '—' : h.especie),
+          _fila(SoleraL10n.t('fos.iden_edad'), h.edad.isEmpty ? '—' : h.edad),
+          _fila(SoleraL10n.t('fos.iden_formacion'), h.formacion.isEmpty ? '—' : h.formacion),
           _fila(
-            'Coordenadas',
+              SoleraL10n.t('fos.iden_tipo'),
+              h.tipo == 'mineral'
+                  ? SoleraL10n.t('fos.iden_tipo_mineral')
+                  : h.tipo == 'fosil'
+                      ? SoleraL10n.t('fos.iden_tipo_fosil')
+                      : h.tipo),
+          _fila(SoleraL10n.t('fos.iden_fecha'), fecha),
+          _fila(
+            SoleraL10n.t('fos.iden_coordenadas'),
             '${h.latitud.toStringAsFixed(p.coordenadasDifuminadas ? 2 : 5)}, '
                 '${h.longitud.toStringAsFixed(p.coordenadasDifuminadas ? 2 : 5)}'
-                '${p.coordenadasDifuminadas ? "  (difuminadas)" : ""}',
+                '${p.coordenadasDifuminadas ? "  ${SoleraL10n.t('fos.iden_difuminadas')}" : ""}',
           ),
           if (h.strikeGrados != null && h.dipGrados != null)
-            _fila('Estrato',
+            _fila(SoleraL10n.t('fos.iden_estrato'),
                 '${h.strikeGrados!.toStringAsFixed(0)}° / ${h.dipGrados!.toStringAsFixed(0)}°'),
-          if (h.notas.isNotEmpty) _fila('Notas', h.notas),
-          _fila('Fotos', '${p.fotosJpeg.length}'),
+          if (h.notas.isNotEmpty) _fila(SoleraL10n.t('fos.iden_notas'), h.notas),
+          _fila(SoleraL10n.t('fos.iden_fotos'), '${p.fotosJpeg.length}'),
         ],
       ),
     );

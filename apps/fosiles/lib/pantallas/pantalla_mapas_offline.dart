@@ -67,7 +67,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
     final limites = LimitesPrecache(sur: bounds.south, norte: bounds.north, oeste: bounds.west, este: bounds.east);
     final capas = _capasIncluidas();
     if (capas.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Selecciona al menos una capa.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.t('fos.mapa_selecciona_capa'))));
       return;
     }
 
@@ -76,10 +76,10 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          content: Text('Vas a descargar ${resumen.totalUrls} teselas (~${(resumen.totalUrls * 25 / 1024).toStringAsFixed(1)} MB). ¿Continuar?'),
+          content: Text(SoleraL10n.tf('fos.mapa_confirmar_descarga', {'n': '${resumen.totalUrls}', 'mb': formatearNumero(resumen.totalUrls * 25 / 1024, decimales: 1)})),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context, false), child: Text(SoleraL10n.t('cancelar'))),
-            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text('Descargar')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(SoleraL10n.t('fos.mapa_descargar'))),
           ],
         ),
       );
@@ -103,7 +103,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
     if (!mounted) return;
     setState(() => _descargando = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('✅ ${_progresoActual?.descargadas ?? 0} teselas en caché (${_progresoActual?.falladas ?? 0} fallidas).')),
+      SnackBar(content: Text(SoleraL10n.tf('fos.mapa_teselas_en_cache', {'n': '${_progresoActual?.descargadas ?? 0}', 'fallidas': '${_progresoActual?.falladas ?? 0}'}))),
     );
   }
 
@@ -111,7 +111,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
   Widget build(BuildContext context) {
     final progreso = _progresoActual;
     return Scaffold(
-      appBar: AppBar(title: Text('Descargar mapas offline')),
+      appBar: AppBar(title: Text(SoleraL10n.t('fos.mapa_descargar_mapas_offline'))),
       body: Column(
         children: [
           SizedBox(
@@ -141,10 +141,10 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                Text('Centra y haz zoom en el mapa de arriba sobre la zona donde vayas a estar.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+                Text(SoleraL10n.t('fos.mapa_centra_zona'), style: TextStyle(fontSize: 13, color: Colors.grey)),
                 SizedBox(height: 16),
                 Row(children: [
-                  Expanded(child: Text('Zoom mínimo: $_zoomMin')),
+                  Expanded(child: Text(SoleraL10n.tf('fos.mapa_zoom_minimo', {'n': '$_zoomMin'}))),
                   Expanded(
                     child: Slider(
                       value: _zoomMin.toDouble(),
@@ -158,7 +158,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                   ),
                 ]),
                 Row(children: [
-                  Expanded(child: Text('Zoom máximo: $_zoomMax')),
+                  Expanded(child: Text(SoleraL10n.tf('fos.mapa_zoom_maximo', {'n': '$_zoomMax'}))),
                   Expanded(
                     child: Slider(
                       value: _zoomMax.toDouble(),
@@ -173,7 +173,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                 ]),
                 SizedBox(height: 8),
                 CheckboxListTile(
-                  title: Text('Callejero (OpenStreetMap)'),
+                  title: Text('${SoleraL10n.t('fos.mapa_capa_callejero')} (OpenStreetMap)'),
                   value: _incluirCallejero,
                   onChanged: (v) => setState(() {
                     _incluirCallejero = v ?? true;
@@ -181,7 +181,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                   }),
                 ),
                 CheckboxListTile(
-                  title: Text('Satélite (ESRI)'),
+                  title: Text('${SoleraL10n.t('fos.mapa_capa_satelite')} (ESRI)'),
                   value: _incluirSatelite,
                   onChanged: (v) => setState(() {
                     _incluirSatelite = v ?? false;
@@ -189,7 +189,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                   }),
                 ),
                 CheckboxListTile(
-                  title: Text('Topográfico (OpenTopoMap)'),
+                  title: Text('${SoleraL10n.t('fos.mapa_capa_topografico')} (OpenTopoMap)'),
                   value: _incluirTopografico,
                   onChanged: (v) => setState(() {
                     _incluirTopografico = v ?? false;
@@ -197,12 +197,12 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                   }),
                 ),
                 SizedBox(height: 8),
-                Text('Capa geológica IGME (opcional)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                Text(SoleraL10n.t('fos.mapa_capa_geologica_igme_opcional'), style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
                 Wrap(
                   spacing: 6,
                   children: [
                     ChoiceChip(
-                      label: Text('Ninguna'),
+                      label: Text(SoleraL10n.t('fos.mapa_ninguna')),
                       selected: _capaGeologicaIncluir == null,
                       onSelected: (_) => setState(() {
                         _capaGeologicaIncluir = null;
@@ -210,7 +210,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                       }),
                     ),
                     ...capasGeologicasWms.map((c) => ChoiceChip(
-                          label: Text(c.nombre),
+                          label: Text(c.nombreVisible),
                           selected: _capaGeologicaIncluir?.nombre == c.nombre,
                           onSelected: (_) => setState(() {
                             _capaGeologicaIncluir = c;
@@ -225,7 +225,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                     margin: const EdgeInsets.only(top: 8),
                     decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(6)),
                     child: Text(
-                      '${_resumen!.totalUrls} teselas (~${(_resumen!.totalUrls * 25 / 1024).toStringAsFixed(1)} MB) en ${_resumen!.capas} capas',
+                      SoleraL10n.tf('fos.mapa_resumen_teselas', {'n': '${_resumen!.totalUrls}', 'mb': formatearNumero(_resumen!.totalUrls * 25 / 1024, decimales: 1), 'capas': '${_resumen!.capas}'}),
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
@@ -235,7 +235,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                       ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                       : Icon(Icons.download),
                   onPressed: _descargando ? null : _descargar,
-                  label: Text(_descargando ? 'Descargando…' : 'Descargar ahora'),
+                  label: Text(_descargando ? SoleraL10n.t('fos.mapa_descargando') : SoleraL10n.t('fos.mapa_descargar_ahora')),
                 ),
                 if (progreso != null && _descargando) ...[
                   SizedBox(height: 16),
@@ -243,7 +243,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
                     value: progreso.total == 0 ? 0 : progreso.descargadas / progreso.total,
                   ),
                   SizedBox(height: 4),
-                  Text('${progreso.descargadas}/${progreso.total} (${progreso.falladas} fallidas) · ${(progreso.bytesAcumulados / 1024 / 1024).toStringAsFixed(1)} MB', style: TextStyle(fontSize: 12)),
+                  Text(SoleraL10n.tf('fos.mapa_progreso_descarga', {'descargadas': '${progreso.descargadas}', 'total': '${progreso.total}', 'fallidas': '${progreso.falladas}', 'mb': formatearNumero(progreso.bytesAcumulados / 1024 / 1024, decimales: 1)}), style: TextStyle(fontSize: 12)),
                 ],
               ],
             ),

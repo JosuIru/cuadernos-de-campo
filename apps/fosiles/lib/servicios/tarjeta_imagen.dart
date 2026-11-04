@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
@@ -36,8 +37,8 @@ Future<File> generarTarjetaHallazgo(Hallazgo hallazgo) async {
     yActual = cabecera.bottom + 32;
   }
 
-  final fecha = DateFormat('dd MMM yyyy', 'es_ES').format(DateTime.fromMillisecondsSinceEpoch(hallazgo.fechaMs));
-  yActual = _bloque(canvas, hallazgo.especie.isEmpty ? 'Hallazgo de fósil' : hallazgo.especie, yActual,
+  final fecha = DateFormat('dd MMM yyyy', SoleraL10n.idioma).format(DateTime.fromMillisecondsSinceEpoch(hallazgo.fechaMs));
+  yActual = _bloque(canvas, hallazgo.especie.isEmpty ? SoleraL10n.t('fos.hall_hallazgo_de_fosil') : hallazgo.especie, yActual,
       fontSize: 56, peso: FontWeight.bold);
   yActual += 8;
   final subtitulo = [
@@ -51,11 +52,11 @@ Future<File> generarTarjetaHallazgo(Hallazgo hallazgo) async {
   final coords = '${hallazgo.latitud.toStringAsFixed(5)}, ${hallazgo.longitud.toStringAsFixed(5)}';
   yActual = _bloque(canvas, '📍  $coords  ·  $fecha', yActual, fontSize: 22, color: Colors.black54);
   if (hallazgo.strikeGrados != null && hallazgo.dipGrados != null) {
-    yActual = _bloque(canvas, '📐  Estrato ${hallazgo.strikeGrados!.toStringAsFixed(0)}° / ${hallazgo.dipGrados!.toStringAsFixed(0)}°',
+    yActual = _bloque(canvas, '📐  ${SoleraL10n.t('fos.hall_estrato')} ${hallazgo.strikeGrados!.toStringAsFixed(0)}° / ${hallazgo.dipGrados!.toStringAsFixed(0)}°',
         yActual, fontSize: 22, color: Colors.black54);
   }
 
-  _texto(canvas, 'Fósiles · cuaderno de campo', _padding, _alto - _padding - 24, fontSize: 18, color: const Color(0xFF8A8268));
+  _texto(canvas, SoleraL10n.t('fos.hall_pie_tarjeta'), _padding, _alto - _padding - 24, fontSize: 18, color: const Color(0xFF8A8268));
 
   final picture = recorder.endRecording();
   final imagen = await picture.toImage(_ancho.toInt(), _alto.toInt());

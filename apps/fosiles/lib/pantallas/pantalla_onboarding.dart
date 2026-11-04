@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/configuracion.dart';
 
 /// Mini-tour de primer arranque. Tres pantallas explicativas que el usuario
@@ -24,32 +25,18 @@ class _PantallaOnboardingState extends State<PantallaOnboarding> {
   static const List<_PaginaOnboarding> _paginas = [
     _PaginaOnboarding(
       icono: Icons.layers,
-      titulo: 'Mapa geológico nacional',
-      texto:
-          'La app arranca con la capa GEODE 50 del IGME pintada sobre el mapa. '
-          'Desde el icono de la montaña en la barra superior puedes alternar entre '
-          'GEODE, MAGNA, Edades 1M, Litologías 1M y otras capas IGME. '
-          'La primera vez que paneas una zona el mosaico tarda un poco en cargar '
-          'mientras se descargan las teselas; después se queda en caché.',
+      claveTitulo: 'fos.ajus_onb1_titulo',
+      claveTexto: 'fos.ajus_onb1_texto',
     ),
     _PaginaOnboarding(
       icono: Icons.add_location_alt,
-      titulo: 'Tus hallazgos',
-      texto:
-          'Con el botón "+" de la barra inferior marcas un hallazgo en la '
-          'posición actual: foto, edad, formación, strike/dip de la capa y '
-          'notas. El hallazgo queda guardado localmente, aparece en la lista '
-          'y se pinta como marcador en el mapa para que puedas volver a él.',
+      claveTitulo: 'fos.ajus_onb2_titulo',
+      claveTexto: 'fos.ajus_onb2_texto',
     ),
     _PaginaOnboarding(
       icono: Icons.assistant,
-      titulo: 'Qué hay bajo tus pies',
-      texto:
-          'Hay un asistente geológico en el centro del mapa que va contándote '
-          'la geología del punto al panear. Si activas el modo "Explorar '
-          'geología" puedes pinchar cualquier punto y consultar formación, '
-          'edad y litología. Las sugerencias de fósiles y minerales se cruzan '
-          'con el catálogo local de formaciones ibéricas.',
+      claveTitulo: 'fos.ajus_onb3_titulo',
+      claveTexto: 'fos.ajus_onb3_texto',
     ),
   ];
 
@@ -87,6 +74,16 @@ class _PantallaOnboardingState extends State<PantallaOnboarding> {
       body: SafeArea(
         child: Column(
           children: [
+            // Elegir idioma desde la primera pantalla (se puede cambiar
+            // luego en Ajustes).
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SelectorIdioma(onCambio: () => setState(() {})),
+              ),
+            ),
+
             // Cabecera: botón "Saltar" arriba a la derecha.
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 8, 8, 0),
@@ -95,7 +92,7 @@ class _PantallaOnboardingState extends State<PantallaOnboarding> {
                 children: [
                   TextButton(
                     onPressed: _cerrarOnboarding,
-                    child: const Text('Saltar'),
+                    child: Text(SoleraL10n.t('fos.ajus_saltar')),
                   ),
                 ],
               ),
@@ -143,7 +140,9 @@ class _PantallaOnboardingState extends State<PantallaOnboarding> {
                 children: [
                   FilledButton(
                     onPressed: _irAPaginaSiguiente,
-                    child: Text(esUltimaPagina ? 'Empezar' : 'Siguiente'),
+                    child: Text(esUltimaPagina
+                        ? SoleraL10n.t('fos.ajus_empezar')
+                        : SoleraL10n.t('siguiente')),
                   ),
                 ],
               ),
@@ -157,12 +156,13 @@ class _PantallaOnboardingState extends State<PantallaOnboarding> {
 
 class _PaginaOnboarding {
   final IconData icono;
-  final String titulo;
-  final String texto;
+  /// Claves de traducción: se traducen al mostrar la página.
+  final String claveTitulo;
+  final String claveTexto;
   const _PaginaOnboarding({
     required this.icono,
-    required this.titulo,
-    required this.texto,
+    required this.claveTitulo,
+    required this.claveTexto,
   });
 }
 
@@ -194,7 +194,7 @@ class _VistaPagina extends StatelessWidget {
           ),
           const SizedBox(height: 36),
           Text(
-            pagina.titulo,
+            SoleraL10n.t(pagina.claveTitulo),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.bold,
@@ -202,7 +202,7 @@ class _VistaPagina extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           Text(
-            pagina.texto,
+            SoleraL10n.t(pagina.claveTexto),
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.45),
           ),

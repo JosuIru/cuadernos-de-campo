@@ -1,5 +1,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:url_launcher/url_launcher.dart' show launchUrl, LaunchMode;
 import '../servicios/servicio_wikipedia.dart';
 
@@ -1103,17 +1104,17 @@ Widget _contenidoMineral(BuildContext context, MineralGuia mineral, ClaseMineral
           ),
       ]),
       const SizedBox(height: 12),
-      _filaPropiedad(context, 'Dureza Mohs', mineral.durezaMohs),
-      _filaPropiedad(context, 'Raya', mineral.raya),
-      _filaPropiedad(context, 'Brillo', mineral.brillo),
-      _filaPropiedad(context, 'Color típico', mineral.colorTipico),
+      _filaPropiedad(context, SoleraL10n.t('fos.hall_dureza_mohs'), mineral.durezaMohs),
+      _filaPropiedad(context, SoleraL10n.t('fos.ficha_raya'), mineral.raya),
+      _filaPropiedad(context, SoleraL10n.t('fos.ficha_brillo'), mineral.brillo),
+      _filaPropiedad(context, SoleraL10n.t('fos.ficha_color_tipico'), mineral.colorTipico),
       const SizedBox(height: 12),
       Text(mineral.descripcionCorta),
       const SizedBox(height: 16),
-      Text('Distintivos para reconocerlo', style: Theme.of(context).textTheme.titleSmall),
+      Text(SoleraL10n.t('fos.ficha_distintivos'), style: Theme.of(context).textTheme.titleSmall),
       ...mineral.distintivos.map((d) => Padding(padding: const EdgeInsets.only(left: 8, top: 2), child: Text('• $d'))),
       const SizedBox(height: 16),
-      Text('Dónde encontrarlo', style: Theme.of(context).textTheme.titleSmall),
+      Text(SoleraL10n.t('fos.ficha_donde_encontrarlo'), style: Theme.of(context).textTheme.titleSmall),
       const SizedBox(height: 4),
       Text(mineral.dondeEncontrar),
       const SizedBox(height: 16),
@@ -1133,7 +1134,7 @@ Widget _contenidoMineral(BuildContext context, MineralGuia mineral, ClaseMineral
                     child: OutlinedButton.icon(
                       onPressed: () => launchUrl(Uri.parse(enlace), mode: LaunchMode.externalApplication),
                       icon: const Icon(Icons.open_in_new),
-                      label: const Text('Leer más en Wikipedia'),
+                      label: Text(SoleraL10n.t('fos.ficha_leer_wikipedia')),
                     ),
                   ),
                 ),
@@ -1207,7 +1208,7 @@ class _GaleriaMineralWikipediaState extends State<_GaleriaMineralWikipedia> {
                     _futuroGaleria = obtenerGaleriaWikipedia(widget.tituloWikipedia);
                   }),
                   icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Reintentar'),
+                  label: Text(SoleraL10n.t('fos.ficha_reintentar')),
                 ),
               ],
             ),

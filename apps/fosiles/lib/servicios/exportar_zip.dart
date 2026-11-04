@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:intl/intl.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
 import '../modelos/hallazgo.dart';
@@ -72,7 +73,7 @@ Future<File> generarZipHallazgos(List<Hallazgo> hallazgos) async {
 
   final encoder = ZipEncoder();
   final zipBytes = encoder.encode(archivo);
-  if (zipBytes == null) throw Exception('No se pudo generar el ZIP.');
+  if (zipBytes == null) throw Exception(SoleraL10n.t('fos.hall_error_generar_zip'));
 
   final dirCache = await getTemporaryDirectory();
   final marca = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());

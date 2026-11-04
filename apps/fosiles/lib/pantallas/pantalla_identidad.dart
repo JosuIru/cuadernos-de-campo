@@ -57,7 +57,7 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
     await Clipboard.setData(ClipboardData(text: _huellaCorta!));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Huella copiada al portapapeles')),
+      SnackBar(content: Text(SoleraL10n.t('fos.iden_huella_copiada'))),
     );
   }
 
@@ -66,7 +66,7 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
     await Clipboard.setData(ClipboardData(text: _clavePublicaBase64!));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Clave pública copiada al portapapeles')),
+      SnackBar(content: Text(SoleraL10n.t('fos.iden_clave_publica_copiada'))),
     );
   }
 
@@ -74,14 +74,8 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
     final confirmado = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Regenerar identidad criptográfica'),
-        content: const Text(
-          'Esto crea un par de claves nuevo. Los hallazgos firmados con tu '
-          'clave anterior seguirán existiendo pero ya no podrán verificarse '
-          'como tuyos cripcográficamente. Tu nombre y email no cambian. '
-          'Sólo deberías hacer esto si crees que tu clave se ha comprometido '
-          '(por ejemplo, tras restaurar un backup en un dispositivo prestado).',
-        ),
+        title: Text(SoleraL10n.t('fos.iden_regenerar_titulo')),
+        content: Text(SoleraL10n.t('fos.iden_regenerar_aviso')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -90,7 +84,7 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Regenerar'),
+            child: Text(SoleraL10n.t('fos.iden_regenerar')),
           ),
         ],
       ),
@@ -101,41 +95,32 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
     await _cargar();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Identidad regenerada')),
+      SnackBar(content: Text(SoleraL10n.t('fos.iden_identidad_regenerada'))),
     );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Mi identidad')),
+      appBar: AppBar(title: Text(SoleraL10n.t('fos.iden_mi_identidad'))),
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
                 _seccion(
-                  titulo: 'Datos declarados',
-                  textoAyuda:
-                      'Estos datos los rellenas tú en Ajustes → Perfil e identidad. Acompañan a la firma '
-                      'cuando compartes una card o un certificado, pero no están '
-                      'autenticados contra una autoridad externa: cualquiera puede '
-                      'decir que se llama como quiera. Lo que sí es único y permanente '
-                      'es tu clave criptográfica.',
+                  titulo: SoleraL10n.t('fos.iden_datos_declarados'),
+                  textoAyuda: SoleraL10n.t('fos.iden_datos_declarados_ayuda'),
                   hijos: [
-                    _filaInfo('Nombre', _nombre.isEmpty ? '(sin rellenar)' : _nombre),
-                    _filaInfo('Email', _email.isEmpty ? '(sin rellenar)' : _email),
-                    _filaInfo('Organización', _organizacion.isEmpty ? '(sin rellenar)' : _organizacion),
+                    _filaInfo(SoleraL10n.t('fos.iden_nombre'), _nombre, vacio: _nombre.isEmpty),
+                    _filaInfo(SoleraL10n.t('fos.iden_email'), _email, vacio: _email.isEmpty),
+                    _filaInfo(SoleraL10n.t('fos.iden_organizacion'), _organizacion, vacio: _organizacion.isEmpty),
                   ],
                 ),
                 const SizedBox(height: 24),
                 _seccion(
-                  titulo: 'Huella criptográfica',
-                  textoAyuda:
-                      'Esta huella se deriva de tu clave pública. Es única, '
-                      'permanente y se genera la primera vez que abriste Fósiles. '
-                      'Cuando alguien recibe un hallazgo firmado por ti, puede '
-                      'verificar que la firma coincide con esta huella.',
+                  titulo: SoleraL10n.t('fos.iden_huella_criptografica'),
+                  textoAyuda: SoleraL10n.t('fos.iden_huella_ayuda'),
                   hijos: [
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -167,7 +152,7 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
                           ),
                           IconButton(
                             icon: const Icon(Icons.copy),
-                            tooltip: 'Copiar huella',
+                            tooltip: SoleraL10n.t('fos.iden_copiar_huella'),
                             onPressed: _copiarHuella,
                           ),
                         ],
@@ -175,7 +160,7 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
                     ),
                     const SizedBox(height: 8),
                     ExpansionTile(
-                      title: const Text('Ver clave pública completa'),
+                      title: Text(SoleraL10n.t('fos.iden_ver_clave_publica')),
                       children: [
                         Padding(
                           padding: const EdgeInsets.all(8),
@@ -192,7 +177,7 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
                         ),
                         TextButton.icon(
                           icon: const Icon(Icons.copy),
-                          label: const Text('Copiar clave pública'),
+                          label: Text(SoleraL10n.t('fos.iden_copiar_clave_publica')),
                           onPressed: _copiarClavePublica,
                         ),
                         const SizedBox(height: 8),
@@ -202,18 +187,14 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
                 ),
                 const SizedBox(height: 24),
                 _seccion(
-                  titulo: 'Operaciones avanzadas',
-                  textoAyuda:
-                      'Tu clave privada se guarda cifrada en el almacenamiento '
-                      'seguro de Android (no sale del dispositivo). El backup .zip '
-                      'cifrado que generas desde Ajustes la incluye para que puedas '
-                      'recuperarla si cambias de móvil.',
+                  titulo: SoleraL10n.t('fos.iden_operaciones_avanzadas'),
+                  textoAyuda: SoleraL10n.t('fos.iden_operaciones_avanzadas_ayuda'),
                   hijos: [
                     OutlinedButton.icon(
                       icon: const Icon(Icons.refresh, color: Colors.red),
-                      label: const Text(
-                        'Regenerar identidad',
-                        style: TextStyle(color: Colors.red),
+                      label: Text(
+                        SoleraL10n.t('fos.iden_regenerar_identidad'),
+                        style: const TextStyle(color: Colors.red),
                       ),
                       onPressed: _regenerar,
                     ),
@@ -241,7 +222,7 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
     );
   }
 
-  Widget _filaInfo(String etiqueta, String valor) {
+  Widget _filaInfo(String etiqueta, String valor, {required bool vacio}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
@@ -256,9 +237,9 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
           ),
           Expanded(
             child: Text(
-              valor,
+              vacio ? SoleraL10n.t('fos.iden_sin_rellenar') : valor,
               style: TextStyle(
-                color: valor.startsWith('(') ? Colors.black54 : Colors.black,
+                color: vacio ? Colors.black54 : Colors.black,
               ),
             ),
           ),

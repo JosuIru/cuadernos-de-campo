@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 
 const List<String> _servidoresOverpass = [
   'https://overpass-api.de/api/interpreter',
@@ -43,5 +44,5 @@ Future<Map<String, dynamic>> consultarOverpass(String consulta, {Duration timeou
       ultimoError = e;
     }
   }
-  throw OverpassError('Todos los servidores Overpass fallaron · último: $ultimoError');
+  throw OverpassError(SoleraL10n.tf('fos.mapa_overpass_fallaron', {'error': '$ultimoError'}));
 }

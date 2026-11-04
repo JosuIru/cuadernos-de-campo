@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 
 class TrazoAnotacion {
   final Color color;
@@ -88,14 +89,14 @@ class _PantallaAnotarFotoState extends State<PantallaAnotarFoto> {
       final picture = recorder.endRecording();
       final imagen = await picture.toImage(original.width, original.height);
       final bytes = await imagen.toByteData(format: ui.ImageByteFormat.png);
-      if (bytes == null) throw Exception('No se pudo codificar la imagen');
+      if (bytes == null) throw Exception(SoleraL10n.t('fos.hall_error_codificar_imagen'));
       await widget.archivoFoto.writeAsBytes(bytes.buffer.asUint8List());
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } catch (e) {
       if (!mounted) return;
       setState(() => _guardando = false);
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error guardando: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(SoleraL10n.tf('fos.hall_error_guardando', {'error': e}))));
     }
   }
 
@@ -106,24 +107,24 @@ class _PantallaAnotarFotoState extends State<PantallaAnotarFoto> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: const Text('Anotar foto'),
+        title: Text(SoleraL10n.t('fos.hall_anotar_foto')),
         actions: [
           if (_trazos.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.undo),
-              tooltip: 'Deshacer',
+              tooltip: SoleraL10n.t('fos.hall_deshacer'),
               onPressed: () => setState(() => _trazos.removeLast()),
             ),
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            tooltip: 'Limpiar',
+            tooltip: SoleraL10n.t('fos.hall_limpiar'),
             onPressed: _trazos.isEmpty ? null : () => setState(_trazos.clear),
           ),
           TextButton(
             onPressed: (_guardando || _imagenOriginal == null) ? null : _guardar,
             child: _guardando
                 ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Guardar'),
+                : Text(SoleraL10n.t('guardar')),
           ),
         ],
       ),

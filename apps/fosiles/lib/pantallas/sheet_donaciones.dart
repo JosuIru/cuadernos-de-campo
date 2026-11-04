@@ -35,12 +35,8 @@ class _ContenidoSheet extends StatelessWidget {
   static const String _urlEcosistema = 'https://coleccion-nuevo-ser.gailu.net/';
   static const String _urlDescargaApp =
       'https://github.com/JosuIru/cuadernos-de-campo/releases';
-  static const String _mensajeCompartir =
-      'Fósiles — cuaderno de campo digital para anotar hallazgos con '
-      'georreferencia, edad estratigráfica, orientación del estrato y guía '
-      'de identificación de fósiles y minerales. Cartografía geológica IGME '
-      'y mapas offline. Libre, gratuita, sin anuncios ni seguimiento. '
-      'Descarga el APK para Android en $_urlDescargaApp';
+  static String get _mensajeCompartir =>
+      SoleraL10n.tf('fos.ajus_mensaje_compartir', {'url': _urlDescargaApp});
 
   @override
   Widget build(BuildContext context) {
@@ -54,7 +50,7 @@ class _ContenidoSheet extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
         children: [
           Text(
-            'Apoyar el proyecto',
+            SoleraL10n.t('fos.ajus_apoyar'),
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
@@ -62,10 +58,7 @@ class _ContenidoSheet extends StatelessWidget {
           ),
           SizedBox(height: 8),
           Text(
-            'La app es y seguirá siendo gratuita y abierta para todos. '
-            'Si te ha sido útil y puedes permitírtelo, una pequeña '
-            'aportación voluntaria ayuda al mantenimiento, soporte y '
-            'actualizaciones. Gracias.',
+            '${SoleraL10n.t('fos.ajus_apoyar_texto')} ${SoleraL10n.t('fos.ajus_gracias')}',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -75,7 +68,7 @@ class _ContenidoSheet extends StatelessWidget {
           _TarjetaEnlace(
             icono: Icons.local_cafe,
             titulo: 'Ko-fi',
-            subtitulo: 'Pago puntual o mensual con tarjeta',
+            subtitulo: SoleraL10n.t('fos.ajus_kofi_sub'),
             url: _kofiUrl,
             colorFondo: Color(0xFFC06A34),
           ),
@@ -83,7 +76,7 @@ class _ContenidoSheet extends StatelessWidget {
           _TarjetaEnlace(
             icono: Icons.credit_card,
             titulo: 'PayPal',
-            subtitulo: 'Donación con tu cuenta PayPal',
+            subtitulo: SoleraL10n.t('fos.ajus_paypal_sub'),
             url: _paypalUrl,
             colorFondo: Color(0xFF2E5CB8),
           ),
@@ -146,7 +139,7 @@ class _TarjetaEcosistema extends StatelessWidget {
                     ),
                     SizedBox(height: 2),
                     Text(
-                      'Esta app forma parte del ecosistema. Conoce el resto de proyectos.',
+                      SoleraL10n.t('fos.ajus_ecosistema_texto'),
                       style: TextStyle(
                         color: esquema.onTertiaryContainer.withValues(alpha: 0.85),
                         fontSize: 13,
@@ -277,13 +270,13 @@ class _TarjetaBitcoin extends StatelessWidget {
           SizedBox(height: 10),
           FilledButton.tonalIcon(
             icon: Icon(Icons.copy),
-            label: Text('Copiar dirección'),
+            label: Text(SoleraL10n.t('fos.ajus_copiar_direccion')),
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: direccion));
               if (!context.mounted) return;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Dirección copiada al portapapeles.'),
+                  content: Text(SoleraL10n.t('fos.ajus_direccion_copiada')),
                   duration: Duration(seconds: 2),
                 ),
               );
@@ -305,14 +298,14 @@ class _SeccionCompartir extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Compartir la app',
+          SoleraL10n.t('fos.ajus_compartir_app'),
           style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w700,
               ),
         ),
         SizedBox(height: 8),
         Text(
-          'Recomendarla a alguien también ayuda. Es donar tiempo en lugar de dinero.',
+          SoleraL10n.t('fos.ajus_compartir_app_texto'),
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -336,11 +329,12 @@ class _OtrasFormas extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Claves de traducción: el texto se traduce al pintarlo.
     const items = <(IconData, String)>[
-      (Icons.star_border, 'Valorar la app con cinco estrellas si te ha gustado.'),
-      (Icons.bug_report_outlined, 'Reportar un fallo o sugerir mejoras.'),
-      (Icons.translate, 'Ayudar con traducciones o textos.'),
-      (Icons.code, 'Contribuir con código o ideas de funciones.'),
+      (Icons.star_border, 'fos.ajus_valorar'),
+      (Icons.bug_report_outlined, 'fos.ajus_reportar'),
+      (Icons.translate, 'fos.ajus_ayudar_traducciones'),
+      (Icons.code, 'fos.ajus_contribuir_codigo'),
     ];
     return Container(
       padding: const EdgeInsets.all(14),
@@ -352,13 +346,13 @@ class _OtrasFormas extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Otras formas de ayudar',
+            SoleraL10n.t('fos.ajus_otras_formas'),
             style: Theme.of(context).textTheme.titleSmall?.copyWith(
                   fontWeight: FontWeight.w700,
                 ),
           ),
           SizedBox(height: 8),
-          for (final (icono, texto) in items)
+          for (final (icono, claveTexto) in items)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 3),
               child: Row(
@@ -366,7 +360,7 @@ class _OtrasFormas extends StatelessWidget {
                 children: [
                   Icon(icono, size: 18),
                   SizedBox(width: 10),
-                  Expanded(child: Text(texto)),
+                  Expanded(child: Text(SoleraL10n.t(claveTexto))),
                 ],
               ),
             ),

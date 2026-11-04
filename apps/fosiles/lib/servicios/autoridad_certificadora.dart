@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import 'package:cryptography/cryptography.dart';
 import 'package:crypto/crypto.dart' as crypto_sha;
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Identidad criptográfica de una **autoridad firmante** (un experto del
@@ -171,7 +172,7 @@ class AutoridadCertificadora {
     if (_parClavesCache != null) return _parClavesCache!;
     final semillaB64 = await _almacen.read(key: _claveSemilla);
     if (semillaB64 == null) {
-      throw StateError('Modo Experto no activo: no hay clave de autoridad.');
+      throw StateError(SoleraL10n.t('fos.iden_error_sin_clave_autoridad'));
     }
     final semilla = base64Decode(semillaB64);
     _parClavesCache = await _algoritmo.newKeyPairFromSeed(semilla);
