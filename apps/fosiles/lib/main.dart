@@ -96,25 +96,18 @@ class _AplicacionFosilesState extends State<AplicacionFosiles> with WidgetsBindi
       scaffoldMessengerKey: _claveMensajes,
       title: 'Fósiles',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5E7D3A),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF5F1E8),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5E7D3A),
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
+      theme: temaSolera(paletaFosiles),
+      darkTheme: temaSolera(paletaFosiles, oscuro: true),
       home: const PantallaPrincipal(),
     );
   }
 }
+
+/// Verde de campo de siempre sobre la crema común de las apps.
+const paletaFosiles = PaletaSolera(
+  primario: Color(0xFF5E7D3A),
+  crema: Color(0xFFF5F1E8),
+);
 
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
@@ -126,6 +119,7 @@ class PantallaPrincipal extends StatefulWidget {
 class _PantallaPrincipalState extends State<PantallaPrincipal> {
   int indiceVistaActual = 0;
   int contadorRefrescoLista = 0;
+  int contadorRefrescoInicio = 0;
   int contadorRefrescoMapa = 0;
   StreamSubscription<List<SharedMediaFile>>? _suscripcionShare;
   /// Coordenadas a las que la pestaña Mapa debe saltar la próxima vez que
@@ -238,6 +232,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     switch (indice) {
       case 0:
         return PantallaInicio(
+          key: ValueKey('inicio_$contadorRefrescoInicio'),
           alIrAMapa: () => setState(() {
             _indicesVisitados.add(1);
             indiceVistaActual = 1;
@@ -288,6 +283,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             return;
           }
           setState(() {
+            // Al volver a Inicio, sus cifras se recalculan.
+            if (indice == 0 && indiceVistaActual != 0) contadorRefrescoInicio++;
             _indicesVisitados.add(indice);
             indiceVistaActual = indice;
           });
