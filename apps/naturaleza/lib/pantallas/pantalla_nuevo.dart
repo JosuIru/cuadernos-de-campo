@@ -668,20 +668,23 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
               runSpacing: 6,
               children: tiposAplicables.map((tipo) {
                 final seleccionado = _tipoEvidencia == tipo;
+                final esquema = Theme.of(context).colorScheme;
                 return ChoiceChip(
-                  avatar:
-                      Icon(_iconoEvidencia(tipo), size: 16, color: Colors.white),
+                  avatar: Icon(_iconoEvidencia(tipo),
+                      size: 16,
+                      color: seleccionado
+                          ? esquema.onPrimary
+                          : esquema.onSurfaceVariant),
                   showCheckmark: false,
                   label: Text(tipo.etiqueta),
                   labelStyle: TextStyle(
-                    color: seleccionado ? Colors.white : null,
+                    color: seleccionado ? esquema.onPrimary : null,
                     fontWeight: seleccionado
                         ? FontWeight.bold
                         : FontWeight.normal,
                   ),
                   selected: seleccionado,
-                  selectedColor: const Color(0xFF3A7D5A),
-                  backgroundColor: Colors.grey.shade100,
+                  selectedColor: esquema.primary,
                   onSelected: (sel) {
                     if (sel) setState(() => _tipoEvidencia = tipo);
                   },
@@ -741,16 +744,16 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
 
   Widget _chipConfianza(String etiqueta, String? valor) {
     final seleccionado = _confianza == valor;
+    final esquema = Theme.of(context).colorScheme;
     return ChoiceChip(
       label: Text(etiqueta),
       labelStyle: TextStyle(
-        color: seleccionado ? Colors.white : null,
+        color: seleccionado ? esquema.onPrimary : null,
         fontWeight:
             seleccionado ? FontWeight.bold : FontWeight.normal,
       ),
       selected: seleccionado,
-      selectedColor: const Color(0xFF3A7D5A),
-      backgroundColor: Colors.grey.shade100,
+      selectedColor: esquema.primary,
       onSelected: (sel) {
         if (sel) setState(() => _confianza = valor);
       },

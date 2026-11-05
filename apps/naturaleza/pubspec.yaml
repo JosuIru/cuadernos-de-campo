@@ -1,7 +1,7 @@
 name: naturaleza_flutter
 description: "Cuaderno de campo de naturaleza (animales, insectos y plantas)"
 publish_to: 'none'
-version: 1.0.13+14
+version: 1.0.14+15
 
 environment:
   sdk: ^3.5.0
@@ -80,6 +80,21 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: packages/nuevo_ser_core/fuentes/Poppins-SemiBold.ttf
+          weight: 600
+    - family: Inter
+      fonts:
+        - asset: packages/nuevo_ser_core/fuentes/Inter-Regular.ttf
+          weight: 400
+        - asset: packages/nuevo_ser_core/fuentes/Inter-Medium.ttf
+          weight: 500
+        - asset: packages/nuevo_ser_core/fuentes/Inter-SemiBold.ttf
+          weight: 600
+        - asset: packages/nuevo_ser_core/fuentes/Inter-Bold.ttf
+          weight: 700
 
 flutter_launcher_icons:
   android: true

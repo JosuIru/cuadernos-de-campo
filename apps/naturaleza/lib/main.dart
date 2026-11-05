@@ -91,25 +91,18 @@ class _AplicacionNaturalezaState extends State<AplicacionNaturaleza> with Widget
       scaffoldMessengerKey: _claveMensajes,
       title: 'Naturaleza',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5E7D3A),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF5F1E8),
-      ),
-      darkTheme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5E7D3A),
-          brightness: Brightness.dark,
-        ),
-        useMaterial3: true,
-      ),
+      theme: temaSolera(paletaNaturaleza),
+      darkTheme: temaSolera(paletaNaturaleza, oscuro: true),
       home: const PantallaPrincipal(),
     );
   }
 }
+
+/// El verde hoja que ya usaban la cabecera y la guía, sobre la crema común.
+const paletaNaturaleza = PaletaSolera(
+  primario: Color(0xFF3A7D5A),
+  crema: Color(0xFFF5F1E8),
+);
 
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
@@ -121,6 +114,7 @@ class PantallaPrincipal extends StatefulWidget {
 class _PantallaPrincipalState extends State<PantallaPrincipal> {
   int indiceVistaActual = 0;
   int contadorRefrescoLista = 0;
+  int contadorRefrescoInicio = 0;
   int contadorRefrescoMapa = 0;
 
   // IndexedStack construye TODOS los hijos al primer frame: arrancando la app
@@ -153,6 +147,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     switch (indice) {
       case 0:
         return PantallaInicio(
+          key: ValueKey('inicio_$contadorRefrescoInicio'),
           alIrAMapa: () => setState(() {
             _indicesVisitados.add(1);
             indiceVistaActual = 1;
@@ -199,6 +194,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             return;
           }
           setState(() {
+            // Al volver a Inicio, sus cifras se recalculan.
+            if (indice == 0 && indiceVistaActual != 0) contadorRefrescoInicio++;
             _indicesVisitados.add(indice);
             indiceVistaActual = indice;
           });
