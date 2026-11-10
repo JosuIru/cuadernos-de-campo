@@ -21,6 +21,7 @@ import '../utiles/permisos_gps.dart';
 import 'pantalla_anotar_foto.dart';
 import 'pantalla_buscar_foto_archivo.dart';
 import 'pantalla_quien_canta.dart';
+import 'widgets/nota_voz_hallazgo.dart';
 import 'widgets/reproductor_clip.dart';
 
 class PantallaNuevoHallazgo extends StatefulWidget {
@@ -93,6 +94,12 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   String? _rutaAudioSinGuardar;
   bool _guardado = false;
 
+  /// Nota de voz actual, la que tenía el hallazgo al abrirlo y las grabadas
+  /// aquí que aún no están en la BD (se borran si se sale sin guardar).
+  String? _rutaNotaVoz;
+  String? _rutaNotaVozOriginal;
+  final Set<String> _notasVozSinGuardar = {};
+
   /// Hora en que se oyó la especie (si viene de «¿Quién canta?»); el
   /// hallazgo nuevo se fecha con ella en vez de con la hora de guardar.
   int? _fechaMsEscucha;
@@ -128,6 +135,8 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       _longitud = hallazgo.longitud;
       _precision = hallazgo.precision;
       _rutaAudio = hallazgo.rutaAudio;
+      _rutaNotaVoz = hallazgo.rutaNotaVoz;
+      _rutaNotaVozOriginal = hallazgo.rutaNotaVoz;
     } else {
       _latitud = widget.latitudPredefinida;
       _longitud = widget.longitudPredefinida;
@@ -191,6 +200,37 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     } catch (_) {}
   }
 
+  void _alGrabarNotaVoz(String ruta) {
+    setState(() {
+      final anterior = _rutaNotaVoz;
+      if (anterior != null && _notasVozSinGuardar.remove(anterior)) _borrarFicheroSilencioso(anterior);
+      _rutaNotaVoz = ruta;
+      _notasVozSinGuardar.add(ruta);
+    });
+  }
+
+  void _alBorrarNotaVoz() {
+    setState(() {
+      final actual = _rutaNotaVoz;
+      if (actual != null && _notasVozSinGuardar.remove(actual)) _borrarFicheroSilencioso(actual);
+      _rutaNotaVoz = null;
+    });
+  }
+
+  void _borrarFicheroSilencioso(String ruta) {
+    try {
+      final fichero = File(ruta);
+      if (fichero.existsSync()) fichero.deleteSync();
+    } catch (_) {}
+  }
+
+  /// Tras guardar: la nota de antes, si se cambió o se quitó, ya no hace falta.
+  void _consolidarNotaVozTrasGuardar() {
+    final original = _rutaNotaVozOriginal;
+    if (original != null && original != _rutaNotaVoz) _borrarFicheroSilencioso(original);
+    _notasVozSinGuardar.clear();
+  }
+
   Future<void> _cargarClavePlantNet() async {
     final clave = await Configuracion.obtenerApiKeyPlantNet();
     if (!mounted) return;
@@ -199,7 +239,10 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
 
   @override
   void dispose() {
-    if (!_guardado) _descartarAudioSinGuardar();
+    if (!_guardado) {
+      _descartarAudioSinGuardar();
+      _notasVozSinGuardar.forEach(_borrarFicheroSilencioso);
+    }
     _controladorNombreComun.dispose();
     _controladorEspecie.dispose();
     _controladorTaxonomia.dispose();
@@ -547,6 +590,8 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           limpiarConfianza: _confianza == null,
           rutaAudio: _rutaAudio,
           quitarAudio: _rutaAudio == null,
+          rutaNotaVoz: _rutaNotaVoz,
+          quitarNotaVoz: _rutaNotaVoz == null,
         );
         final idHallazgo = hallazgoExistente.id;
         if (idHallazgo == null) {
@@ -571,6 +616,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             'hipotesis': mapa['hipotesis'],
             'confianza_identificacion': mapa['confianza_identificacion'],
             'ruta_audio': hallazgoActualizado.rutaAudio,
+            'ruta_nota_voz': hallazgoActualizado.rutaNotaVoz,
           },
         );
       } else {
@@ -593,10 +639,12 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           hipotesis: _controladorHipotesis.text.trim(),
           confianzaIdentificacion: _confianza,
           rutaAudio: _rutaAudio,
+          rutaNotaVoz: _rutaNotaVoz,
         );
         await BaseDatosNaturaleza.instancia.guardarHallazgo(hallazgo);
       }
       _guardado = true;
+      _consolidarNotaVozTrasGuardar();
     } catch (e) {
       // Si SQLite (u otra capa) lanza, no perdemos el formulario:
       // mostramos el error y dejamos al usuario reintentar. Antes el
@@ -657,7 +705,12 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   /// identificación por sonido (modelo, puntuación…) y la zona estimada del
   /// animal por triangulación de rumbos («¿Dónde está?»), aparte de la
   /// posición de la persona.
-  static const Set<String> _atributosDeCualquierCategoria = {'identificacion_sonido', 'zona_animal'};
+  static const Set<String> _atributosDeCualquierCategoria = {
+    'identificacion_sonido',
+    'zona_animal',
+    // De qué sesión larga de escucha salió (recorrido o coro).
+    'sesion_sonora',
+  };
 
   static List<String> _clavesAtributosCategoria(String categoria) =>
       _atributosPorCategoria[categoria] ?? const [];
@@ -1159,6 +1212,12 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
               controller: _controladorNotas,
               decoration: InputDecoration(labelText: SoleraL10n.t('fos.hall_notas'), border: OutlineInputBorder()),
               maxLines: 3,
+            ),
+            const SizedBox(height: 8),
+            NotaVozHallazgo(
+              rutaNotaVoz: _rutaNotaVoz,
+              alGrabar: _alGrabarNotaVoz,
+              alBorrar: _alBorrarNotaVoz,
             ),
           ],
         ),

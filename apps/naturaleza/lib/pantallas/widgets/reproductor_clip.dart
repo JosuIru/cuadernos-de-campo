@@ -12,7 +12,13 @@ class ReproductorClip extends StatefulWidget {
   /// Si se da, aparece un botón para quitar el clip (en el alta).
   final VoidCallback? alQuitar;
 
-  const ReproductorClip({super.key, required this.rutaAudio, this.alQuitar});
+  /// Texto bajo la barra (por defecto, «Clip de audio») y del botón de
+  /// quitar; la nota de voz usa los suyos.
+  final String? etiqueta;
+  final String? textoQuitar;
+
+  const ReproductorClip(
+      {super.key, required this.rutaAudio, this.alQuitar, this.etiqueta, this.textoQuitar});
 
   @override
   State<ReproductorClip> createState() => _ReproductorClipState();
@@ -100,8 +106,8 @@ class _ReproductorClipState extends State<ReproductorClip> {
                     const SizedBox(height: 4),
                     Text(
                       duracion == null
-                          ? SoleraL10n.t('nat.son_clip_audio')
-                          : '${SoleraL10n.t('nat.son_clip_audio')} · ${_formatear(duracion)}',
+                          ? (widget.etiqueta ?? SoleraL10n.t('nat.son_clip_audio'))
+                          : '${widget.etiqueta ?? SoleraL10n.t('nat.son_clip_audio')} · ${_formatear(duracion)}',
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ],
@@ -112,7 +118,7 @@ class _ReproductorClipState extends State<ReproductorClip> {
         if (widget.alQuitar != null)
           IconButton(
             icon: const Icon(Icons.close),
-            tooltip: SoleraL10n.t('nat.son_quitar_clip'),
+            tooltip: widget.textoQuitar ?? SoleraL10n.t('nat.son_quitar_clip'),
             onPressed: widget.alQuitar,
           ),
       ],

@@ -35,14 +35,16 @@ Future<File> exportarBackup() async {
     }
   }
 
-  // Clips de audio de los hallazgos identificados por el sonido.
-  final dirAudios = Directory(path_lib.join(dirDocs.path, 'audios'));
-  if (await dirAudios.exists()) {
-    await for (final entidad in dirAudios.list(recursive: false)) {
+  // Clips de audio (hallazgos identificados por el sonido y mejores clips
+  // de las sesiones largas) y notas de voz de los hallazgos.
+  for (final carpeta in const ['audios', 'notas_voz']) {
+    final directorio = Directory(path_lib.join(dirDocs.path, carpeta));
+    if (!await directorio.exists()) continue;
+    await for (final entidad in directorio.list(recursive: false)) {
       if (entidad is File) {
         final bytes = await entidad.readAsBytes();
         final nombre = path_lib.basename(entidad.path);
-        archivo.addFile(ArchiveFile('audios/$nombre', bytes.length, bytes));
+        archivo.addFile(ArchiveFile('$carpeta/$nombre', bytes.length, bytes));
       }
     }
   }
@@ -89,11 +91,12 @@ Future<ResultadoRestauracion> restaurarBackup(File ficheroBackup) async {
       final destino = File(path_lib.join(dirFotos.path, nombre));
       await destino.writeAsBytes(fichero.content as List<int>);
       fotos++;
-    } else if (fichero.name.startsWith('audios/')) {
-      final dirAudios = Directory(path_lib.join(dirDocs.path, 'audios'));
-      if (!await dirAudios.exists()) await dirAudios.create(recursive: true);
+    } else if (fichero.name.startsWith('audios/') || fichero.name.startsWith('notas_voz/')) {
+      final carpeta = fichero.name.startsWith('audios/') ? 'audios' : 'notas_voz';
+      final directorio = Directory(path_lib.join(dirDocs.path, carpeta));
+      if (!await directorio.exists()) await directorio.create(recursive: true);
       final nombre = path_lib.basename(fichero.name);
-      await File(path_lib.join(dirAudios.path, nombre)).writeAsBytes(fichero.content as List<int>);
+      await File(path_lib.join(directorio.path, nombre)).writeAsBytes(fichero.content as List<int>);
     }
   }
 

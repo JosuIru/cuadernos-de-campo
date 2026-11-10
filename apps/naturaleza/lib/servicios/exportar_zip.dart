@@ -31,6 +31,7 @@ Future<File> generarZipHallazgos(List<Hallazgo> hallazgos) async {
           'precision_m': h.precision,
           'foto': h.rutaFoto != null ? 'fotos/${path_lib.basename(h.rutaFoto!)}' : null,
           'audio': h.rutaAudio != null ? 'audios/${path_lib.basename(h.rutaAudio!)}' : null,
+          'nota_voz': h.rutaNotaVoz != null ? 'notas_voz/${path_lib.basename(h.rutaNotaVoz!)}' : null,
           'tipo_evidencia': h.tipoEvidencia.clave,
           'atributos': h.atributos,
         },
@@ -42,7 +43,7 @@ Future<File> generarZipHallazgos(List<Hallazgo> hallazgos) async {
 
   final formatoFecha = DateFormat('yyyy-MM-dd HH:mm:ss');
   final csvBuffer = StringBuffer()
-    ..writeln('id,fecha,latitud,longitud,precision_m,categoria,especie,nombre_comun,taxonomia,habitat,notas,foto,audio');
+    ..writeln('id,fecha,latitud,longitud,precision_m,categoria,especie,nombre_comun,taxonomia,habitat,notas,foto,audio,nota_voz');
   for (final h in hallazgos) {
     String escapar(String? texto) {
       final t = (texto ?? '').replaceAll('"', '""').replaceAll('\n', ' ');
@@ -63,6 +64,7 @@ Future<File> generarZipHallazgos(List<Hallazgo> hallazgos) async {
       escapar(h.notas),
       escapar(h.rutaFoto != null ? 'fotos/${path_lib.basename(h.rutaFoto!)}' : ''),
       escapar(h.rutaAudio != null ? 'audios/${path_lib.basename(h.rutaAudio!)}' : ''),
+      escapar(h.rutaNotaVoz != null ? 'notas_voz/${path_lib.basename(h.rutaNotaVoz!)}' : ''),
     ].join(','));
   }
   final csvBytes = utf8.encode(csvBuffer.toString());
@@ -82,6 +84,14 @@ Future<File> generarZipHallazgos(List<Hallazgo> hallazgos) async {
     if (!await audio.exists()) continue;
     final bytes = await audio.readAsBytes();
     archivo.addFile(ArchiveFile('audios/${path_lib.basename(h.rutaAudio!)}', bytes.length, bytes));
+  }
+
+  for (final h in hallazgos) {
+    if (h.rutaNotaVoz == null) continue;
+    final nota = File(h.rutaNotaVoz!);
+    if (!await nota.exists()) continue;
+    final bytes = await nota.readAsBytes();
+    archivo.addFile(ArchiveFile('notas_voz/${path_lib.basename(h.rutaNotaVoz!)}', bytes.length, bytes));
   }
 
   final encoder = ZipEncoder();

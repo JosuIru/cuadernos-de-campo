@@ -146,6 +146,14 @@ class _PantallaListaState extends State<PantallaLista> {
                 ReproductorClip(rutaAudio: hallazgo.rutaAudio!),
                 const SizedBox(height: 8),
               ],
+              if (hallazgo.rutaNotaVoz != null) ...[
+                ReproductorClip(
+                  key: ValueKey(hallazgo.rutaNotaVoz),
+                  rutaAudio: hallazgo.rutaNotaVoz!,
+                  etiqueta: SoleraL10n.t('nat.voz_nota'),
+                ),
+                const SizedBox(height: 8),
+              ],
               _badgesEvidencia(hallazgo),
               if (hallazgo.atributos['identificacion_sonido'] is Map)
                 _lineaIdentificacionSonido(
