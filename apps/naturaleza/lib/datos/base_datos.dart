@@ -9,10 +9,12 @@ import '../modelos/hallazgo.dart';
 import '../modelos/track.dart';
 import '../modelos/salida.dart';
 import '../modelos/anotacion_diferida.dart';
+import '../sonido/registro_sesion_sonora.dart';
 import '../sonido/sonidos_propios.dart';
 
-/// Versión del esquema. v5 (2026-11-10): «Tus sonidos».
-const int versionEsquemaNaturaleza = 5;
+/// Versión del esquema. v5 (2026-11-10): «Tus sonidos». v6 (2026-11-10):
+/// sesiones largas de escucha y nota de voz del hallazgo.
+const int versionEsquemaNaturaleza = 6;
 
 class BaseDatosNaturaleza {
   static final BaseDatosNaturaleza instancia = BaseDatosNaturaleza._interno();
@@ -89,6 +91,12 @@ class BaseDatosNaturaleza {
             try { await File(ruta).delete(); } catch (_) {}
           }
         }
+      }
+      // La nota de voz es solo de este hallazgo.
+      final notas = await db.query('hallazgos', columns: ['ruta_nota_voz'], where: 'id = ?', whereArgs: [id], limit: 1);
+      final rutaNotaVoz = notas.isEmpty ? null : notas.first['ruta_nota_voz'] as String?;
+      if (rutaNotaVoz != null) {
+        try { await File(rutaNotaVoz).delete(); } catch (_) {}
       }
     } catch (_) {}
     await db.delete('hallazgos', where: 'id = ?', whereArgs: [id]);
@@ -478,6 +486,90 @@ class BaseDatosNaturaleza {
       whereArgs: inicioMs != null ? [inicioMs] : null,
     );
   }
+
+  // ─── Sesiones largas de escucha (v6) ──────────────────────────────
+
+  Future<int> crearSesionSonora(SesionSonora sesion) async {
+    final db = await basedatos;
+    return db.insert('sesiones_sonoras', sesion.aMapa()..remove('id'));
+  }
+
+  Future<void> actualizarSesionSonora(int id, {int? finMs, List<PuntoTrazaSonora>? traza}) async {
+    final db = await basedatos;
+    await db.update(
+      'sesiones_sonoras',
+      {
+        if (finMs != null) 'fin_ms': finMs,
+        if (traza != null) 'traza_json': trazaAJson(traza),
+      },
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  Future<int> guardarDeteccionSonora(DeteccionSonora deteccion) async {
+    final db = await basedatos;
+    return db.insert('detecciones_sonoras', deteccion.aMapa()..remove('id'));
+  }
+
+  Future<void> actualizarDeteccionSonora(int id, Map<String, Object?> cambios) async {
+    final db = await basedatos;
+    await db.update('detecciones_sonoras', cambios, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<SesionSonora?> obtenerSesionSonora(int id) async {
+    final db = await basedatos;
+    final filas = await db.query('sesiones_sonoras', where: 'id = ?', whereArgs: [id], limit: 1);
+    return filas.isEmpty ? null : SesionSonora.desdeMapa(filas.first);
+  }
+
+  /// Sesiones, de la más reciente a la más antigua, con su número de
+  /// detecciones y de especies.
+  Future<List<({SesionSonora sesion, int detecciones, int especies})>> listarSesionesSonoras() async {
+    final db = await basedatos;
+    final filas = await db.rawQuery('''
+      SELECT s.*, COUNT(d.id) AS numero_detecciones, COUNT(DISTINCT d.etiqueta) AS numero_especies
+      FROM sesiones_sonoras s LEFT JOIN detecciones_sonoras d ON d.sesion_id = s.id
+      GROUP BY s.id ORDER BY s.inicio_ms DESC
+    ''');
+    return [
+      for (final fila in filas)
+        (
+          sesion: SesionSonora.desdeMapa(fila),
+          detecciones: (fila['numero_detecciones'] as int?) ?? 0,
+          especies: (fila['numero_especies'] as int?) ?? 0,
+        ),
+    ];
+  }
+
+  Future<List<DeteccionSonora>> deteccionesDeSesion(int sesionId) async {
+    final db = await basedatos;
+    final filas = await db.query('detecciones_sonoras',
+        where: 'sesion_id = ?', whereArgs: [sesionId], orderBy: 'momento_ms ASC');
+    return filas.map(DeteccionSonora.desdeMapa).toList();
+  }
+
+  /// Borra la sesión, sus detecciones y sus clips (los hallazgos guardados
+  /// desde ella tienen su propia copia del clip y no se tocan).
+  Future<void> borrarSesionSonora(int id) async {
+    final db = await basedatos;
+    final clips = await db.query('detecciones_sonoras',
+        columns: ['ruta_clip'], where: 'sesion_id = ? AND ruta_clip IS NOT NULL', whereArgs: [id]);
+    await db.transaction((txn) async {
+      await txn.delete('detecciones_sonoras', where: 'sesion_id = ?', whereArgs: [id]);
+      await txn.delete('sesiones_sonoras', where: 'id = ?', whereArgs: [id]);
+    });
+    for (final fila in clips) {
+      try {
+        await File(fila['ruta_clip'] as String).delete();
+      } catch (_) {}
+    }
+  }
+}
+
+Future<bool> _columnaExiste(Database db, String tabla, String columna) async {
+  final columnas = await db.rawQuery('PRAGMA table_info($tabla)');
+  return columnas.any((fila) => fila['name'] == columna);
 }
 
 /// Esquema inicial (v1) — expuesto sin underscore para que los tests
@@ -666,6 +758,51 @@ Future<void> aplicarMigraciones(Database db,
         ''');
         await db.execute(
           'CREATE INDEX IF NOT EXISTS idx_ejemplos_sonido ON ejemplos_sonido_propio (sonido_id, id)',
+        );
+        break;
+      case 6:
+        // v6 (2026-11-10): sesiones largas de «¿Quién canta?» («Escuchar
+        // mientras camino» y «Coro del amanecer») con sus detecciones (sin
+        // audio continuo: como mucho el mejor clip por especie, en
+        // `audios/`), y nota de voz del hallazgo. Todo aditivo.
+        if (!await _columnaExiste(db, 'hallazgos', 'ruta_nota_voz')) {
+          await db.execute('ALTER TABLE hallazgos ADD COLUMN ruta_nota_voz TEXT');
+        }
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS sesiones_sonoras (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            tipo TEXT NOT NULL,
+            inicio_ms INTEGER NOT NULL,
+            fin_ms INTEGER,
+            fin_previsto_ms INTEGER,
+            version_modelo TEXT NOT NULL DEFAULT '',
+            traza_json TEXT NOT NULL DEFAULT '[]',
+            con_filtro_zona INTEGER NOT NULL DEFAULT 0
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS detecciones_sonoras (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sesion_id INTEGER NOT NULL,
+            momento_ms INTEGER NOT NULL,
+            etiqueta TEXT NOT NULL,
+            nombre_comun TEXT,
+            categoria TEXT,
+            puntuacion REAL NOT NULL,
+            puntuacion_modelo REAL,
+            nivel TEXT,
+            latitud REAL,
+            longitud REAL,
+            indice_punto INTEGER,
+            ruta_clip TEXT,
+            hallazgo_id INTEGER
+          )
+        ''');
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_detecciones_sesion ON detecciones_sonoras (sesion_id, momento_ms)',
+        );
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_sesiones_sonoras_inicio ON sesiones_sonoras (inicio_ms DESC)',
         );
         break;
     }

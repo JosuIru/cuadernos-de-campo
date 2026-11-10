@@ -15,10 +15,6 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
 
-  test('la versión declarada es la 5', () {
-    expect(versionEsquemaNaturaleza, 5);
-  });
-
   test('migración v4 → v5 conserva los hallazgos y crea las tablas de sonidos', () async {
     final rutaTemporal = '${Directory.systemTemp.path}/test_migracion_v5.db';
     await databaseFactory.deleteDatabase(rutaTemporal);

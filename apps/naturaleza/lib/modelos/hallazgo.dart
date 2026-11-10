@@ -177,6 +177,10 @@ class Hallazgo {
   /// fotos en `fotos/`. Null si no hay audio.
   final String? rutaAudio;
 
+  /// Nota de voz de la persona (v6): m4a (AAC) en `notas_voz/`. Null si no
+  /// hay.
+  final String? rutaNotaVoz;
+
   Hallazgo({
     this.id,
     required this.fechaMs,
@@ -199,6 +203,7 @@ class Hallazgo {
     this.identificacionValidada = EstadoIdentificacion.sinRevisar,
     this.especieCorregida = '',
     this.rutaAudio,
+    this.rutaNotaVoz,
   });
 
   bool get esAnimal => categoria == 'animal';
@@ -252,6 +257,8 @@ class Hallazgo {
       // Solo si hay audio: así el mapa sigue valiendo para una BD v3 (los
       // tests de migración insertan con toMap sobre esquemas viejos).
       if (rutaAudio != null) 'ruta_audio': rutaAudio,
+      // Igual que ruta_audio: solo si hay nota (v6).
+      if (rutaNotaVoz != null) 'ruta_nota_voz': rutaNotaVoz,
     };
   }
 
@@ -310,6 +317,7 @@ class Hallazgo {
               EstadoIdentificacion.sinRevisar,
       especieCorregida: (mapa['especie_corregida'] as String?) ?? '',
       rutaAudio: mapa['ruta_audio'] as String?,
+      rutaNotaVoz: mapa['ruta_nota_voz'] as String?,
     );
   }
 
@@ -333,6 +341,8 @@ class Hallazgo {
     String? especieCorregida,
     String? rutaAudio,
     bool quitarAudio = false,
+    String? rutaNotaVoz,
+    bool quitarNotaVoz = false,
   }) =>
       Hallazgo(
         id: id,
@@ -359,5 +369,6 @@ class Hallazgo {
             identificacionValidada ?? this.identificacionValidada,
         especieCorregida: especieCorregida ?? this.especieCorregida,
         rutaAudio: quitarAudio ? null : (rutaAudio ?? this.rutaAudio),
+        rutaNotaVoz: quitarNotaVoz ? null : (rutaNotaVoz ?? this.rutaNotaVoz),
       );
 }
