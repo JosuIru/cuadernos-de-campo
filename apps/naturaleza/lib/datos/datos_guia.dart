@@ -2,8 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../servicios/servicio_inaturalist.dart';
+import '../pantallas/widgets/fuentes_abiertas_ficha.dart';
 import '../servicios/servicio_wikipedia.dart';
+import 'claves_gbif.dart';
 import 'uso_tradicional.dart';
 import 'usos_tradicionales.dart';
 
@@ -2956,6 +2957,11 @@ List<UsoTradicional> usosTradicionalesDe(EspecieGuia especie) {
 bool llevaAvisoConsumo(EspecieGuia especie) =>
     especie.categoriaId == 'planta' || especie.categoriaId == 'seta';
 
+/// Especies cuyos registros de GBIF solo se enseñan a escala amplia (las
+/// protegidas). A esta lista se suman, al consultar, las que GBIF devuelve
+/// con coordenadas generalizadas.
+bool esEspecieSensible(EspecieGuia especie) => especie.usos.contains('protegida');
+
 Widget _contenidoEspecie(BuildContext context, EspecieGuia especie, CategoriaGuia? categoria) {
   final usosTradicionales = usosTradicionalesDe(especie);
   return Column(
@@ -3039,7 +3045,13 @@ Widget _contenidoEspecie(BuildContext context, EspecieGuia especie, CategoriaGui
         const SizedBox(height: 16),
         _UsoTradicionalEma(usos: usosTradicionales),
       ],
-      const SizedBox(height: 24),
+      const SizedBox(height: 16),
+      BloqueFuentesAbiertasFicha(
+        nombreCientifico: especie.nombreCientifico,
+        claveGbif: clavesGbifPorEspecie[especie.id],
+        sensible: esEspecieSensible(especie),
+      ),
+      const SizedBox(height: 16),
       if (especie.tituloWikipedia.isNotEmpty)
         FilledButton.tonalIcon(
           icon: const Icon(Icons.open_in_new),
@@ -3182,12 +3194,8 @@ class _GaleriaEspecieWikipediaState extends State<_GaleriaEspecieWikipedia> {
         urls.addAll(lista);
       } catch (_) {}
     }
-    if (urls.isEmpty) {
-      // Último recurso: la miniatura genérica de iNaturalist por nombre
-      // científico, que para muchas especies trae al menos una foto.
-      final urlInat = await miniaturaPorNombreCientifico(widget.especie.nombreCientifico);
-      if (urlInat != null) urls.add(urlInat);
-    }
+    // Sin galería de Wikipedia no se tira de iNaturalist aquí: sus fotos
+    // (solo licencias abiertas, con autor) van en su propio apartado.
     return urls.take(_maxImagenes).toList();
   }
 

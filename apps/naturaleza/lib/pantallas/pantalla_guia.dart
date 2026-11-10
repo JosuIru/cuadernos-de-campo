@@ -2,8 +2,9 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import '../datos/datos_guia.dart';
-import '../servicios/servicio_inaturalist.dart';
+import '../fuentes_abiertas/servicio_fuentes_abiertas.dart';
 import '../servicios/servicio_wikipedia.dart';
+import 'pantalla_especies_cerca.dart';
 import 'pantalla_quiz.dart';
 
 class PantallaGuia extends StatefulWidget {
@@ -77,6 +78,13 @@ class _PantallaGuiaState extends State<PantallaGuia> with SingleTickerProviderSt
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.travel_explore),
+            tooltip: SoleraL10n.t('nat.fuen_especies_cerca'),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const PantallaEspeciesCerca()),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.quiz),
             tooltip: SoleraL10n.t('fos.hall_quiz'),
@@ -234,13 +242,17 @@ class _MiniaturaEspecie extends StatelessWidget {
       width: 56,
       height: 56,
       child: FutureBuilder<String?>(
-        // Wikipedia primero (artículo del taxón); cae a iNaturalist si
-        // Wikipedia no responde con foto.
+        // Wikipedia primero (artículo del taxón). Si no hay, la primera
+        // foto abierta de iNaturalist que ya esté en caché (se pidió al
+        // abrir la ficha, que es donde lleva su autor y licencia): la lista
+        // no lanza peticiones a iNaturalist.
         future: () async {
           final wiki = especie.tituloWikipedia.isNotEmpty
               ? await miniaturaPorTituloWikipedia(especie.tituloWikipedia)
               : null;
-          return wiki ?? await miniaturaPorNombreCientifico(especie.nombreCientifico);
+          if (wiki != null) return wiki;
+          final fotos = await ServicioFuentesAbiertas.instancia.fotosEnCache(especie.nombreCientifico);
+          return fotos == null || fotos.fotos.isEmpty ? null : fotos.fotos.first.urlMedia;
         }(),
         builder: (context, snapshot) {
           final url = snapshot.data;
