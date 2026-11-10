@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'servicio_inaturalist.dart' show buscarTaxones;
+import '../utiles/enlaces_app.dart' show agenteUsuarioNaturaleza;
 
 /// Resultado unificado de búsqueda en repositorios externos
 /// (iNaturalist + Wikipedia Commons). Cada uno trae **suficiente
@@ -48,8 +49,7 @@ class ResultadoFotoArchivo {
 /// Cabeceras User-Agent para las llamadas. Wikipedia y iNaturalist
 /// piden identificarse — sin esto pueden bloquear o limitar.
 const _cabeceras = {
-  'User-Agent':
-      'naturaleza-flutter/1.0 (https://github.com/josu/naturaleza-flutter)',
+  'User-Agent': agenteUsuarioNaturaleza,
   'Accept': 'application/json',
 };
 

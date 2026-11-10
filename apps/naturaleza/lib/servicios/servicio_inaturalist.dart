@@ -3,10 +3,11 @@ import 'package:http/http.dart' as http;
 import 'package:nuevo_ser_core/nuevo_ser_core.dart' show SoleraL10n;
 
 import '../fuentes_abiertas/licencias_abiertas.dart';
+import '../utiles/enlaces_app.dart' show agenteUsuarioNaturaleza;
 
 const _baseInaturalist = 'https://api.inaturalist.org/v1';
 const _cabecerasInaturalist = {
-  'User-Agent': 'naturaleza-flutter/1.0 (https://github.com/josu/naturaleza-flutter)',
+  'User-Agent': agenteUsuarioNaturaleza,
   'Accept': 'application/json',
 };
 

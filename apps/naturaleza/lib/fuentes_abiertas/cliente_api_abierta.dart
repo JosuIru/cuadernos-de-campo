@@ -3,10 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
-/// User-Agent de la app para iNaturalist y GBIF: nombre y web, sin correo
-/// personal (GBIF pide una URL o un correo para poder avisar).
-const String agenteUsuarioNaturaleza =
-    'Naturaleza/1.0 (cuaderno de campo de la Coleccion Nuevo Ser; https://coleccion-nuevo-ser.com/)';
+import '../utiles/enlaces_app.dart' show agenteUsuarioNaturaleza;
 
 /// Error de una API abierta (red, código HTTP o JSON).
 class ErrorApiAbierta implements Exception {

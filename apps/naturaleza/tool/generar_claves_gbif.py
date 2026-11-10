@@ -15,7 +15,7 @@ import csv, json, pathlib, re, sys, time, urllib.error, urllib.parse, urllib.req
 raiz = pathlib.Path(__file__).resolve().parent.parent
 ruta_csv = raiz / 'datos_fuente/claves_gbif.csv'
 ruta_dart = raiz / 'lib/datos/claves_gbif.dart'
-agente = 'naturaleza-flutter/1.0 (cuaderno de campo; https://coleccion-nuevo-ser.com/)'
+agente = 'naturaleza-flutter/1.0 (cuaderno de campo; https://github.com/JosuIru/cuadernos-de-campo)'
 
 
 def especies_de_la_guia():

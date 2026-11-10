@@ -7,6 +7,7 @@ import 'package:naturaleza_flutter/fuentes_abiertas/cache_con_caducidad.dart';
 import 'package:naturaleza_flutter/fuentes_abiertas/cliente_api_abierta.dart';
 import 'package:naturaleza_flutter/fuentes_abiertas/servicio_fuentes_abiertas.dart';
 import 'package:naturaleza_flutter/fuentes_abiertas/ubicacion_aproximada.dart';
+import 'package:naturaleza_flutter/utiles/enlaces_app.dart';
 
 /// Reloj falso que solo avanza cuando el cliente «espera».
 class _RelojFalso {

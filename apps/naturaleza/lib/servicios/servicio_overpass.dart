@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
+import '../utiles/enlaces_app.dart' show agenteUsuarioNaturaleza;
 
 const _endpointsOverpass = [
   'https://overpass-api.de/api/interpreter',
@@ -9,7 +10,7 @@ const _endpointsOverpass = [
 ];
 
 const _cabecerasOverpass = {
-  'User-Agent': 'naturaleza-flutter/1.0 (https://github.com/josu/naturaleza-flutter)',
+  'User-Agent': agenteUsuarioNaturaleza,
   'Accept': 'application/json',
 };
 
