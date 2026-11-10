@@ -8,8 +8,10 @@ import '../servicios/cache_teselas.dart';
 import '../servicios/checker_actualizaciones_naturaleza.dart';
 import '../servicios/servicio_backup.dart';
 import 'pantalla_ajustes_ia.dart';
+import 'pantalla_exportar_dwc.dart';
 import 'pantalla_mapas_offline.dart';
 import 'sheet_donaciones.dart';
+import 'widgets/etica_campo.dart';
 
 /// Ajustes por secciones: General · Inteligencia artificial (subpantalla
 /// con su propio Guardar) · Mapas y datos · Acerca de.
@@ -237,8 +239,22 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
               ],
             ),
           ]),
+          ListTile(
+            leading: const Icon(Icons.public_outlined),
+            title: Text(SoleraL10n.t('nat.dwc_titulo')),
+            subtitle: Text(SoleraL10n.t('nat.dwc_ajustes_sub')),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _abrir(const PantallaExportarDwc()),
+          ),
 
           CabeceraSeccionAjustes(SoleraL10n.t('acerca_de')),
+          ListTile(
+            leading: const Icon(Icons.volume_off_outlined),
+            title: Text(SoleraL10n.t('nat.etica_titulo')),
+            subtitle: Text(SoleraL10n.t('nat.etica_ajustes_sub')),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => mostrarEticaCampo(context),
+          ),
           ListTile(
             leading: Icon(Icons.system_update),
             title: Text(SoleraL10n.t('comprobar_actualizaciones')),

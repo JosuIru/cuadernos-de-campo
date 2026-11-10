@@ -3,9 +3,12 @@ import 'package:intl/intl.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'pantalla_chat.dart';
 import 'pantalla_meteo.dart';
+import 'pantalla_primeras_veces.dart';
 import 'pantalla_quien_canta.dart';
+import 'pantalla_repaso_sonidos.dart';
 import 'pantalla_salida.dart';
 import 'pantalla_salidas.dart';
+import 'widgets/etica_campo.dart';
 import '../datos/base_datos.dart';
 import '../servicios/estado_salida_en_curso.dart';
 import '../servicios/checker_actualizaciones_naturaleza.dart';
@@ -196,6 +199,38 @@ class _PantallaInicioState extends State<PantallaInicio> {
                             builder: (_) => const PantallaQuienCanta()))
                         .then((_) => _cargarCifras()),
                   ),
+                  const SizedBox(height: 8),
+                  IntrinsicHeight(
+                    child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Expanded(
+                            child: _tarjetaAccion(
+                              context,
+                              icono: Icons.event_available_outlined,
+                              titulo: SoleraL10n.t('nat.cuad_pv_titulo'),
+                              subtitulo: SoleraL10n.t('nat.cuad_pv_atajo_sub'),
+                              onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          const PantallaPrimerasVeces())),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _tarjetaAccion(
+                              context,
+                              icono: Icons.hearing_outlined,
+                              titulo: SoleraL10n.t('nat.cuad_rep_titulo'),
+                              subtitulo: SoleraL10n.t('nat.cuad_rep_atajo_sub'),
+                              onTap: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                      builder: (_) =>
+                                          const PantallaRepasoSonidos())),
+                            ),
+                          ),
+                        ]),
+                  ),
                   TituloBloqueSolera(SoleraL10n.t('nat.ajus_etica_titulo')),
                   Card(
                     child: Padding(
@@ -228,6 +263,14 @@ class _PantallaInicioState extends State<PantallaInicio> {
                               icono: Icons.forest_outlined,
                               titulo: SoleraL10n.t('nat.ajus_etica5_titulo'),
                               texto: SoleraL10n.t('nat.ajus_etica5_texto')),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: TextButton.icon(
+                              icon: const Icon(Icons.volume_off_outlined),
+                              label: Text(SoleraL10n.t('nat.etica_titulo')),
+                              onPressed: () => mostrarEticaCampo(context),
+                            ),
+                          ),
                         ],
                       ),
                     ),

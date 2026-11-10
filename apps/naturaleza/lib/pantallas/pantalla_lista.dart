@@ -12,7 +12,10 @@ import '../servicios/checker_actualizaciones_naturaleza.dart';
 import '../servicios/exportar_zip.dart';
 import '../servicios/tarjeta_imagen.dart';
 import 'pantalla_estadisticas.dart';
+import 'pantalla_exportar_dwc.dart';
 import 'pantalla_nuevo.dart';
+import 'pantalla_primeras_veces.dart';
+import 'pantalla_repaso_sonidos.dart';
 import 'widgets/barra_filtro_categoria.dart';
 import 'widgets/mapa_zona_animal.dart';
 import 'widgets/reproductor_clip.dart';
@@ -841,6 +844,38 @@ class _PantallaListaState extends State<PantallaLista> {
             icon: Icon(Icons.archive_outlined),
             tooltip: SoleraL10n.t('fos.hall_exportar_zip'),
             onPressed: _hallazgos.isEmpty ? null : _exportar,
+          ),
+          PopupMenuButton<Widget Function()>(
+            tooltip: SoleraL10n.t('nat.cuad_menu_mas'),
+            onSelected: (pantalla) => Navigator.of(context)
+                .push(MaterialPageRoute<void>(builder: (_) => pantalla()))
+                .then((_) => _cargar()),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: () => const PantallaPrimerasVeces(),
+                child: ListTile(
+                  leading: const Icon(Icons.event_available_outlined),
+                  title: Text(SoleraL10n.t('nat.cuad_pv_titulo')),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: () => const PantallaRepasoSonidos(),
+                child: ListTile(
+                  leading: const Icon(Icons.hearing_outlined),
+                  title: Text(SoleraL10n.t('nat.cuad_rep_titulo')),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+              PopupMenuItem(
+                value: () => const PantallaExportarDwc(),
+                child: ListTile(
+                  leading: const Icon(Icons.public_outlined),
+                  title: Text(SoleraL10n.t('nat.dwc_titulo')),
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
           ),
         ],
       ),
