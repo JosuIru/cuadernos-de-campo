@@ -16,20 +16,27 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import '../datos/datos_guia.dart';
 import '../modelos/resultado_escucha.dart';
 import '../servicios/almacen_modelo_fauna.dart';
+import '../servicios/avisos_especies_vigiladas.dart';
 import '../servicios/clasificador_fauna.dart';
 import '../servicios/controlador_donde_esta.dart';
+import '../servicios/controlador_sesion_sonora.dart';
 import '../servicios/controlador_sonidos_propios.dart';
 import '../servicios/escucha_microfono.dart';
 import '../sonido/calidad_audio.dart';
 import '../sonido/clasificacion_sonido.dart';
 import '../sonido/clip_audio.dart';
+import '../sonido/especies_vigiladas.dart';
 import '../sonido/espectrograma_mel.dart';
 import '../sonido/filtro_ocurrencia.dart';
 import '../sonido/manifiesto_modelo_fauna.dart';
+import '../sonido/registro_sesion_sonora.dart';
 import '../sonido/sesion_escucha.dart';
 import '../sonido/sonidos_propios.dart';
 import '../utiles/permisos_gps.dart';
+import 'pantalla_especies_vigiladas.dart';
 import 'pantalla_nuevo.dart';
+import 'pantalla_resumen_sesion_sonora.dart';
+import 'pantalla_sesiones_sonoras.dart';
 import 'widgets/indicador_calidad_audio.dart';
 import 'widgets/tarjeta_donde_esta.dart';
 import 'widgets/tarjeta_tus_sonidos.dart';
@@ -52,6 +59,13 @@ class PantallaQuienCanta extends StatefulWidget {
 enum _EstadoDescarga { inactiva, consultando, descargando, error }
 
 enum _EstadoOcurrencia { sinModelo, cargando, lista, noDisponible }
+
+/// Escucha libre (como siempre), «Escuchar mientras camino» o «Coro del
+/// amanecer».
+enum _ModoEscucha { libre, recorrido, coro }
+
+/// Duraciones que se ofrecen para el coro, en minutos.
+const List<int> _duracionesCoroMinutos = [30, 60, 90, 120, 180];
 
 const _clavePreferenciaFiltro = 'nat.quien_canta.filtro_zona';
 const _clavePreferenciaSoloZona = 'nat.quien_canta.solo_mi_zona';
@@ -124,11 +138,27 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
   int _tramasDesdeEvaluacionCalidad = 0;
   bool _mantenerPantallaEncendida = true;
 
+  // Sesiones largas (recorrido y coro del amanecer)
+  _ModoEscucha _modo = _ModoEscucha.libre;
+  ControladorSesionSonora? _sesionLarga;
+  int _minutosCoro = 90;
+  TimeOfDay? _horaFinCoro;
+  TimeOfDay? _horaInicioCoro;
+  DateTime? _inicioCoroProgramado;
+  Timer? _temporizadorInicioCoro;
+  Timer? _temporizadorFinCoro;
+  bool _terminandoSesion = false;
+
+  // «Avísame si lo oye»
+  List<String> _especiesVigiladas = const [];
+  VigilanteEspecies _vigilante = VigilanteEspecies(const []);
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _cargarPreferencias();
+    _cargarEspeciesVigiladas();
     _dondeEsta.cargarPreferencias();
     _comprobarModelo();
   }
@@ -139,6 +169,20 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
     _cancelacion?.cancelar();
     unawaited(_escucha?.detener());
     _escucha = null;
+    _temporizadorInicioCoro?.cancel();
+    _temporizadorFinCoro?.cancel();
+    // Salir de la pantalla cierra la sesión larga (queda guardada).
+    final sesion = _sesionLarga;
+    _sesionLarga = null;
+    if (sesion != null) {
+      final manifiesto = _modelo?.manifiesto;
+      unawaited(sesion
+          .terminar(
+            clases: manifiesto?.clases ?? const [],
+            frecuenciaClipHz: manifiesto?.frecuenciaMuestreoHz ?? 32000,
+          )
+          .whenComplete(sesion.dispose));
+    }
     _clasificador?.liberar();
     _clasificador = null;
     _imagenEspectrograma?.dispose();
@@ -157,8 +201,11 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
         estado == AppLifecycleState.detached) {
       if (_escucha != null) {
         _detenerEscucha();
+        // La sesión larga queda en pausa: «Continuar» o «Terminar» al volver.
+        _sesionLarga?.pausar();
         if (mounted) setState(() => _detenidaPorSegundoPlano = true);
       }
+      if (_inicioCoroProgramado != null) _cancelarInicioCoroProgramado();
       // La brújula tampoco sigue en segundo plano (las tomas se conservan).
       if (_dondeEsta.activo) unawaited(_dondeEsta.desactivar());
     }
@@ -366,6 +413,7 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
     );
     if (confirmado != true) return;
     await _detenerEscucha();
+    await _terminarSesionLarga(abrirResumen: false);
     _clasificador?.liberar();
     await borrarModeloFaunaInstalado();
     if (!mounted) return;
@@ -523,11 +571,182 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
       }
       setState(() => _escucha = escucha);
       if (_mantenerPantallaEncendida) _ajustarPantallaEncendida(true);
+      await _empezarOContinuarSesionLarga();
     } catch (error) {
       if (mounted) setState(() => _errorEscucha = error.toString());
     } finally {
       if (mounted) setState(() => _abriendoMicrofono = false);
     }
+  }
+
+  /// Botón de parar: en una sesión larga, además, la termina y abre el
+  /// resumen.
+  Future<void> _pararDesdeBoton() async {
+    await _detenerEscucha();
+    await _terminarSesionLarga(abrirResumen: true);
+  }
+
+  Future<void> _empezarOContinuarSesionLarga() async {
+    final modelo = _modelo;
+    if (modelo == null) return;
+    final sesionEnPausa = _sesionLarga;
+    if (sesionEnPausa != null) {
+      final finPrevisto = sesionEnPausa.finPrevisto;
+      if (finPrevisto != null && !DateTime.now().isBefore(finPrevisto)) {
+        await _pararDesdeBoton();
+        return;
+      }
+      sesionEnPausa.continuar(conUbicacion: await asegurarPermisoUbicacion(context: mounted ? context : null));
+      return;
+    }
+    if (_modo == _ModoEscucha.libre) return;
+    final tipo = _modo == _ModoEscucha.recorrido ? TipoSesionSonora.recorrido : TipoSesionSonora.coro;
+    final ahora = DateTime.now();
+    DateTime? finPrevisto;
+    if (tipo == TipoSesionSonora.coro) {
+      final horaFin = _horaFinCoro;
+      finPrevisto = horaFin == null
+          ? finDelCoro(inicio: ahora, duracion: Duration(minutes: _minutosCoro))
+          : finDelCoro(inicio: ahora, horaFin: horaFin.hour, minutoFin: horaFin.minute);
+    }
+    final sesion = ControladorSesionSonora(
+      tipo: tipo,
+      versionModelo: modelo.manifiesto.versionModelo,
+      conFiltroDeZona: _filtroActivo && _penalizaciones != null,
+      finPrevisto: finPrevisto,
+    );
+    final conUbicacion = await asegurarPermisoUbicacion(context: mounted ? context : null);
+    try {
+      await sesion.empezar(conUbicacion: conUbicacion);
+    } catch (error) {
+      sesion.dispose();
+      if (mounted) setState(() => _errorEscucha = error.toString());
+      return;
+    }
+    if (!mounted) {
+      unawaited(sesion
+          .terminar(clases: modelo.manifiesto.clases, frecuenciaClipHz: modelo.manifiesto.frecuenciaMuestreoHz)
+          .whenComplete(sesion.dispose));
+      return;
+    }
+    setState(() => _sesionLarga = sesion);
+    if (finPrevisto != null) {
+      _temporizadorFinCoro?.cancel();
+      _temporizadorFinCoro = Timer(finPrevisto.difference(DateTime.now()), () {
+        if (mounted) _pararDesdeBoton();
+      });
+    }
+  }
+
+  /// Cierra la sesión larga (guarda los clips y la hora de fin) y, si se
+  /// pide, abre su resumen.
+  Future<void> _terminarSesionLarga({required bool abrirResumen}) async {
+    final sesion = _sesionLarga;
+    final modelo = _modelo;
+    if (sesion == null || modelo == null || _terminandoSesion) return;
+    _temporizadorFinCoro?.cancel();
+    _temporizadorFinCoro = null;
+    setState(() => _terminandoSesion = true);
+    int? sesionId;
+    try {
+      sesionId = await sesion.terminar(
+          clases: modelo.manifiesto.clases, frecuenciaClipHz: modelo.manifiesto.frecuenciaMuestreoHz);
+    } finally {
+      sesion.dispose();
+      if (mounted) {
+        setState(() {
+          _sesionLarga = null;
+          _terminandoSesion = false;
+          _detenidaPorSegundoPlano = false;
+        });
+      }
+    }
+    if (!abrirResumen || !mounted || sesionId == null) return;
+    await Navigator.of(context).push(MaterialPageRoute<void>(
+      builder: (_) => PantallaResumenSesionSonora(sesionId: sesionId!),
+    ));
+  }
+
+  /// Coro con hora de inicio: la pantalla espera abierta (y encendida) y
+  /// empieza sola.
+  void _programarInicioCoro(TimeOfDay hora) {
+    final inicio = proximaHoraDelReloj(DateTime.now(), hora.hour, hora.minute);
+    _temporizadorInicioCoro?.cancel();
+    _temporizadorInicioCoro = Timer(inicio.difference(DateTime.now()), () {
+      if (!mounted) return;
+      setState(() => _inicioCoroProgramado = null);
+      _ajustarPantallaEncendida(false);
+      _empezarEscucha();
+    });
+    setState(() => _inicioCoroProgramado = inicio);
+    if (_mantenerPantallaEncendida) _ajustarPantallaEncendida(true);
+  }
+
+  void _cancelarInicioCoroProgramado() {
+    _temporizadorInicioCoro?.cancel();
+    _temporizadorInicioCoro = null;
+    _ajustarPantallaEncendida(false);
+    if (mounted) setState(() => _inicioCoroProgramado = null);
+  }
+
+  // ------------------------------------------------- «Avísame si lo oye»
+
+  Future<void> _cargarEspeciesVigiladas() async {
+    final etiquetas = await leerEspeciesVigiladas();
+    if (!mounted) return;
+    setState(() {
+      _especiesVigiladas = etiquetas;
+      _vigilante = VigilanteEspecies(etiquetas);
+    });
+  }
+
+  Future<void> _elegirEspeciesVigiladas() async {
+    final modelo = _modelo;
+    if (modelo == null) return;
+    final elegidas = await Navigator.of(context).push<List<String>>(MaterialPageRoute(
+      builder: (_) => PantallaEspeciesVigiladas(clases: modelo.manifiesto.clases, iniciales: _especiesVigiladas),
+    ));
+    if (elegidas == null || !mounted) return;
+    await guardarEspeciesVigiladas(elegidas);
+    setState(() {
+      _especiesVigiladas = elegidas;
+      _vigilante = VigilanteEspecies(elegidas);
+    });
+    if (elegidas.isNotEmpty) {
+      final permiso = await AvisosEspeciesVigiladas.instancia.pedirPermiso();
+      if (!permiso && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(SoleraL10n.t('nat.vig_sin_permiso_notificaciones'))),
+        );
+      }
+    }
+  }
+
+  void _avisarEspeciesVigiladas(List<ClaseClasificada> especiesMostradas, List<ClaseSonido> clases, DateTime momento) {
+    for (final clasificada in _vigilante.avisosPara(especiesMostradas, clases, momento)) {
+      final clase = clases[clasificada.indiceClase];
+      final nombre = nombreVisiblePara(clase, SoleraL10n.idioma);
+      unawaited(AvisosEspeciesVigiladas.instancia.avisar(
+        etiqueta: clase.etiqueta,
+        titulo: SoleraL10n.tf('nat.vig_aviso_titulo', {'nombre': nombre}),
+        cuerpo: SoleraL10n.tf('nat.vig_aviso_cuerpo', {
+          'cientifico': clase.etiqueta.replaceAll('_', ' '),
+          'puntuacion': clasificada.puntuacion.toStringAsFixed(1),
+        }),
+      ));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(SoleraL10n.tf('nat.vig_aviso_titulo', {'nombre': nombre})),
+        duration: const Duration(seconds: 6),
+      ));
+    }
+  }
+
+  String _nombreComunPara(ClaseSonido clase) {
+    final nombreLocal = nombreVisiblePara(clase, SoleraL10n.idioma);
+    if (nombreLocal == clase.etiqueta.replaceAll('_', ' ')) {
+      return especieGuiaPorNombreCientifico(clase.etiqueta)?.nombreComun ?? '';
+    }
+    return nombreLocal;
   }
 
   Future<void> _detenerEscucha() async {
@@ -614,6 +833,14 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
       momento: trozo.momentoFinal,
       clip: resultados.especiesMostradas.isEmpty ? null : clip,
     );
+    _sesionLarga?.registrarTrozo(
+      especiesMostradas: resultados.especiesMostradas,
+      clases: clases,
+      momento: trozo.momentoFinal,
+      nombreComunDe: _nombreComunPara,
+      clip: resultados.especiesMostradas.isEmpty ? null : clip,
+    );
+    _avisarEspeciesVigiladas(resultados.especiesMostradas, clases, trozo.momentoFinal);
     setState(() {
       _ultimoTrozo = trozo;
       _ultimoTrozoConVoz = false;
@@ -760,6 +987,8 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
     if (modelo == null || _guardandoEleccion) return;
     setState(() => _guardandoEleccion = true);
     await _detenerEscucha();
+    // Anotar una especie cierra la sesión larga (queda en «Sesiones»).
+    await _terminarSesionLarga(abrirResumen: false);
     final frecuenciaModelo = modelo.manifiesto.frecuenciaMuestreoHz;
     // El clip: lo último oído (a la frecuencia del micrófono) o el del trozo.
     final muestrasClip = ultimoOido != null ? flotanteAPcm16(ultimoOido.muestras) : clip;
@@ -907,6 +1136,13 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
         title: Text(SoleraL10n.t('nat.son_titulo')),
         actions: [
           IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: SoleraL10n.t('nat.ses_lista_titulo'),
+            onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+              builder: (_) => const PantallaSesionesSonoras(),
+            )),
+          ),
+          IconButton(
             icon: const Icon(Icons.help_outline),
             tooltip: SoleraL10n.t('nat.son_ayuda_titulo'),
             onPressed: _mostrarAyuda,
@@ -921,7 +1157,11 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
           _tarjetaModelo(),
           if (_clasificador != null) ...[
             const SizedBox(height: 12),
+            _tarjetaModo(),
+            const SizedBox(height: 12),
             _tarjetaEscucha(),
+            const SizedBox(height: 12),
+            _tarjetaVigiladas(),
             const SizedBox(height: 12),
             _tarjetaFiltro(),
             const SizedBox(height: 12),
@@ -1123,14 +1363,18 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            FilledButton.icon(
-              style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
-              icon: Icon(escuchando ? Icons.stop : Icons.mic),
-              label: Text(SoleraL10n.t(escuchando ? 'nat.son_detener' : 'nat.son_empezar')),
-              onPressed: _abriendoMicrofono || _guardandoEleccion
-                  ? null
-                  : (escuchando ? _detenerEscucha : _empezarEscucha),
-            ),
+            if (_inicioCoroProgramado != null)
+              _bloqueInicioProgramado()
+            else
+              FilledButton.icon(
+                style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+                icon: Icon(escuchando ? Icons.stop : Icons.mic),
+                label: Text(_textoBotonEscucha(escuchando)),
+                onPressed: _abriendoMicrofono || _guardandoEleccion || _terminandoSesion
+                    ? null
+                    : (escuchando ? _pararDesdeBoton : _alPulsarEmpezar),
+              ),
+            if (_sesionLarga != null) _bloqueSesionLarga(),
             const SizedBox(height: 8),
             ...lineasEstado,
             SwitchListTile(
@@ -1146,6 +1390,252 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  String _textoBotonEscucha(bool escuchando) {
+    final sesion = _sesionLarga;
+    if (escuchando) {
+      if (sesion == null) return SoleraL10n.t('nat.son_detener');
+      return SoleraL10n.t(
+          sesion.tipo == TipoSesionSonora.recorrido ? 'nat.ses_terminar_recorrido' : 'nat.ses_terminar_coro');
+    }
+    if (sesion != null) return SoleraL10n.t('nat.ses_continuar');
+    return switch (_modo) {
+      _ModoEscucha.libre => SoleraL10n.t('nat.son_empezar'),
+      _ModoEscucha.recorrido => SoleraL10n.t('nat.ses_empezar_recorrido'),
+      _ModoEscucha.coro => _horaInicioCoro == null
+          ? SoleraL10n.t('nat.ses_empezar_coro')
+          : SoleraL10n.tf('nat.ses_programar_coro', {'hora': _formatearHora(_horaInicioCoro!)}),
+    };
+  }
+
+  void _alPulsarEmpezar() {
+    final horaInicio = _horaInicioCoro;
+    if (_sesionLarga == null && _modo == _ModoEscucha.coro && horaInicio != null) {
+      _programarInicioCoro(horaInicio);
+      return;
+    }
+    _empezarEscucha();
+  }
+
+  String _formatearHora(TimeOfDay hora) => MaterialLocalizations.of(context).formatTimeOfDay(hora);
+
+  String _formatearDuracion(Duration duracion) {
+    final horas = duracion.inHours;
+    final minutos = duracion.inMinutes % 60;
+    return horas > 0 ? '$horas h ${minutos.toString().padLeft(2, '0')} min' : '$minutos min';
+  }
+
+  Widget _bloqueInicioProgramado() {
+    final inicio = _inicioCoroProgramado!;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          SoleraL10n.tf('nat.ses_esperando_inicio', {
+            'hora': _formatearHora(TimeOfDay.fromDateTime(inicio)),
+          }),
+          style: Theme.of(context).textTheme.titleSmall,
+        ),
+        const SizedBox(height: 4),
+        Text(SoleraL10n.t('nat.ses_esperando_inicio_ayuda'), style: Theme.of(context).textTheme.bodySmall),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.close),
+          label: Text(SoleraL10n.t('nat.ses_cancelar_inicio')),
+          onPressed: _cancelarInicioCoroProgramado,
+        ),
+      ],
+    );
+  }
+
+  Widget _bloqueSesionLarga() {
+    final sesion = _sesionLarga!;
+    final tema = Theme.of(context).textTheme;
+    return ListenableBuilder(
+      listenable: sesion,
+      builder: (context, _) {
+        final lineas = <String>[];
+        final transcurrido = DateTime.now().difference(sesion.inicio);
+        if (sesion.tipo == TipoSesionSonora.recorrido) {
+          lineas.add(SoleraL10n.tf('nat.ses_estado_recorrido', {
+            'tiempo': _formatearDuracion(transcurrido),
+            'metros': sesion.distanciaMetros.round(),
+            'puntos': sesion.puntosTraza,
+          }));
+        } else {
+          final fin = sesion.finPrevisto;
+          lineas.add(SoleraL10n.tf('nat.ses_estado_coro', {
+            'tiempo': _formatearDuracion(transcurrido),
+            'fin': fin == null ? '—' : _formatearHora(TimeOfDay.fromDateTime(fin)),
+          }));
+        }
+        lineas.add(SoleraL10n.tf('nat.ses_estado_detecciones', {
+          'detecciones': sesion.numeroDetecciones,
+          'especies': sesion.numeroEspecies,
+        }));
+        if (sesion.errorGps != null || (sesion.puntosTraza == 0 && transcurrido.inSeconds > 60)) {
+          lineas.add(SoleraL10n.t('nat.ses_sin_gps'));
+        }
+        return Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              for (final linea in lineas) Text(linea, style: tema.bodySmall),
+              if (sesion.pausada && _escucha == null) ...[
+                const SizedBox(height: 4),
+                Text(SoleraL10n.t('nat.ses_en_pausa'), style: tema.bodyMedium),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.flag_outlined),
+                    label: Text(SoleraL10n.t(sesion.tipo == TipoSesionSonora.recorrido
+                        ? 'nat.ses_terminar_recorrido'
+                        : 'nat.ses_terminar_coro')),
+                    onPressed: _terminandoSesion ? null : () => _terminarSesionLarga(abrirResumen: true),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _tarjetaModo() {
+    final tema = Theme.of(context).textTheme;
+    final bloqueado = _escucha != null || _sesionLarga != null || _inicioCoroProgramado != null;
+    final explicacion = switch (_modo) {
+      _ModoEscucha.libre => SoleraL10n.t('nat.ses_modo_libre_ayuda'),
+      _ModoEscucha.recorrido => SoleraL10n.t('nat.ses_modo_recorrido_ayuda'),
+      _ModoEscucha.coro => SoleraL10n.t('nat.ses_modo_coro_ayuda'),
+    };
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SegmentedButton<_ModoEscucha>(
+              showSelectedIcon: false,
+              segments: [
+                ButtonSegment(
+                    value: _ModoEscucha.libre,
+                    icon: const Icon(Icons.hearing),
+                    label: Text(SoleraL10n.t('nat.ses_modo_libre'))),
+                ButtonSegment(
+                    value: _ModoEscucha.recorrido,
+                    icon: const Icon(Icons.directions_walk),
+                    label: Text(SoleraL10n.t('nat.ses_modo_recorrido'))),
+                ButtonSegment(
+                    value: _ModoEscucha.coro,
+                    icon: const Icon(Icons.wb_twilight),
+                    label: Text(SoleraL10n.t('nat.ses_modo_coro'))),
+              ],
+              selected: {_modo},
+              onSelectionChanged: bloqueado ? null : (seleccion) => setState(() => _modo = seleccion.first),
+            ),
+            const SizedBox(height: 8),
+            Text(explicacion, style: tema.bodySmall),
+            if (_modo == _ModoEscucha.coro && !bloqueado) ..._opcionesCoro(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _opcionesCoro() {
+    final tema = Theme.of(context).textTheme;
+    return [
+      const SizedBox(height: 12),
+      Text(SoleraL10n.t('nat.ses_coro_duracion'), style: tema.labelLarge),
+      const SizedBox(height: 4),
+      Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          for (final minutos in _duracionesCoroMinutos)
+            ChoiceChip(
+              label: Text(_formatearDuracion(Duration(minutes: minutos))),
+              selected: _horaFinCoro == null && _minutosCoro == minutos,
+              onSelected: (_) => setState(() {
+                _minutosCoro = minutos;
+                _horaFinCoro = null;
+              }),
+            ),
+          ChoiceChip(
+            label: Text(_horaFinCoro == null
+                ? SoleraL10n.t('nat.ses_coro_hasta_hora')
+                : SoleraL10n.tf('nat.ses_coro_hasta', {'hora': _formatearHora(_horaFinCoro!)})),
+            selected: _horaFinCoro != null,
+            onSelected: (_) async {
+              final hora = await showTimePicker(
+                context: context,
+                initialTime: _horaFinCoro ?? TimeOfDay.fromDateTime(DateTime.now().add(const Duration(hours: 1))),
+              );
+              if (hora != null && mounted) setState(() => _horaFinCoro = hora);
+            },
+          ),
+        ],
+      ),
+      const SizedBox(height: 8),
+      Text(SoleraL10n.t('nat.ses_coro_inicio'), style: tema.labelLarge),
+      const SizedBox(height: 4),
+      Wrap(
+        spacing: 8,
+        runSpacing: 4,
+        children: [
+          ChoiceChip(
+            label: Text(SoleraL10n.t('nat.ses_coro_inicio_ahora')),
+            selected: _horaInicioCoro == null,
+            onSelected: (_) => setState(() => _horaInicioCoro = null),
+          ),
+          ChoiceChip(
+            label: Text(_horaInicioCoro == null
+                ? SoleraL10n.t('nat.ses_coro_inicio_a_las')
+                : SoleraL10n.tf('nat.ses_coro_inicio_hora', {'hora': _formatearHora(_horaInicioCoro!)})),
+            selected: _horaInicioCoro != null,
+            onSelected: (_) async {
+              final hora = await showTimePicker(
+                context: context,
+                initialTime: _horaInicioCoro ?? const TimeOfDay(hour: 6, minute: 0),
+              );
+              if (hora != null && mounted) setState(() => _horaInicioCoro = hora);
+            },
+          ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      Text(SoleraL10n.t('nat.ses_coro_pantalla_abierta'), style: tema.bodySmall),
+    ];
+  }
+
+  Widget _tarjetaVigiladas() {
+    final tema = Theme.of(context).textTheme;
+    final clases = _modelo?.manifiesto.clases ?? const <ClaseSonido>[];
+    final nombres = [
+      for (final etiqueta in _especiesVigiladas)
+        if (clases.where((clase) => clase.etiqueta == etiqueta).firstOrNull case final clase?)
+          nombreVisiblePara(clase, SoleraL10n.idioma)
+        else
+          etiqueta.replaceAll('_', ' '),
+    ];
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.notifications_active_outlined),
+        title: Text(SoleraL10n.t('nat.vig_titulo')),
+        subtitle: Text(
+          nombres.isEmpty
+              ? SoleraL10n.t('nat.vig_ninguna')
+              : SoleraL10n.tf('nat.vig_resumen', {'n': nombres.length, 'especies': nombres.take(4).join(', ')}),
+          style: tema.bodySmall,
+        ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: _elegirEspeciesVigiladas,
       ),
     );
   }
