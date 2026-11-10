@@ -68,3 +68,14 @@ export PATH="$HOME/flutter/bin:$PATH"
 ( cd apps/naturaleza && flutter run -d linux )
 ( cd apps/naturaleza && flutter build apk --release )
 ```
+
+## Plantas: usos con fuente y aviso de consumo (2026-11-10)
+
+Decidido con Josu: fuera las etiquetas sueltas **«Medicinal»** y **«Comestible»** (40 y 17 plantas; sin fuente, y la dedalera salía «tóxica, medicinal»). En su lugar:
+- **Uso tradicional según la EMA**: solo lo que dicen las monografías de la Unión del HMPC (Agencia Europea del Medicamento), con la parte de la planta, **precauciones y contraindicaciones delante**, el estado de la monografía y su enlace. **Sin dosis ni preparaciones** (test). Datos en `datos_fuente/usos_tradicionales_ema.csv` → `python3 tool/generar_usos_tradicionales.py` → `lib/datos/usos_tradicionales.dart` (no editar a mano). Leídas el 2026-11-10: 31 especies con monografía; sin monografía, nada (amapola, zarzamora, jara, laurel, escaramujo, orégano, verbena, ruda…). Los resúmenes en castellano son de IA: **pendiente de cotejo por una persona**.
+- **Tóxicas y protegidas no enseñan uso** aunque tengan monografía (hiedra, ajenjo, genciana, árnica): `usosTradicionalesDe`. Poleo y borraja enseñan solo el aviso de toxicidad de la EMA.
+- **Aviso fijo** en todas las fichas de plantas y setas: la guía no sirve para decidir si algo se come, se bebe o se usa.
+- **«Se confunde con»** (`EspecieGuia.confundibles`), sobre todo las peligrosas (hinojo/cicuta, genciana/vedegambre).
+- **10 aromáticas silvestres** traídas de Larrea Aromáticas (`content/aromaticas/` del monorepo): lavanda, espliego, tomillo salsero y blanco, salvia española, ajedrea, hisopo, té de roca, genciana y árnica (estas dos, protegidas). Sus rasgos y hábitat tampoco están revisados por una persona botánica.
+- Larrea Aromáticas (app profesional que vende lotes) sigue **sin ninguna propiedad**: ahí el riesgo es legal (Reglamento 1924/2006, RD 1907/1996).
+Textos nuevos `nat.ficha_*` en `content/solera/traducciones/naturaleza_guia.csv` del monorepo.

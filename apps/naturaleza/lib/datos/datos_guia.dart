@@ -4,6 +4,8 @@ import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../servicios/servicio_inaturalist.dart';
 import '../servicios/servicio_wikipedia.dart';
+import 'uso_tradicional.dart';
+import 'usos_tradicionales.dart';
 
 class CategoriaGuia {
   /// Identificador interno. Valores actuales: 'mamifero', 'ave',
@@ -52,9 +54,14 @@ class EspecieGuia {
   final String tituloWikipedia;
 
   /// Etiquetas funcionales libres. Cada string es un id de
-  /// [usosCatalogo] (ej. 'medicinal', 'comestible', 'toxica'). El
+  /// [usosCatalogo] (ej. 'aromatica', 'toxica', 'protegida'). El
   /// orden lo decide el operador (más relevante primero).
   final List<String> usos;
+
+  /// Especies con las que se confunde y cómo no equivocarse (texto libre).
+  /// Sobre todo las confusiones peligrosas (hinojo/cicuta,
+  /// genciana/vedegambre).
+  final List<String> confundibles;
 
   const EspecieGuia({
     required this.id,
@@ -66,6 +73,7 @@ class EspecieGuia {
     required this.habitat,
     required this.tituloWikipedia,
     this.usos = const [],
+    this.confundibles = const [],
   });
 }
 
@@ -87,8 +95,6 @@ class UsoEspecie {
   }) : nombreCastellano = nombre;
 
   static const _clavesNombre = {
-    'medicinal': 'nat.uso_medicinal',
-    'comestible': 'nat.uso_comestible',
     'aromatica': 'nat.uso_aromatica',
     'melifera': 'nat.uso_melifera',
     'ornamental': 'nat.uso_ornamental',
@@ -107,8 +113,6 @@ class UsoEspecie {
 }
 
 const List<UsoEspecie> usosCatalogo = [
-  UsoEspecie(id: 'medicinal', nombre: 'Medicinal', icono: Icons.healing, color: Color(0xFF7E57C2)),
-  UsoEspecie(id: 'comestible', nombre: 'Comestible', icono: Icons.restaurant, color: Color(0xFF558B2F)),
   UsoEspecie(id: 'aromatica', nombre: 'Aromática / culinaria', icono: Icons.spa, color: Color(0xFFC0CA33)),
   UsoEspecie(id: 'melifera', nombre: 'Melífera', icono: Icons.hive, color: Color(0xFFF9A825)),
   UsoEspecie(id: 'ornamental', nombre: 'Ornamental', icono: Icons.local_florist, color: Color(0xFFEC407A)),
@@ -1716,6 +1720,123 @@ const List<EspecieGuia> especiesGuia = [
   ),
 
   // ─── Plantas ───────────────────────────────────────────
+  // ─── Aromáticas silvestres (de Larrea Aromáticas, 2026-11-10) ───
+  EspecieGuia(
+    id: 'lavandula-angustifolia',
+    nombreCientifico: 'Lavandula angustifolia',
+    nombreComun: 'Lavanda',
+    categoriaId: 'planta',
+    descripcionCorta: 'Labiada (Lamiaceae). Se recolecta: flor (espiga).',
+    distintivos: ['Mata de 30-60 cm, hojas estrechas, grisáceas y de borde enrollado', 'Espiga corta y compacta en un tallo floral sin ramificar', 'Flor violeta azulada, cáliz con una pequeña lengüeta en la punta', 'Brácteas de la espiga anchas, en forma de rombo'],
+    habitat: 'Montaña media y alta (por encima de 700-800 m), en suelos calizos secos y soleados; muy cultivada',
+    tituloWikipedia: 'Lavandula_angustifolia',
+    usos: ['aromatica'],
+    confundibles: ['Lavandín (Lavandula × intermedia)', 'Espliego (Lavandula latifolia)'],
+  ),
+  EspecieGuia(
+    id: 'lavandula-latifolia',
+    nombreCientifico: 'Lavandula latifolia',
+    nombreComun: 'Espliego',
+    categoriaId: 'planta',
+    descripcionCorta: 'Labiada (Lamiaceae). Se recolecta: flor (espiga).',
+    distintivos: ['Hojas más anchas que las de la lavanda, grisáceas y algo espatuladas', 'Tallos florales largos y ramificados, con espigas laterales', 'Brácteas estrechas, lineares (no anchas como en la lavanda)', 'Olor más alcanforado que el de la lavanda'],
+    habitat: 'Matorrales y claros de encinar y quejigar en suelos calizos, de baja a media montaña',
+    tituloWikipedia: 'Lavandula_latifolia',
+    usos: ['aromatica'],
+    confundibles: ['Lavanda (Lavandula angustifolia)', 'Lavandín (Lavandula × intermedia)'],
+  ),
+  EspecieGuia(
+    id: 'thymus-zygis',
+    nombreCientifico: 'Thymus zygis',
+    nombreComun: 'Tomillo salsero',
+    categoriaId: 'planta',
+    descripcionCorta: 'Labiada (Lamiaceae). Se recolecta: sumidad florida.',
+    distintivos: ['Mata baja con tallos finos y erguidos', 'Hojas lineares con pestañas (pelos largos) en la base', 'Flores blanquecinas en verticilos separados a lo largo del tallo, no en cabezuela compacta'],
+    habitat: 'Matorrales secos y claros de bosque, en suelos calizos y silíceos, en buena parte de la Península',
+    tituloWikipedia: 'Thymus_zygis',
+    usos: ['aromatica'],
+    confundibles: ['Tomillo común (Thymus vulgaris)'],
+  ),
+  EspecieGuia(
+    id: 'thymus-mastichina',
+    nombreCientifico: 'Thymus mastichina',
+    nombreComun: 'Tomillo blanco o mejorana silvestre',
+    categoriaId: 'planta',
+    descripcionCorta: 'Labiada (Lamiaceae). Se recolecta: sumidad florida.',
+    distintivos: ['Mata de 20-50 cm, de aspecto grisáceo', 'Inflorescencia en cabezuela redonda y blanquecina, muy peluda', 'Brácteas anchas y blanquecinas que esconden las flores', 'Olor más suave y alcanforado que el del tomillo común'],
+    habitat: 'Matorrales y claros sobre suelos ácidos y arenosos del centro y el oeste peninsular',
+    tituloWikipedia: 'Thymus_mastichina',
+    usos: ['aromatica'],
+    confundibles: ['Tomillo común (Thymus vulgaris)'],
+  ),
+  EspecieGuia(
+    id: 'salvia-lavandulifolia',
+    nombreCientifico: 'Salvia lavandulifolia',
+    nombreComun: 'Salvia española',
+    categoriaId: 'planta',
+    descripcionCorta: 'Labiada (Lamiaceae). Se recolecta: hoja y sumidad florida.',
+    distintivos: ['Mata baja de hojas más estrechas y alargadas que las de la salvia', 'Hojas grises y algo peludas, menos rugosas que en la salvia', 'Flores violeta azulado en verticilos separados'],
+    habitat: 'Matorrales y claros de encinar en suelos calizos de montaña media del centro y el este',
+    tituloWikipedia: 'Salvia_lavandulifolia',
+    usos: ['aromatica'],
+    confundibles: ['Salvia (Salvia officinalis)'],
+  ),
+  EspecieGuia(
+    id: 'satureja-montana',
+    nombreCientifico: 'Satureja montana',
+    nombreComun: 'Ajedrea',
+    categoriaId: 'planta',
+    descripcionCorta: 'Labiada (Lamiaceae). Se recolecta: hierba y hoja.',
+    distintivos: ['Mata pequeña y leñosa de 20-40 cm', 'Hojas estrechas, rígidas y puntiagudas, con puntitos glandulares', 'Flores blancas o rosadas pequeñas en las axilas de las hojas, al final del verano'],
+    habitat: 'Roquedos, pedregales y matorrales secos en suelos calizos de montaña',
+    tituloWikipedia: 'Satureja_montana',
+    usos: ['aromatica'],
+  ),
+  EspecieGuia(
+    id: 'hyssopus-officinalis',
+    nombreCientifico: 'Hyssopus officinalis',
+    nombreComun: 'Hisopo',
+    categoriaId: 'planta',
+    descripcionCorta: 'Labiada (Lamiaceae). Se recolecta: hierba y hoja.',
+    distintivos: ['Mata de 30-60 cm con tallos erguidos', 'Hojas lineares, verde oscuro', 'Flores azul intenso en espigas alargadas por un solo lado del tallo'],
+    habitat: 'Pedregales y laderas soleadas calizas de montaña; también cultivado',
+    tituloWikipedia: 'Hyssopus_officinalis',
+    usos: ['aromatica'],
+  ),
+  EspecieGuia(
+    id: 'chiliadenus-glutinosus',
+    nombreCientifico: 'Chiliadenus glutinosus',
+    nombreComun: 'Té de roca',
+    categoriaId: 'planta',
+    descripcionCorta: 'Compuesta (Asteraceae). Se recolecta: sumidad florida.',
+    distintivos: ['Mata pequeña y pegajosa de 10-30 cm', 'Hojas estrechas y algo carnosas', 'Cabezuelas pequeñas amarillas, sin lígulas'],
+    habitat: 'Grietas de roquedos y paredes calizas, en montaña del este y el sur',
+    tituloWikipedia: 'Chiliadenus_glutinosus',
+    usos: ['aromatica'],
+  ),
+  EspecieGuia(
+    id: 'gentiana-lutea',
+    nombreCientifico: 'Gentiana lutea',
+    nombreComun: 'Genciana',
+    categoriaId: 'planta',
+    descripcionCorta: 'Gentianaceae. Se recolecta: raíz. Protegida: no se recolecta sin autorización de la comunidad autónoma.',
+    distintivos: ['Herbácea grande (hasta 1,5 m) que tarda años en florecer', 'Hojas grandes, ovaladas, con nervios paralelos muy marcados, OPUESTAS (de dos en dos)', 'Flores amarillas en grupos en las axilas de las hojas superiores', 'El vedegambre (Veratrum album), muy tóxico, tiene las hojas ALTERNAS y plegadas: no se distinguen bien sin flor'],
+    habitat: 'Pastos y prados de alta montaña (Pirineo, Cordillera Cantábrica, Sistema Ibérico)',
+    tituloWikipedia: 'Gentiana_lutea',
+    usos: ['protegida'],
+    confundibles: ['Vedegambre (Veratrum album), muy tóxico, de hoja parecida'],
+  ),
+  EspecieGuia(
+    id: 'arnica-montana',
+    nombreCientifico: 'Arnica montana',
+    nombreComun: 'Árnica',
+    categoriaId: 'planta',
+    descripcionCorta: 'Compuesta (Asteraceae). Se recolecta: flor. Protegida: no se recolecta sin autorización de la comunidad autónoma.',
+    distintivos: ['Herbácea vivaz de 20-60 cm', 'Roseta basal de hojas ovaladas, con pares de hojas opuestas en el tallo', 'Capítulos amarillo anaranjado grandes, con lígulas algo desflecadas'],
+    habitat: 'Pastos de montaña en suelos ácidos (Pirineo, Cordillera Cantábrica, montañas del noroeste)',
+    tituloWikipedia: 'Arnica_montana',
+    usos: ['protegida'],
+  ),
   EspecieGuia(
     id: 'quercus-ilex',
     nombreCientifico: 'Quercus ilex',
@@ -1735,7 +1856,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Olor intenso al frotar', 'Hojas tipo aguja, envés blanquecino', 'Flores de invierno-primavera azul claro'],
     habitat: 'Matorrales mediterráneos secos, suelos calizos.',
     tituloWikipedia: 'Salvia_rosmarinus',
-    usos: ['aromatica', 'medicinal', 'melifera'],
+    usos: ['aromatica', 'melifera'],
   ),
   EspecieGuia(
     id: 'papaver-rhoeas',
@@ -1746,7 +1867,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Pétalos rojo intenso, a veces con mancha negra basal', 'Cápsula de semillas redondeada', 'Tallo y hojas con pelos'],
     habitat: 'Cultivos de cereal, barbechos, márgenes de caminos.',
     tituloWikipedia: 'Papaver_rhoeas',
-    usos: ['medicinal', 'ornamental'],
+    usos: ['ornamental'],
   ),
   EspecieGuia(
     id: 'ulex-europaeus',
@@ -1768,7 +1889,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas profundamente dentadas', 'Capítulo amarillo solitario sobre tallo hueco', 'Vilano esférico al fructificar'],
     habitat: 'Praderas, céspedes, márgenes de caminos; muy ubicua.',
     tituloWikipedia: 'Taraxacum_officinale',
-    usos: ['comestible', 'medicinal', 'melifera'],
+    usos: ['melifera'],
   ),
   EspecieGuia(
     id: 'pinus-pinaster',
@@ -1809,7 +1930,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Tallos arqueados con espinas curvadas', 'Hojas compuestas pinnadas', 'Frutos polidrupa que ennegrecen al madurar'],
     habitat: 'Setos, lindes, claros de bosque, terrenos abandonados.',
     tituloWikipedia: 'Rubus_ulmifolius',
-    usos: ['comestible', 'medicinal', 'melifera'],
+    usos: ['melifera'],
   ),
   EspecieGuia(
     id: 'lavandula-stoechas',
@@ -1831,7 +1952,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas brillantes de cinco lóbulos', 'Raíces adventicias adherentes', 'Bayas negras tóxicas'],
     habitat: 'Bosques sombríos, tapias, troncos de árboles.',
     tituloWikipedia: 'Hedera_helix',
-    usos: ['toxica', 'medicinal'],
+    usos: ['toxica'],
   ),
   EspecieGuia(
     id: 'urtica-dioica',
@@ -1842,7 +1963,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Pelos urticantes', 'Hojas opuestas con bordes muy dentados', 'Flores verdosas en racimos colgantes'],
     habitat: 'Lugares nitrogenados: bordes de cuadras, cunetas, ruinas.',
     tituloWikipedia: 'Urtica_dioica',
-    usos: ['comestible', 'medicinal', 'urticante'],
+    usos: ['urticante'],
   ),
   EspecieGuia(
     id: 'plantago-lanceolata',
@@ -1853,7 +1974,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas lanceoladas con nervios paralelos', 'Espiga corta cilíndrica', 'Tallos sin hojas'],
     habitat: 'Praderas, céspedes, cunetas; muy ubicua.',
     tituloWikipedia: 'Plantago_lanceolata',
-    usos: ['medicinal'],
+    
   ),
 
   // ─── Plantas adicionales (mediterráneas y montañosas) ──
@@ -1876,7 +1997,8 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas muy pequeñas (4-7 mm) grisáceas', 'Olor intenso al frotar', 'Florece en primavera-verano en flores rosa pálido'],
     habitat: 'Matorrales secos calcáreos, lindes pedregosos; mediterráneo y submediterráneo.',
     tituloWikipedia: 'Thymus_vulgaris',
-    usos: ['aromatica', 'medicinal', 'melifera'],
+    usos: ['aromatica', 'melifera'],
+    confundibles: ['Otros tomillos (salsero, blanco y muchos más): para la especie hay que mirar hojas y cáliz con lupa. Algunos tomillos están protegidos.'],
   ),
   EspecieGuia(
     id: 'cistus-ladanifer',
@@ -1887,7 +2009,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas lanceoladas pegajosas (con ládano)', 'Flor blanca grande con mancha oscura basal', 'Olor balsámico característico'],
     habitat: 'Matorrales sobre suelos silíceos; centro, oeste y sur peninsular.',
     tituloWikipedia: 'Cistus_ladanifer',
-    usos: ['medicinal', 'aromatica'],
+    usos: ['aromatica'],
   ),
   EspecieGuia(
     id: 'erica-arborea',
@@ -1909,7 +2031,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Ramas con espinas duras', 'Hojas con 3-7 lóbulos profundos', 'Frutos (majuelas) rojos en otoño'],
     habitat: 'Setos, lindes, claros de bosque; toda la península.',
     tituloWikipedia: 'Crataegus_monogyna',
-    usos: ['medicinal', 'comestible', 'melifera'],
+    usos: ['melifera'],
   ),
   EspecieGuia(
     id: 'lonicera-implexa',
@@ -1931,7 +2053,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Floración blanca antes que las hojas (febrero-marzo)', 'Ramas espinosas oscuras', 'Endrinos azulados con pruina en otoño'],
     habitat: 'Setos, lindes, claros; toda la península salvo zonas más áridas.',
     tituloWikipedia: 'Prunus_spinosa',
-    usos: ['comestible', 'melifera'],
+    usos: ['melifera'],
   ),
   EspecieGuia(
     id: 'olea-europaea',
@@ -1942,7 +2064,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas lanceoladas con envés plateado', 'Tronco nudoso muy longevo', 'Aceitunas verdes que ennegrecen al madurar'],
     habitat: 'Cultivado en todo el mediterráneo; el acebuche silvestre en matorrales del sur y este.',
     tituloWikipedia: 'Olea_europaea',
-    usos: ['comestible', 'medicinal'],
+    
   ),
   EspecieGuia(
     id: 'pistacia-lentiscus',
@@ -1953,7 +2075,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hoja compuesta sin foliolo terminal (paripinnada)', 'Olor resinoso al romper hojas', 'Bayas que pasan de rojo a negro'],
     habitat: 'Matorrales mediterráneos sobre todo en zonas costeras y cálidas.',
     tituloWikipedia: 'Pistacia_lentiscus',
-    usos: ['medicinal', 'aromatica'],
+    usos: ['aromatica'],
   ),
   EspecieGuia(
     id: 'arbutus-unedo',
@@ -1964,7 +2086,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas brillantes con bordes dentados', 'Frutos rojos rugosos como pequeñas fresas', 'Florece y fructifica simultáneamente en otoño'],
     habitat: 'Bosques mediterráneos atlánticos y mixtos; cuadrante norte y oeste.',
     tituloWikipedia: 'Arbutus_unedo',
-    usos: ['comestible', 'melifera', 'ornamental'],
+    usos: ['melifera', 'ornamental'],
   ),
   EspecieGuia(
     id: 'cytisus-scoparius',
@@ -1986,7 +2108,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas alargadas con dientes agudos', 'Erizos espinosos en otoño con 2-3 castañas', 'Tronco de corteza fisurada longitudinalmente'],
     habitat: 'Bosques húmedos en suelos silíceos; norte, noroeste y zonas montañosas.',
     tituloWikipedia: 'Castanea_sativa',
-    usos: ['comestible', 'melifera'],
+    usos: ['melifera'],
   ),
   EspecieGuia(
     id: 'corylus-avellana',
@@ -1997,7 +2119,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas anchas con borde doblemente aserrado', 'Amentos amarillentos de invierno', 'Avellanas en cúpula foliácea'],
     habitat: 'Sotos fluviales, lindes, bosques mixtos húmedos.',
     tituloWikipedia: 'Corylus_avellana',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'juniperus-communis',
@@ -2008,7 +2130,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Acículas rígidas dispuestas en verticilos de tres', 'Banda blanca en haz de la hoja', 'Gálbulos azules pruinosos'],
     habitat: 'Pastos pedregosos, claros de bosque, montaña media; toda la península.',
     tituloWikipedia: 'Juniperus_communis',
-    usos: ['aromatica', 'medicinal'],
+    usos: ['aromatica'],
   ),
   EspecieGuia(
     id: 'digitalis-purpurea',
@@ -2019,7 +2141,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Espiga vertical con flores tubulares en un solo lado', 'Color púrpura con motas oscuras en interior', 'Roseta basal de hojas grandes felpudas'],
     habitat: 'Claros y lindes de bosque, prados frescos sobre suelos ácidos; norte y oeste.',
     tituloWikipedia: 'Digitalis_purpurea',
-    usos: ['toxica', 'medicinal'],
+    usos: ['toxica'],
   ),
   EspecieGuia(
     id: 'dryopteris-filix-mas',
@@ -2042,7 +2164,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Capítulo solitario sobre tallo desnudo', 'Lígulas blancas a veces rosadas', 'Florece casi todo el año'],
     habitat: 'Praderas, céspedes, parques; muy ubicua.',
     tituloWikipedia: 'Bellis_perennis',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'trifolium-pratense',
@@ -2064,7 +2186,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Pétalos con franjas oscuras radiales', 'Hojas redondeadas con 5-7 lóbulos', 'Frutos discoidales tipo "panecillo"'],
     habitat: 'Caminos, baldíos, cunetas, escombreras.',
     tituloWikipedia: 'Malva_sylvestris',
-    usos: ['comestible', 'medicinal'],
+    
   ),
   EspecieGuia(
     id: 'foeniculum-vulgare',
@@ -2075,7 +2197,8 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas filiformes muy divididas', 'Olor anisado intenso', 'Umbelas amarillas en verano'],
     habitat: 'Cunetas, caminos, suelos removidos; muy ubicua.',
     tituloWikipedia: 'Foeniculum_vulgare',
-    usos: ['aromatica', 'comestible', 'medicinal'],
+    usos: ['aromatica'],
+    confundibles: ['Cicuta (Conium maculatum), muy tóxica: tallo con manchas púrpuras y olor desagradable; el hinojo huele a anís y tiene el tallo liso, sin manchas. Otras umbelíferas silvestres también son tóxicas.'],
   ),
   EspecieGuia(
     id: 'verbascum-thapsus',
@@ -2086,7 +2209,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas y tallo cubiertos de pelo lanoso', 'Tallo robusto de hasta 2 m', 'Espiga densa de flores amarillas'],
     habitat: 'Pastos secos, cunetas, baldíos pedregosos.',
     tituloWikipedia: 'Verbascum_thapsus',
-    usos: ['medicinal'],
+    
   ),
   EspecieGuia(
     id: 'narcissus-pseudonarcissus',
@@ -2108,7 +2231,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Roseta basal de hojas rugosas', 'Flores amarillo-crema solitarias sobre pedúnculo largo', 'Floración muy temprana'],
     habitat: 'Bosques caducifolios, ribazos sombreados, prados; norte peninsular.',
     tituloWikipedia: 'Primula_vulgaris',
-    usos: ['medicinal', 'ornamental'],
+    usos: ['ornamental'],
   ),
   EspecieGuia(
     id: 'silybum-marianum',
@@ -2119,7 +2242,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas con vetas blancas marcadas', 'Capítulos solitarios grandes con brácteas espinosas', 'Tallo erecto hasta 2 m'],
     habitat: 'Cunetas, baldíos, escombreras; muy ubicua en zona mediterránea.',
     tituloWikipedia: 'Silybum_marianum',
-    usos: ['medicinal', 'comestible'],
+    
   ),
   EspecieGuia(
     id: 'taxus-baccata',
@@ -2152,7 +2275,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas brillantes de borde ondulado', 'Olor intenso al frotarlas', 'Bayas negras en hembras'],
     habitat: 'Laurisilva fragmentada y ejemplares en barrancos húmedos; cultivado.',
     tituloWikipedia: 'Laurus_nobilis',
-    usos: ['aromatica', 'medicinal'],
+    usos: ['aromatica'],
   ),
   EspecieGuia(
     id: 'sambucus-nigra',
@@ -2163,7 +2286,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Corimbos planos blanco-crema en primavera', 'Bayas negras en racimos colgantes', 'Médula blanda en ramas jóvenes'],
     habitat: 'Setos, lindes, bordes de río en suelos nitrogenados.',
     tituloWikipedia: 'Sambucus_nigra',
-    usos: ['medicinal', 'comestible', 'melifera'],
+    usos: ['melifera'],
   ),
   EspecieGuia(
     id: 'asplenium-trichomanes',
@@ -2194,7 +2317,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Aguijones curvados en tallos', 'Flores rosa pálido o blancas con 5 pétalos', 'Frutos (escaramujos) rojos en otoño'],
     habitat: 'Setos, lindes, claros de bosque; toda la península.',
     tituloWikipedia: 'Rosa_canina',
-    usos: ['comestible', 'medicinal', 'melifera'],
+    usos: ['melifera'],
   ),
 
   // ─── Plantas medicinales (herboristería ibérica) ───────
@@ -2207,7 +2330,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Capítulos naranjas brillantes', 'Hojas pegajosas al tacto', 'Florece casi todo el año'],
     habitat: 'Jardines y terrenos cultivados; muy frecuente como ornamental escapada.',
     tituloWikipedia: 'Calendula_officinalis',
-    usos: ['medicinal', 'ornamental'],
+    usos: ['ornamental'],
   ),
   EspecieGuia(
     id: 'matricaria-chamomilla',
@@ -2218,7 +2341,8 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Receptáculo hueco al cortar', 'Hojas filiformes muy divididas', 'Olor inconfundible a manzana'],
     habitat: 'Cunetas, cultivos, baldíos; muy ubicua.',
     tituloWikipedia: 'Matricaria_chamomilla',
-    usos: ['medicinal', 'aromatica', 'melifera'],
+    usos: ['aromatica', 'melifera'],
+    confundibles: ['Otras compuestas de flor parecida (Anthemis, Tripleurospermum): en la manzanilla el centro de la flor es cónico y hueco por dentro.'],
   ),
   EspecieGuia(
     id: 'hypericum-perforatum',
@@ -2229,7 +2353,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas con puntos translúcidos visibles a contraluz', 'Pétalos amarillos con bordes con puntos negros', 'Florece en San Juan (junio)'],
     habitat: 'Praderas, ribazos, lindes de bosque; toda la península.',
     tituloWikipedia: 'Hypericum_perforatum',
-    usos: ['medicinal'],
+    
   ),
   EspecieGuia(
     id: 'mentha-pulegium',
@@ -2240,7 +2364,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Olor mentolado intenso al frotar', 'Flores en verticilos (corona) en cada nudo', 'Tallo cuadrado'],
     habitat: 'Bordes de arroyos, prados encharcados, suelos húmedos.',
     tituloWikipedia: 'Mentha_pulegium',
-    usos: ['aromatica', 'medicinal'],
+    usos: ['aromatica'],
   ),
   EspecieGuia(
     id: 'melissa-officinalis',
@@ -2251,7 +2375,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Olor a limón intenso', 'Hojas ovales con bordes dentados', 'Tallo cuadrado'],
     habitat: 'Jardines, márgenes y zonas ruderales; cultivada y asilvestrada.',
     tituloWikipedia: 'Melissa_officinalis',
-    usos: ['aromatica', 'medicinal', 'melifera'],
+    usos: ['aromatica', 'melifera'],
   ),
   EspecieGuia(
     id: 'origanum-vulgare',
@@ -2262,7 +2386,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Olor culinario inconfundible', 'Brácteas oscuras a la base de las flores', 'Hojas opuestas pequeñas'],
     habitat: 'Pastos secos calcáreos, lindes pedregosos; toda la península.',
     tituloWikipedia: 'Origanum_vulgare',
-    usos: ['aromatica', 'medicinal', 'melifera'],
+    usos: ['aromatica', 'melifera'],
   ),
   EspecieGuia(
     id: 'salvia-officinalis',
@@ -2273,7 +2397,8 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas oblongas grisáceas y aterciopeladas', 'Olor cálido y resinoso', 'Flores azul-violetas en espiga'],
     habitat: 'Cultivada y asilvestrada en zonas secas mediterráneas.',
     tituloWikipedia: 'Salvia_officinalis',
-    usos: ['aromatica', 'medicinal', 'melifera'],
+    usos: ['aromatica', 'melifera'],
+    confundibles: ['Salvia española (Salvia lavandulifolia), de hojas más estrechas y menos rugosas.'],
   ),
   EspecieGuia(
     id: 'achillea-millefolium',
@@ -2284,7 +2409,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas profusamente divididas (apariencia de pluma)', 'Corimbos planos densos', 'Olor herbáceo intenso al cortar'],
     habitat: 'Praderas, cunetas, ribazos; ubicua.',
     tituloWikipedia: 'Achillea_millefolium',
-    usos: ['medicinal', 'melifera'],
+    usos: ['melifera'],
   ),
   EspecieGuia(
     id: 'borago-officinalis',
@@ -2295,7 +2420,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Pelos rígidos en tallo y hojas', 'Flores azul intenso de cinco pétalos', 'Estambres negros prominentes'],
     habitat: 'Cultivada como hortícola; asilvestrada en cunetas y baldíos.',
     tituloWikipedia: 'Borago_officinalis',
-    usos: ['comestible', 'medicinal'],
+    
   ),
   EspecieGuia(
     id: 'equisetum-arvense',
@@ -2306,7 +2431,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Tallos articulados con verticilos de ramas finas', 'Sin flores (planta sin semilla)', 'Tallos fértiles primaverales pardos sin clorofila'],
     habitat: 'Suelos húmedos, riberas, cunetas frescas; ubicua.',
     tituloWikipedia: 'Equisetum_arvense',
-    usos: ['medicinal'],
+    
   ),
   EspecieGuia(
     id: 'verbena-officinalis',
@@ -2317,7 +2442,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Espigas alargadas con flores pequeñas violetas', 'Tallo cuadrangular leñoso en base', 'Hojas opuestas profundamente lobuladas'],
     habitat: 'Bordes de caminos, ruinas, baldíos; ubicua.',
     tituloWikipedia: 'Verbena_officinalis',
-    usos: ['medicinal'],
+    
   ),
   EspecieGuia(
     id: 'marrubium-vulgare',
@@ -2328,7 +2453,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Aspecto blanquecino lanoso', 'Hojas redondeadas rugosas', 'Cálices con dientes ganchudos'],
     habitat: 'Pastos secos, baldíos, escombreras; toda la península.',
     tituloWikipedia: 'Marrubium_vulgare',
-    usos: ['medicinal'],
+    
   ),
   EspecieGuia(
     id: 'valeriana-officinalis',
@@ -2339,7 +2464,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas pinnadas con foliolos lanceolados dentados', 'Corimbos densos blanco-rosa', 'Raíz con olor característico al secar'],
     habitat: 'Praderas húmedas, sotos, ribazos de montaña.',
     tituloWikipedia: 'Valeriana_officinalis',
-    usos: ['medicinal'],
+    
   ),
   EspecieGuia(
     id: 'tilia-platyphyllos',
@@ -2350,7 +2475,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas acorazonadas con base asimétrica', 'Inflorescencias colgadas de una bráctea papirácea', 'Aroma dulce de la flor seca'],
     habitat: 'Bosques mixtos de montaña; muy plantado en plazas y paseos.',
     tituloWikipedia: 'Tilia_platyphyllos',
-    usos: ['medicinal', 'melifera', 'ornamental'],
+    usos: ['melifera', 'ornamental'],
   ),
   EspecieGuia(
     id: 'artemisia-absinthium',
@@ -2361,7 +2486,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Aspecto plateado por pelos densos', 'Olor amargo característico', 'Sabor extremadamente amargo'],
     habitat: 'Baldíos secos, escombreras, lindes pedregosos.',
     tituloWikipedia: 'Artemisia_absinthium',
-    usos: ['medicinal', 'toxica'],
+    usos: ['toxica'],
   ),
   EspecieGuia(
     id: 'ruta-graveolens',
@@ -2372,7 +2497,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Hojas glaucas tipo helecho', 'Flores amarillas con pétalos festoneados', 'Olor intenso y aceitoso (puede causar dermatitis al sol)'],
     habitat: 'Cultivada como medicinal-supersticiosa y asilvestrada en muros.',
     tituloWikipedia: 'Ruta_graveolens',
-    usos: ['medicinal', 'urticante'],
+    usos: ['urticante'],
   ),
 
   // ─── Setas y hongos ─────────────────────────────────────
@@ -2390,7 +2515,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Pie con retículo blanco en su tercio superior', 'Tubos en lugar de láminas', 'Carne firme y blanca que no cambia al corte'],
     habitat: 'Bajo coníferas y planifolios (pinos, hayas, robles, castaños) en suelos ácidos a neutros, finales de verano y otoño.',
     tituloWikipedia: 'Boletus_edulis',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'lactarius-deliciosus',
@@ -2401,7 +2526,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Látex naranja al cortar', 'Zonas concéntricas en el sombrero', 'Manchas verdes al envejecer o magullarse'],
     habitat: 'Bajo pino carrasco, piñonero y silvestre, en pinares mediterráneos y de montaña media.',
     tituloWikipedia: 'Lactarius_deliciosus',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'amanita-muscaria',
@@ -2434,7 +2559,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Pliegues decurrentes, no láminas', 'Color amarillo huevo uniforme', 'Olor frutal a albaricoque'],
     habitat: 'Bajo coníferas y caducifolios en suelos ácidos; primavera y otoño.',
     tituloWikipedia: 'Cantharellus_cibarius',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'macrolepiota-procera',
@@ -2445,7 +2570,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Anillo doble desplazable como tuerca', 'Pie con dibujo serpentiforme atigrado', 'Sombrero con mamelón central y escamas concéntricas'],
     habitat: 'Praderas, claros de bosque, dehesas y herbazales nitrificados; finales de verano y otoño.',
     tituloWikipedia: 'Macrolepiota_procera',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'agaricus-campestris',
@@ -2456,7 +2581,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Láminas rosadas que oscurecen al envejecer', 'Anillo blanco frágil', 'Olor agradable a champiñón cultivado'],
     habitat: 'Praderas, herbazales y suelos abonados; primavera y otoño.',
     tituloWikipedia: 'Agaricus_campestris',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'pleurotus-ostreatus',
@@ -2467,7 +2592,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Crecimiento en racimos sobre madera', 'Sombrero asimétrico tipo concha u ostra', 'Pie lateral o ausente'],
     habitat: 'Saprofito y parásito sobre madera muerta o débil de chopos, álamos, hayas y olmos; otoño-invierno.',
     tituloWikipedia: 'Pleurotus_ostreatus',
-    usos: ['comestible'],
+    
   ),
 
   // ─── Ampliación seguent: comestibles ibéricos clásicos ───
@@ -2480,7 +2605,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Olor potente a harina fresca o pepino', 'Aparición primaveral (marzo-mayo)', 'Crecimiento en corros sobre pasto'],
     habitat: 'Pastizales de montaña media en la cordillera Cantábrica, Pirineos, Sistema Ibérico; calizas. Muy apreciada en País Vasco y Cataluña.',
     tituloWikipedia: 'Calocybe_gambosa',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'boletus-pinophilus',
@@ -2491,7 +2616,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Sombrero pardo vinoso característico', 'Carne blanca inmutable al corte', 'Asociación exclusiva con pinos'],
     habitat: 'Pinares de pino silvestre, piñonero y rodeno en suelos ácidos; finales de verano y otoño, también primavera en zonas mediterráneas.',
     tituloWikipedia: 'Boletus_pinophilus',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'morchella-esculenta',
@@ -2502,7 +2627,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Sombrero con alvéolos tipo panal, no láminas', 'Cuerpo enteramente hueco al corte longitudinal', 'Aparición primaveral'],
     habitat: 'Riberas, fresnedas, olmedas, choperas y zonas quemadas un año antes; primavera (marzo-mayo). Buscar en suelos sueltos calizos.',
     tituloWikipedia: 'Morchella_esculenta',
-    usos: ['comestible', 'toxica'],
+    usos: ['toxica'],
   ),
   EspecieGuia(
     id: 'tuber-melanosporum',
@@ -2513,7 +2638,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Cuerpo subterráneo (no visible en superficie)', 'Verrugas piramidales en la corteza', 'Olor intenso y persistente'],
     habitat: 'Encinares, quejigares y robledales calizos en simbiosis micorrícica con encina (*Quercus ilex*) y coscoja, sobre todo en Teruel, Soria, Castellón, Huesca; recolección noviembre-marzo.',
     tituloWikipedia: 'Tuber_melanosporum',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'lepista-nuda',
@@ -2524,7 +2649,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Pie y láminas violetas en ejemplares jóvenes', 'Olor afrutado dulce', 'Aparición tardía en otoño-invierno'],
     habitat: 'Bosques de planifolios y coníferas, hojarasca acumulada, también compostes y bordes de caminos; otoño tardío e invierno.',
     tituloWikipedia: 'Lepista_nuda',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'coprinus-comatus',
@@ -2535,7 +2660,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Forma característica de vela o dedal', 'Escamas blancas en filas concéntricas', 'Deliquescencia: se vuelve tinta negra'],
     habitat: 'Praderas, cunetas, jardines, suelos removidos y nitrificados; primavera y otoño, especialmente tras lluvias.',
     tituloWikipedia: 'Coprinus_comatus',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'suillus-luteus',
@@ -2546,7 +2671,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Sombrero muy viscoso y brillante', 'Anillo violáceo bien visible en el pie', 'Asociación con pinos'],
     habitat: 'Pinares de pino silvestre y laricio en suelos ácidos; verano y otoño tras lluvias. Suele fructificar en grupos.',
     tituloWikipedia: 'Suillus_luteus',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'hydnum-repandum',
@@ -2557,7 +2682,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Himenóforo de aguijones (pinchos) blanquecinos', 'Carne quebradiza y suave', 'Color crema-naranja claro uniforme'],
     habitat: 'Bosques mixtos de planifolios y coníferas en suelo con musgo o hojarasca; otoño.',
     tituloWikipedia: 'Hydnum_repandum',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'russula-cyanoxantha',
@@ -2568,7 +2693,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Láminas elásticas y untuosas al tacto', 'Sombrero multicolor azul-verde-violeta', 'Sabor suave (no picante en la lengua)'],
     habitat: 'Bosques de planifolios (hayas, robles, castaños) y mixtos; verano y otoño.',
     tituloWikipedia: 'Russula_cyanoxantha',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'fistulina-hepatica',
@@ -2579,7 +2704,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Aspecto y consistencia de hígado o lengua de carne', 'Exudado rojo al corte', 'Crecimiento siempre en tronco vivo de Quercus'],
     habitat: 'Parásito y saprofito en madera viva de roble, castaño y encina; verano y otoño.',
     tituloWikipedia: 'Fistulina_hepatica',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'auricularia-auricula-judae',
@@ -2590,7 +2715,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Forma inequívoca de oreja humana', 'Textura gelatinosa elástica', 'Crece pegada a madera muerta'],
     habitat: 'Sobre madera muerta o debilitada, especialmente saúco (*Sambucus nigra*); todo el año en zonas húmedas.',
     tituloWikipedia: 'Auricularia_auricula-judae',
-    usos: ['comestible', 'medicinal'],
+    
   ),
   EspecieGuia(
     id: 'hygrophorus-marzuolus',
@@ -2601,7 +2726,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Aparición invernal-primaveral bajo nieve', 'Láminas espaciadas, gruesas y cerosas', 'Color gris pizarra característico'],
     habitat: 'Hayedos, abetales y pinares de montaña en Pirineos, Sistema Ibérico y cordillera Cantábrica; febrero-mayo, justo cuando se retira la nieve.',
     tituloWikipedia: 'Hygrophorus_marzuolus',
-    usos: ['comestible'],
+    
   ),
 
   // ─── Tóxicas adicionales (educativo) ─────────────────────
@@ -2662,7 +2787,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Forma de pera o trompo invertido', 'Verrugas cónicas blancas que dejan cicatrices', 'Libera "humo" de esporas al madurar'],
     habitat: 'Bosques de coníferas y planifolios, claros y bordes de caminos, sobre suelo con hojarasca; verano y otoño.',
     tituloWikipedia: 'Lycoperdon_perlatum',
-    usos: ['comestible'],
+    
   ),
   EspecieGuia(
     id: 'phallus-impudicus',
@@ -2686,7 +2811,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Bandas concéntricas multicolores', 'Crecimiento en grupos imbricados sobre madera', 'Cara superior aterciopelada al tacto'],
     habitat: 'Sobre madera muerta de planifolios (hayas, robles, abedules, álamos); todo el año en zonas húmedas. Persistente.',
     tituloWikipedia: 'Trametes_versicolor',
-    usos: ['medicinal'],
+    
   ),
   EspecieGuia(
     id: 'laetiporus-sulphureus',
@@ -2697,7 +2822,7 @@ const List<EspecieGuia> especiesGuia = [
     distintivos: ['Color amarillo-naranja azufrado intenso', 'Consolas carnosas en racimo sobre tronco', 'Textura tierna parecida a pollo'],
     habitat: 'Parásito de madera viva de robles, castaños, sauces, cerezos; finales de primavera y verano.',
     tituloWikipedia: 'Laetiporus_sulphureus',
-    usos: ['comestible'],
+    
   ),
 ];
 
@@ -2802,7 +2927,25 @@ void _abrirEspecieNavegable(BuildContext context, List<EspecieGuia> lista, int i
   );
 }
 
+/// Usos tradicionales (EMA) que se enseñan de una especie. Ninguno si es
+/// tóxica (solo «Tóxica») o protegida (no se anima a recolectarla).
+List<UsoTradicional> usosTradicionalesDe(EspecieGuia especie) {
+  if (especie.usos.contains('toxica') || especie.usos.contains('protegida')) {
+    return const [];
+  }
+  return [
+    for (final uso in usosTradicionalesEma)
+      if (uso.especieId == especie.id) uso,
+  ];
+}
+
+/// Plantas y setas llevan siempre el aviso de que la guía no habilita el
+/// consumo.
+bool llevaAvisoConsumo(EspecieGuia especie) =>
+    especie.categoriaId == 'planta' || especie.categoriaId == 'seta';
+
 Widget _contenidoEspecie(BuildContext context, EspecieGuia especie, CategoriaGuia? categoria) {
+  final usosTradicionales = usosTradicionalesDe(especie);
   return Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
@@ -2854,10 +2997,36 @@ Widget _contenidoEspecie(BuildContext context, EspecieGuia especie, CategoriaGui
             ],
           ),
         ),
+      if (especie.confundibles.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        Text(SoleraL10n.t('nat.ficha_se_confunde'),
+            style: const TextStyle(fontWeight: FontWeight.bold)),
+        const SizedBox(height: 4),
+        for (final confundible in especie.confundibles)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.compare_arrows, size: 18),
+                const SizedBox(width: 6),
+                Expanded(child: Text(confundible)),
+              ],
+            ),
+          ),
+      ],
       const SizedBox(height: 16),
       const Text('Hábitat', style: TextStyle(fontWeight: FontWeight.bold)),
       const SizedBox(height: 4),
       Text(especie.habitat),
+      if (llevaAvisoConsumo(especie)) ...[
+        const SizedBox(height: 16),
+        _AvisoFicha(texto: SoleraL10n.t('nat.ficha_aviso_consumo')),
+      ],
+      if (usosTradicionales.isNotEmpty) ...[
+        const SizedBox(height: 16),
+        _UsoTradicionalEma(usos: usosTradicionales),
+      ],
       const SizedBox(height: 24),
       if (especie.tituloWikipedia.isNotEmpty)
         FilledButton.tonalIcon(
@@ -2870,6 +3039,103 @@ Widget _contenidoEspecie(BuildContext context, EspecieGuia especie, CategoriaGui
         ),
     ],
   );
+}
+
+class _AvisoFicha extends StatelessWidget {
+  const _AvisoFicha({required this.texto});
+
+  final String texto;
+
+  @override
+  Widget build(BuildContext context) {
+    final colores = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: colores.errorContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.warning_amber_rounded, color: colores.onErrorContainer),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(texto, style: TextStyle(color: colores.onErrorContainer)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Uso tradicional según la EMA: primero las precauciones, luego el uso,
+/// la fuente y el aviso de responsabilidad. Sin dosis.
+class _UsoTradicionalEma extends StatelessWidget {
+  const _UsoTradicionalEma({required this.usos});
+
+  final List<UsoTradicional> usos;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context);
+    Widget apartado(String titulo, String texto) => texto.isEmpty
+        ? const SizedBox.shrink()
+        : Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(titulo, style: tema.textTheme.labelLarge),
+                const SizedBox(height: 2),
+                Text(texto),
+              ],
+            ),
+          );
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(SoleraL10n.t('nat.ficha_uso_tradicional'),
+                style: tema.textTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text(SoleraL10n.t('nat.ficha_aviso_uso'),
+                style: tema.textTheme.bodySmall
+                    ?.copyWith(color: tema.colorScheme.error)),
+            for (final uso in usos) ...[
+              const Divider(height: 20),
+              if (uso.parte.isNotEmpty)
+                Text(uso.parte[0].toUpperCase() + uso.parte.substring(1),
+                    style: const TextStyle(fontWeight: FontWeight.bold)),
+              apartado(SoleraL10n.t('nat.ficha_precauciones'), uso.precauciones),
+              apartado(SoleraL10n.t('nat.ficha_contraindicaciones'),
+                  uso.contraindicaciones),
+              apartado(
+                  uso.tipoUso.isEmpty
+                      ? SoleraL10n.t('nat.ficha_uso')
+                      : '${SoleraL10n.t('nat.ficha_uso')} (${uso.tipoUso})',
+                  uso.uso),
+              const SizedBox(height: 6),
+              Text(uso.estadoMonografia, style: tema.textTheme.bodySmall),
+              TextButton.icon(
+                style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                onPressed: () => launchUrl(Uri.parse(uso.url),
+                    mode: LaunchMode.externalApplication),
+                icon: const Icon(Icons.open_in_new, size: 16),
+                label: Text(SoleraL10n.t('nat.ficha_ver_monografia')),
+              ),
+            ],
+            const SizedBox(height: 4),
+            Text(SoleraL10n.t('nat.ficha_sin_cotejar'),
+                style: tema.textTheme.bodySmall),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Galería de hasta 10 imágenes para una especie. Pide a Wikipedia la
