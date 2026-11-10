@@ -18,8 +18,10 @@ import '../servicios/identificador_claude.dart';
 import '../servicios/servicio_inaturalist.dart';
 import '../servicios/servicio_plantnet.dart';
 import '../utiles/permisos_gps.dart';
+import '../utiles/primeras_veces.dart';
 import 'pantalla_anotar_foto.dart';
 import 'pantalla_buscar_foto_archivo.dart';
+import 'pantalla_primeras_veces.dart';
 import 'pantalla_quien_canta.dart';
 import 'widgets/nota_voz_hallazgo.dart';
 import 'widgets/reproductor_clip.dart';
@@ -568,6 +570,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       return i < _atribucionesFotos.length ? _atribucionesFotos[i] : null;
     });
     final hallazgoExistente = widget.hallazgoExistente;
+    PrimeraVezNueva? primeraVezNueva;
     try {
       if (hallazgoExistente != null) {
         // Para mantener una sola fuente de verdad sobre cómo se
@@ -641,6 +644,14 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           rutaAudio: _rutaAudio,
           rutaNotaVoz: _rutaNotaVoz,
         );
+        // ¿Primera vez de esta especie este año? Se mira antes de guardar.
+        try {
+          final existentes = await BaseDatosNaturaleza.instancia.listarHallazgos();
+          primeraVezNueva =
+              primeraVezAlGuardar(hallazgo, existentes, cientificoPorNombreComun: cientificoDeLaGuia);
+        } catch (_) {
+          primeraVezNueva = null;
+        }
         await BaseDatosNaturaleza.instancia.guardarHallazgo(hallazgo);
       }
       _guardado = true;
@@ -656,6 +667,17 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       return;
     }
     if (!mounted) return;
+    if (primeraVezNueva != null) {
+      // Aviso discreto: la SnackBar sigue en la pantalla de la que se vino.
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Row(children: [
+          const Icon(Icons.auto_awesome_outlined, color: Colors.white),
+          const SizedBox(width: 12),
+          Expanded(child: Text(textoAvisoPrimeraVez(primeraVezNueva))),
+        ]),
+        duration: const Duration(seconds: 6),
+      ));
+    }
     Navigator.of(context).pop(true);
   }
 

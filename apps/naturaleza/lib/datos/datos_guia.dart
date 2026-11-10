@@ -6,6 +6,7 @@ import '../fuentes_abiertas/metadatos_commons.dart';
 import '../fuentes_abiertas/servicio_metadatos_commons.dart';
 import '../pantallas/widgets/fuentes_abiertas_ficha.dart';
 import '../servicios/servicio_wikipedia.dart';
+import '../utiles/primeras_veces.dart' show normalizarNombreComun;
 import 'claves_gbif.dart';
 import 'uso_tradicional.dart';
 import 'usos_tradicionales.dart';
@@ -2854,6 +2855,17 @@ EspecieGuia? especieGuiaPorNombreCientifico(String nombreCientifico) {
   if (buscado.isEmpty) return null;
   for (final especie in especiesGuia) {
     if (especie.nombreCientifico.trim().toLowerCase() == buscado) return especie;
+  }
+  return null;
+}
+
+/// Especie de la guía con ese nombre común (sin distinguir mayúsculas,
+/// tildes ni espacios de más), o null.
+EspecieGuia? especieGuiaPorNombreComun(String nombreComun) {
+  final buscado = normalizarNombreComun(nombreComun);
+  if (buscado.isEmpty) return null;
+  for (final especie in especiesGuia) {
+    if (normalizarNombreComun(especie.nombreComun) == buscado) return especie;
   }
   return null;
 }
