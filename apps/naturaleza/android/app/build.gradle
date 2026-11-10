@@ -28,6 +28,15 @@ android {
         versionName = flutter.versionName
     }
 
+    // «¿Quién canta?» usa LiteRT solo con la CPU: fuera el delegado de GPU
+    // que trae tflite_flutter (≈6,7 MB en las tres ABI). Se carga solo si se
+    // crea un GpuDelegate, cosa que la app no hace.
+    packaging {
+        jniLibs {
+            excludes += ["**/libtensorflowlite_gpu_jni.so"]
+        }
+    }
+
     buildTypes {
         release {
             // TODO: Add your own signing config for the release build.
