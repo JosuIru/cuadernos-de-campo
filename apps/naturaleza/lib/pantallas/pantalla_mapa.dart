@@ -113,6 +113,9 @@ class _PantallaMapaState extends State<PantallaMapa> {
   // fuente.
   List<Hallazgo> _hallazgosFiltradosCache = const [];
   List<Marker> _markersHallazgosCache = const [];
+
+  /// Zonas estimadas de animales oídos («¿Dónde está?»).
+  List<Polygon> _poligonosZonasAnimalCache = const [];
   List<Marker> _markersLugaresCache = const [];
   List<Marker> _markersGbifCache = const [];
 
@@ -157,6 +160,16 @@ class _PantallaMapaState extends State<PantallaMapa> {
 
   void _recalcularMarkersHallazgos() {
     final lista = _hallazgosFiltradosCache;
+    _poligonosZonasAnimalCache = [
+      for (final hallazgo in lista)
+        if (_contornoZonaAnimal(hallazgo) case final contorno? when contorno.length >= 3)
+          Polygon(
+            points: contorno,
+            color: Colors.deepOrange.withValues(alpha: 0.2),
+            borderColor: Colors.deepOrange,
+            borderStrokeWidth: 1.5,
+          ),
+    ];
     _markersHallazgosCache = List.generate(lista.length, (i) {
       final hallazgo = lista[i];
       return Marker(
@@ -169,6 +182,16 @@ class _PantallaMapaState extends State<PantallaMapa> {
         ),
       );
     });
+  }
+
+  static List<LatLng>? _contornoZonaAnimal(Hallazgo hallazgo) {
+    final zona = hallazgo.atributos['zona_animal'];
+    if (zona is! Map || zona['contorno'] is! List) return null;
+    return [
+      for (final vertice in zona['contorno'] as List)
+        if (vertice is List && vertice.length >= 2 && vertice[0] is num && vertice[1] is num)
+          LatLng((vertice[0] as num).toDouble(), (vertice[1] as num).toDouble()),
+    ];
   }
 
   void _recalcularMarkersLugares() {
@@ -781,6 +804,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     ]);
                   },
                 ),
+                if (_poligonosZonasAnimalCache.isNotEmpty)
+                  PolygonLayer(polygons: _poligonosZonasAnimalCache),
                 if (_markersLugaresCache.isNotEmpty)
                   MarkerLayer(markers: _markersLugaresCache),
                 if (_markersGbifCache.isNotEmpty)

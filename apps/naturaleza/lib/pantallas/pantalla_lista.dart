@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:intl/intl.dart';
@@ -13,6 +14,7 @@ import '../servicios/tarjeta_imagen.dart';
 import 'pantalla_estadisticas.dart';
 import 'pantalla_nuevo.dart';
 import 'widgets/barra_filtro_categoria.dart';
+import 'widgets/mapa_zona_animal.dart';
 import 'widgets/reproductor_clip.dart';
 
 class PantallaLista extends StatefulWidget {
@@ -148,6 +150,8 @@ class _PantallaListaState extends State<PantallaLista> {
               if (hallazgo.atributos['identificacion_sonido'] is Map)
                 _lineaIdentificacionSonido(
                     (hallazgo.atributos['identificacion_sonido'] as Map).cast<String, dynamic>()),
+              if (hallazgo.atributos['zona_animal'] is Map)
+                _bloqueZonaAnimal((hallazgo.atributos['zona_animal'] as Map).cast<String, dynamic>()),
               _filaDetalle(SoleraL10n.t('nat.hall_categoria'), _etiquetaCategoria(hallazgo.categoria)),
               _filaDetalle(SoleraL10n.t('agro.nombre_comun'), hallazgo.nombreComun.isEmpty ? '—' : hallazgo.nombreComun),
               _filaDetalle(SoleraL10n.t('fos.hall_especie'), hallazgo.especie.isEmpty ? '—' : hallazgo.especie),
@@ -249,6 +253,33 @@ class _PantallaListaState extends State<PantallaLista> {
   // ─── Bloques de la ficha (v3) ─────────────────────────────────────
 
   /// De dónde salió una identificación por el sonido («¿Quién canta?»).
+  /// Zona estimada del animal («¿Dónde está?»): aparte de la posición del
+  /// hallazgo, que es donde estaba la persona.
+  Widget _bloqueZonaAnimal(Map<String, dynamic> zona) {
+    final mapa = MapaZonaAnimal.desdeAtributo(zona);
+    final centro = zona['centro'];
+    final area = (zona['area_m2'] as num?)?.toDouble() ?? 0;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            SoleraL10n.tf('nat.son_detalle_zona', {
+              'tomas': (zona['tomas'] as List?)?.length ?? 0,
+              'radio': math.sqrt(area / math.pi).round(),
+              'centro': centro is List && centro.length >= 2
+                  ? '${(centro[0] as num).toStringAsFixed(5)}, ${(centro[1] as num).toStringAsFixed(5)}'
+                  : '—',
+            }),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          if (mapa != null) ...[const SizedBox(height: 6), mapa],
+        ],
+      ),
+    );
+  }
+
   Widget _lineaIdentificacionSonido(Map<String, dynamic> identificacion) {
     final nivel = switch (identificacion['nivel']) {
       'probable' => SoleraL10n.t('nat.son_nivel_probable'),

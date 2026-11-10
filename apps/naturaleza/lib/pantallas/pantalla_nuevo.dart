@@ -153,6 +153,8 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       _fechaMsEscucha = resultado.momento.millisecondsSinceEpoch;
     }
     _atributos['identificacion_sonido'] = resultado.aAtributo();
+    final zonaAnimal = resultado.zonaAnimal;
+    if (zonaAnimal != null) _atributos['zona_animal'] = zonaAnimal;
     // Cómo se registró, en el campo propio de cada categoría.
     if (_categoria == 'ave') {
       _atributos['tipo_observacion'] = 'escuchada';
@@ -652,8 +654,10 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   };
 
   /// Atributos que no dependen de la categoría: de dónde salió la
-  /// identificación por sonido (modelo, puntuación…).
-  static const Set<String> _atributosDeCualquierCategoria = {'identificacion_sonido'};
+  /// identificación por sonido (modelo, puntuación…) y la zona estimada del
+  /// animal por triangulación de rumbos («¿Dónde está?»), aparte de la
+  /// posición de la persona.
+  static const Set<String> _atributosDeCualquierCategoria = {'identificacion_sonido', 'zona_animal'};
 
   static List<String> _clavesAtributosCategoria(String categoria) =>
       _atributosPorCategoria[categoria] ?? const [];
@@ -1393,6 +1397,28 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             if (_rutaAudio != null) ...[
               SizedBox(height: 8),
               ReproductorClip(key: ValueKey(_rutaAudio), rutaAudio: _rutaAudio!, alQuitar: _quitarAudio),
+            ],
+            if (_atributos['zona_animal'] is Map) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.my_location, size: 18),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      SoleraL10n.tf('nat.son_alta_zona', {
+                        'tomas': ((_atributos['zona_animal'] as Map)['tomas'] as List?)?.length ?? 0,
+                      }),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    tooltip: SoleraL10n.t('borrar'),
+                    onPressed: () => setState(() => _atributos.remove('zona_animal')),
+                  ),
+                ],
+              ),
             ],
             if (_claveApiKeyPlantNetCacheada != null) ...[
               SizedBox(height: 8),

@@ -26,6 +26,13 @@ class ResultadoEscucha {
   final String versionModelo;
   final bool conFiltroDeZona;
 
+  /// El clip es lo último oído (búfer de 10 s) y no el trozo analizado.
+  final bool clipDeLoUltimoOido;
+
+  /// Zona estimada del animal («¿Dónde está?»), para
+  /// `Hallazgo.atributos['zona_animal']`; null si no se estimó.
+  final Map<String, dynamic>? zonaAnimal;
+
   const ResultadoEscucha({
     required this.nombreCientifico,
     required this.nombreComun,
@@ -37,6 +44,8 @@ class ResultadoEscucha {
     required this.puntuacionModelo,
     required this.versionModelo,
     required this.conFiltroDeZona,
+    this.clipDeLoUltimoOido = false,
+    this.zonaAnimal,
   });
 
   NivelConfianzaSonido get nivelConfianza => nivelConfianzaPara(puntuacion);
@@ -53,5 +62,6 @@ class ResultadoEscucha {
         'nivel': nivelConfianza.name,
         'filtro_zona': conFiltroDeZona,
         'momento_ms': momento.millisecondsSinceEpoch,
+        if (clipDeLoUltimoOido) 'clip_ultimo_oido': true,
       };
 }
