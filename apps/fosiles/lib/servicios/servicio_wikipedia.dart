@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
+import '../utiles/enlaces_app.dart' show agenteUsuarioFosiles;
 
 class ResumenWikipedia {
   final String? thumbnailUrl;
@@ -79,7 +80,7 @@ Future<void> _escribirADisco(String clave, ResumenWikipedia resumen) async {
   await _guardarCacheDisco();
 }
 
-const _cabecerasWiki = {'User-Agent': 'fosiles-flutter/1.0 (https://github.com/josu/fosiles-flutter)'};
+const _cabecerasWiki = {'User-Agent': agenteUsuarioFosiles};
 
 class _SemaforoWiki {
   final int maxConcurrentes;
@@ -201,7 +202,7 @@ String normalizarUrlImagenWiki(String url) {
 }
 
 const Map<String, String> cabecerasImagenWiki = {
-  'User-Agent': 'fosiles-flutter/1.0 (https://github.com/josu/fosiles-flutter)',
+  'User-Agent': agenteUsuarioFosiles,
 };
 
 Future<List<String>> _obtenerGaleriaInterno(String titulo, List<String> idiomas) async {

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
+import '../utiles/enlaces_app.dart' show agenteUsuarioFosiles;
 
 const List<String> _servidoresOverpass = [
   'https://overpass-api.de/api/interpreter',
@@ -10,7 +11,7 @@ const List<String> _servidoresOverpass = [
 ];
 
 const _cabecerasOverpass = {
-  'User-Agent': 'fosiles-flutter/1.0 (https://github.com/josu/fosiles-flutter)',
+  'User-Agent': agenteUsuarioFosiles,
   'Accept': 'application/json',
 };
 
