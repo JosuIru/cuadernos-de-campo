@@ -167,12 +167,12 @@ void main() {
     });
 
     test('sesión y detección: ida y vuelta por la BD', () {
-      final sesion = SesionSonora(
+      const sesion = SesionSonora(
         tipo: TipoSesionSonora.recorrido,
         inicioMs: 1,
         finMs: 2,
         versionModelo: 'v',
-        traza: const [PuntoTrazaSonora(momentoMs: 1, latitud: 43, longitud: -2)],
+        traza: [PuntoTrazaSonora(momentoMs: 1, latitud: 43, longitud: -2)],
         conFiltroDeZona: true,
       );
       final vuelta = SesionSonora.desdeMapa(sesion.aMapa());

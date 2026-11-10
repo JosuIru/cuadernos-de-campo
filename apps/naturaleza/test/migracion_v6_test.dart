@@ -58,7 +58,7 @@ void main() {
     expect(conNota.rutaNotaVoz, '/datos/notas_voz/nota_1.m4a');
     expect(conNota.toMap()['ruta_nota_voz'], '/datos/notas_voz/nota_1.m4a');
 
-    final sesion = SesionSonora(
+    const sesion = SesionSonora(
       tipo: TipoSesionSonora.recorrido,
       inicioMs: 1700000000000,
       versionModelo: 'europa-1',
