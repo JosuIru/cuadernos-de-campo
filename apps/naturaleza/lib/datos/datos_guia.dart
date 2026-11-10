@@ -2898,14 +2898,14 @@ void _mostrarFichaEspecie(BuildContext context, EspecieGuia especie) {
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => DraggableScrollableSheet(
+    builder: (contextoHoja) => DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.7,
       maxChildSize: 0.95,
       minChildSize: 0.4,
       builder: (_, controladorScroll) => SingleChildScrollView(
         controller: controladorScroll,
-        padding: const EdgeInsets.all(16),
+        padding: margenHojaSegura(contextoHoja, const EdgeInsets.all(16)),
         child: _contenidoEspecie(context, especie, categoria),
       ),
     ),
@@ -2942,7 +2942,7 @@ void _abrirEspecieNavegable(BuildContext context, List<EspecieGuia> lista, int i
                   final c = categoriaPorId(e.categoriaId);
                   return SingleChildScrollView(
                     controller: controladorScroll,
-                    padding: const EdgeInsets.all(16),
+                    padding: margenHojaSegura(sheetContext, const EdgeInsets.all(16)),
                     child: _contenidoEspecie(context, e, c),
                   );
                 },

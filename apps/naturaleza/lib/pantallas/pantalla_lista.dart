@@ -101,7 +101,7 @@ class _PantallaListaState extends State<PantallaLista> {
 
             return SingleChildScrollView(
               controller: controladorScroll,
-              padding: const EdgeInsets.all(16),
+              padding: margenHojaSegura(sheetContext, const EdgeInsets.all(16)),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [

@@ -76,7 +76,7 @@ class _PantallaTasaAciertoState extends State<PantallaTasaAcierto> {
 
   Widget _vistaConDatos(TasaAcierto tasa) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: rellenoInferiorSeguro(context, const EdgeInsets.fromLTRB(16, 16, 16, 32)),
       children: [
         _bloqueGlobal(tasa),
         const SizedBox(height: 16),

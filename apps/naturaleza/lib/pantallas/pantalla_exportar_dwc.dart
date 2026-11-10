@@ -213,7 +213,7 @@ class _PantallaExportarDwcState extends State<PantallaExportarDwc> {
     return Scaffold(
       appBar: AppBar(title: Text(SoleraL10n.t('nat.dwc_titulo'))),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+        padding: rellenoInferiorSeguro(context, const EdgeInsets.fromLTRB(16, 12, 16, 32)),
         children: [
           Text(SoleraL10n.t('nat.dwc_intro'), style: tema.textTheme.bodyMedium),
           const SizedBox(height: 16),

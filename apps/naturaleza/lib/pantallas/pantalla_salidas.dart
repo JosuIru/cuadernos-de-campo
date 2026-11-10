@@ -193,7 +193,7 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
               : RefreshIndicator(
                   onRefresh: _cargar,
                   child: ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+                    padding: rellenoInferiorSeguro(context, const EdgeInsets.fromLTRB(16, 16, 16, 96)),
                     itemCount: _salidas.length,
                     separatorBuilder: (_, __) => const SizedBox(height: 8),
                     itemBuilder: (_, i) => _tarjetaSalida(_salidas[i]),

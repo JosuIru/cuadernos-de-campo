@@ -134,7 +134,7 @@ class _PantallaRepasoSonidosState extends State<PantallaRepasoSonidos> {
   Widget _pocasEspecies() {
     final tema = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
       children: [
         Icon(Icons.library_music_outlined, size: 56, color: tema.colorScheme.primary),
         const SizedBox(height: 12),
@@ -178,7 +178,7 @@ class _PantallaRepasoSonidosState extends State<PantallaRepasoSonidos> {
       porCaja[_estado.estadoDe(tarjeta.idHallazgo).caja - 1]++;
     }
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
       children: [
         Text(
           SoleraL10n.tf('nat.cuad_rep_resumen', {'clips': _tarjetas.length, 'especies': especiesConClip(_tarjetas)}),
@@ -239,7 +239,7 @@ class _PantallaRepasoSonidosState extends State<PantallaRepasoSonidos> {
     final especieGuia = especieGuiaPorNombreCientifico(tarjeta.nombreCientifico) ??
         especieGuiaPorNombreComun(tarjeta.nombreComun);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
       children: [
         LinearProgressIndicator(value: _indiceRonda / _ronda!.length),
         const SizedBox(height: 8),

@@ -99,7 +99,7 @@ class _PantallaEspeciesCercaState extends State<PantallaEspeciesCerca> {
                 ]..sort((a, b) => b.registros.compareTo(a.registros));
                 final especiesOrdenadas = [for (final fila in filas) fila.especie];
                 return ListView(
-                  padding: const EdgeInsets.all(12),
+                  padding: rellenoInferiorSeguro(context, const EdgeInsets.all(12)),
                   children: [
                     Text(
                       SoleraL10n.tf('nat.fuen_especies_cerca_resumen', {

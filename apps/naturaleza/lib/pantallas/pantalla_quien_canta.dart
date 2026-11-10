@@ -1073,7 +1073,7 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
         maxChildSize: 0.95,
         builder: (_, controladorScroll) => ListView(
           controller: controladorScroll,
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+          padding: margenHojaSegura(contextoHoja, const EdgeInsets.fromLTRB(16, 0, 16, 24)),
           children: [
             Text(SoleraL10n.t('nat.son_ayuda_titulo'),
                 style: Theme.of(contextoHoja).textTheme.titleLarge),

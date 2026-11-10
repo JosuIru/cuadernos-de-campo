@@ -44,7 +44,7 @@ class _PantallaFenologiaState extends State<PantallaFenologia> {
           : _fenologia.isEmpty
               ? _vistaVacia()
               : ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+                  padding: rellenoInferiorSeguro(context, const EdgeInsets.fromLTRB(16, 16, 16, 32)),
                   itemCount: _fenologia.length + 1,
                   separatorBuilder: (_, __) => const SizedBox(height: 10),
                   itemBuilder: (_, indice) {

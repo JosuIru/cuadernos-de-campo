@@ -171,7 +171,7 @@ class _PantallaAnotarFotoState extends State<PantallaAnotarFoto> {
           ),
           Container(
             color: Colors.black87,
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            padding: rellenoInferiorSeguro(context, const EdgeInsets.symmetric(horizontal: 12, vertical: 8)),
             child: Row(
               children: [
                 ...[Colors.red, Colors.yellow, Colors.lightGreenAccent, Colors.lightBlueAccent, Colors.white, Colors.black].map((c) => GestureDetector(

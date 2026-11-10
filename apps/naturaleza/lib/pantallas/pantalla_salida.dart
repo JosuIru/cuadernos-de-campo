@@ -413,7 +413,7 @@ class _PantallaSalidaState extends State<PantallaSalida> {
               onPressed: _aniadirAnotacion,
             ),
       body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 96),
+        padding: rellenoInferiorSeguro(context, const EdgeInsets.fromLTRB(16, 16, 16, 96)),
         children: [
           _cabecera(salida, etiquetaInicio),
           const SizedBox(height: 24),

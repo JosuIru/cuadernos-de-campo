@@ -322,8 +322,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
   void _abrirDetalleLugar(LugarInteres lugar) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(16),
+      builder: (contextoHoja) => Padding(
+        padding: margenHojaSegura(contextoHoja, const EdgeInsets.all(16)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -485,8 +485,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
   void _abrirDetalleOcurrenciaGbif(OcurrenciaGbif ocurrencia) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(16),
+      builder: (contextoHoja) => Padding(
+        padding: margenHojaSegura(contextoHoja, const EdgeInsets.all(16)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,7 +564,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     final cat = categoriaPorId(h.categoria);
                     return SingleChildScrollView(
                       controller: scrollController,
-                      padding: const EdgeInsets.all(16),
+                      padding: margenHojaSegura(sheetContext, const EdgeInsets.all(16)),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [

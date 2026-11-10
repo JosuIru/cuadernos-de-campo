@@ -186,7 +186,7 @@ class _PantallaPrimerasVecesState extends State<PantallaPrimerasVeces> {
         onTap: () => _abrirFicha(primeraVez),
       ));
     }
-    return ListView(padding: const EdgeInsets.only(bottom: 24), children: filas);
+    return ListView(padding: rellenoInferiorSeguro(context, const EdgeInsets.only(bottom: 24)), children: filas);
   }
 
   Widget _vistaPorEspecie() {
@@ -199,7 +199,7 @@ class _PantallaPrimerasVecesState extends State<PantallaPrimerasVeces> {
       });
     final tema = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
+      padding: rellenoInferiorSeguro(context, const EdgeInsets.fromLTRB(12, 8, 12, 24)),
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),

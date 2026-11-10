@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:nuevo_ser_core/nuevo_ser_core.dart' show SoleraL10n, numeroParaEditar;
+import 'package:nuevo_ser_core/nuevo_ser_core.dart' show SoleraL10n, numeroParaEditar, rellenoInferiorSeguro;
 import 'package:url_launcher/url_launcher.dart' show launchUrl, LaunchMode;
 import '../datos/configuracion.dart';
 
@@ -89,7 +89,7 @@ class _PantallaAjustesIaState extends State<PantallaAjustesIa> {
     return Scaffold(
       appBar: AppBar(title: Text(SoleraL10n.t('seccion_integraciones'))),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
         children: [
           Text(SoleraL10n.t('nat.ajus_identificacion_claude'), style: Theme.of(context).textTheme.titleMedium),
           SizedBox(height: 8),

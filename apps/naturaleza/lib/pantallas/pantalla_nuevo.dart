@@ -509,7 +509,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         initialChildSize: 0.7,
         builder: (_, controlador) => ListView(
           controller: controlador,
-          padding: const EdgeInsets.all(16),
+          padding: margenHojaSegura(sheetContext, const EdgeInsets.all(16)),
           children: [
             Text(
               SoleraL10n.t('nat.hall_candidatos_plantnet'),
@@ -741,7 +741,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     final consultaInicial = _controladorNombreComun.text.trim().isNotEmpty
         ? _controladorNombreComun.text.trim()
         : _controladorEspecie.text.trim();
-    final seleccion = await showModalBottomSheet<ResultadoTaxonInaturalist>(
+    final seleccion = await mostrarHojaSolera<ResultadoTaxonInaturalist>(
       context: context,
       isScrollControlled: true,
       builder: (_) => _BuscadorInaturalist(consultaInicial: consultaInicial),
@@ -770,7 +770,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
         children: [
           if (_salidaAsociarAuto != null) ...[
             _bannerSalidaAsociacion(_salidaAsociarAuto!),
