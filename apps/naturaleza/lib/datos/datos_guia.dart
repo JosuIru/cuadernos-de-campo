@@ -2,6 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../fuentes_abiertas/metadatos_commons.dart';
+import '../fuentes_abiertas/servicio_metadatos_commons.dart';
 import '../pantallas/widgets/fuentes_abiertas_ficha.dart';
 import '../servicios/servicio_wikipedia.dart';
 import 'claves_gbif.dart';
@@ -3175,7 +3177,7 @@ class _GaleriaEspecieWikipedia extends StatefulWidget {
 
 class _GaleriaEspecieWikipediaState extends State<_GaleriaEspecieWikipedia> {
   late final PageController _controlador = PageController();
-  late Future<List<String>> _futuroGaleria;
+  late Future<List<({String url, MetadatosFotoCommons metadatos})>> _futuroGaleria;
   int _indiceActual = 0;
   static const int _maxImagenes = 10;
 
@@ -3185,7 +3187,10 @@ class _GaleriaEspecieWikipediaState extends State<_GaleriaEspecieWikipedia> {
     _futuroGaleria = _resolverGaleria();
   }
 
-  Future<List<String>> _resolverGaleria() async {
+  /// Fotos de la galería con su autor y licencia de Commons. Solo las que
+  /// tienen licencia libre clara (CC0, dominio público, CC BY, CC BY-SA):
+  /// las demás, o las que no se sabe, no se enseñan.
+  Future<List<({String url, MetadatosFotoCommons metadatos})>> _resolverGaleria() async {
     final urls = <String>[];
     final tit = widget.especie.tituloWikipedia;
     if (tit.isNotEmpty) {
@@ -3196,7 +3201,49 @@ class _GaleriaEspecieWikipediaState extends State<_GaleriaEspecieWikipedia> {
     }
     // Sin galería de Wikipedia no se tira de iNaturalist aquí: sus fotos
     // (solo licencias abiertas, con autor) van en su propio apartado.
-    return urls.take(_maxImagenes).toList();
+    final candidatas = urls.take(_maxImagenes * 2).toList();
+    final List<MetadatosFotoCommons?> metadatos;
+    try {
+      metadatos = await ServicioMetadatosCommons.instancia.metadatosDe(candidatas);
+    } catch (_) {
+      return const [];
+    }
+    return [
+      for (var indice = 0; indice < candidatas.length; indice++)
+        if (metadatos[indice] case final conocidos?) (url: candidatas[indice], metadatos: conocidos),
+    ].take(_maxImagenes).toList();
+  }
+
+  Widget _atribucionFoto(BuildContext context, MetadatosFotoCommons metadatos) {
+    final tema = Theme.of(context).textTheme;
+    final urlDescripcion = metadatos.urlDescripcion;
+    final urlLicencia = metadatos.urlLicencia;
+    final autor = metadatos.autor;
+    return Padding(
+      padding: const EdgeInsets.only(top: 4),
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          if (autor != null)
+            InkWell(
+              onTap: urlDescripcion == null
+                  ? null
+                  : () => launchUrl(Uri.parse(urlDescripcion), mode: LaunchMode.externalApplication),
+              child: Text(metadatos.sinDerechos ? autor : '© $autor',
+                  style: tema.bodySmall?.copyWith(decoration: urlDescripcion == null ? null : TextDecoration.underline)),
+            ),
+          if (autor != null) Text(' · ', style: tema.bodySmall),
+          InkWell(
+            onTap: urlLicencia == null && urlDescripcion == null
+                ? null
+                : () => launchUrl(Uri.parse(urlLicencia ?? urlDescripcion!), mode: LaunchMode.externalApplication),
+            child: Text(metadatos.licenciaCorta,
+                style: tema.bodySmall?.copyWith(decoration: TextDecoration.underline)),
+          ),
+          Text(' · ${SoleraL10n.t('nat.fuen_commons_wikimedia')}', style: tema.bodySmall),
+        ],
+      ),
+    );
   }
 
   @override
@@ -3208,7 +3255,7 @@ class _GaleriaEspecieWikipediaState extends State<_GaleriaEspecieWikipedia> {
   @override
   Widget build(BuildContext context) {
     final categoria = categoriaPorId(widget.especie.categoriaId);
-    return FutureBuilder<List<String>>(
+    return FutureBuilder<List<({String url, MetadatosFotoCommons metadatos})>>(
       future: _futuroGaleria,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -3219,7 +3266,8 @@ class _GaleriaEspecieWikipediaState extends State<_GaleriaEspecieWikipedia> {
             child: const CircularProgressIndicator(),
           );
         }
-        final urls = snapshot.data ?? const <String>[];
+        final fotos = snapshot.data ?? const <({String url, MetadatosFotoCommons metadatos})>[];
+        final urls = [for (final foto in fotos) foto.url];
         if (urls.isEmpty) {
           return Container(
             height: 200,
@@ -3318,6 +3366,7 @@ class _GaleriaEspecieWikipediaState extends State<_GaleriaEspecieWikipedia> {
                   }),
                 ),
               ),
+            if (_indiceActual < fotos.length) _atribucionFoto(context, fotos[_indiceActual].metadatos),
           ],
         );
       },
