@@ -35,6 +35,18 @@ Future<File> exportarBackup() async {
     }
   }
 
+  // Clips de audio de los hallazgos identificados por el sonido.
+  final dirAudios = Directory(path_lib.join(dirDocs.path, 'audios'));
+  if (await dirAudios.exists()) {
+    await for (final entidad in dirAudios.list(recursive: false)) {
+      if (entidad is File) {
+        final bytes = await entidad.readAsBytes();
+        final nombre = path_lib.basename(entidad.path);
+        archivo.addFile(ArchiveFile('audios/$nombre', bytes.length, bytes));
+      }
+    }
+  }
+
   final dirTemp = await getTemporaryDirectory();
   final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
   final destino = File(path_lib.join(dirTemp.path, 'naturaleza_backup_$timestamp.natbackup'));
@@ -77,6 +89,11 @@ Future<ResultadoRestauracion> restaurarBackup(File ficheroBackup) async {
       final destino = File(path_lib.join(dirFotos.path, nombre));
       await destino.writeAsBytes(fichero.content as List<int>);
       fotos++;
+    } else if (fichero.name.startsWith('audios/')) {
+      final dirAudios = Directory(path_lib.join(dirDocs.path, 'audios'));
+      if (!await dirAudios.exists()) await dirAudios.create(recursive: true);
+      final nombre = path_lib.basename(fichero.name);
+      await File(path_lib.join(dirAudios.path, nombre)).writeAsBytes(fichero.content as List<int>);
     }
   }
 

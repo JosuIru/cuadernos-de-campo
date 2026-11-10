@@ -26,7 +26,7 @@ class BaseDatosNaturaleza {
       final ruta = path_lib.join(directorio.path, 'naturaleza.db');
       _basedatos = await openDatabase(
         ruta,
-        version: 3,
+        version: 4,
         onCreate: (db, version) async {
           await crearEsquemaInicial(db);
           await aplicarMigraciones(db, desde: 1, hasta: version);
@@ -546,6 +546,12 @@ Future<void> aplicarMigraciones(Database db,
         await db.execute(
           'CREATE INDEX IF NOT EXISTS idx_anotaciones_hallazgo ON anotaciones_diferidas (hallazgo_id, fecha_anotacion_ms)',
         );
+        break;
+      case 4:
+        // v4 (2026-11-10): clip de audio del hallazgo, para los
+        // identificados por el sonido en «¿Quién canta?». Columna
+        // nullable: los hallazgos anteriores quedan sin audio.
+        await db.execute('ALTER TABLE hallazgos ADD COLUMN ruta_audio TEXT');
         break;
     }
   }

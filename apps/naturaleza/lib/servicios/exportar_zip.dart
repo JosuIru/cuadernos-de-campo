@@ -30,6 +30,8 @@ Future<File> generarZipHallazgos(List<Hallazgo> hallazgos) async {
           'notas': h.notas,
           'precision_m': h.precision,
           'foto': h.rutaFoto != null ? 'fotos/${path_lib.basename(h.rutaFoto!)}' : null,
+          'audio': h.rutaAudio != null ? 'audios/${path_lib.basename(h.rutaAudio!)}' : null,
+          'tipo_evidencia': h.tipoEvidencia.clave,
           'atributos': h.atributos,
         },
       };
@@ -40,7 +42,7 @@ Future<File> generarZipHallazgos(List<Hallazgo> hallazgos) async {
 
   final formatoFecha = DateFormat('yyyy-MM-dd HH:mm:ss');
   final csvBuffer = StringBuffer()
-    ..writeln('id,fecha,latitud,longitud,precision_m,categoria,especie,nombre_comun,taxonomia,habitat,notas,foto');
+    ..writeln('id,fecha,latitud,longitud,precision_m,categoria,especie,nombre_comun,taxonomia,habitat,notas,foto,audio');
   for (final h in hallazgos) {
     String escapar(String? texto) {
       final t = (texto ?? '').replaceAll('"', '""').replaceAll('\n', ' ');
@@ -60,6 +62,7 @@ Future<File> generarZipHallazgos(List<Hallazgo> hallazgos) async {
       escapar(h.habitat),
       escapar(h.notas),
       escapar(h.rutaFoto != null ? 'fotos/${path_lib.basename(h.rutaFoto!)}' : ''),
+      escapar(h.rutaAudio != null ? 'audios/${path_lib.basename(h.rutaAudio!)}' : ''),
     ].join(','));
   }
   final csvBytes = utf8.encode(csvBuffer.toString());
@@ -71,6 +74,14 @@ Future<File> generarZipHallazgos(List<Hallazgo> hallazgos) async {
     if (!await foto.exists()) continue;
     final bytes = await foto.readAsBytes();
     archivo.addFile(ArchiveFile('fotos/${path_lib.basename(h.rutaFoto!)}', bytes.length, bytes));
+  }
+
+  for (final h in hallazgos) {
+    if (h.rutaAudio == null) continue;
+    final audio = File(h.rutaAudio!);
+    if (!await audio.exists()) continue;
+    final bytes = await audio.readAsBytes();
+    archivo.addFile(ArchiveFile('audios/${path_lib.basename(h.rutaAudio!)}', bytes.length, bytes));
   }
 
   final encoder = ZipEncoder();

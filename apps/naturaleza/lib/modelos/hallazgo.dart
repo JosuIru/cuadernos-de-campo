@@ -172,6 +172,11 @@ class Hallazgo {
   /// Sólo se rellena cuando [identificacionValidada] == corregida.
   final String especieCorregida;
 
+  /// Clip de audio del hallazgo (v4): WAV del canto o la llamada con la que
+  /// se identificó en «¿Quién canta?». Ruta absoluta en `audios/`, como las
+  /// fotos en `fotos/`. Null si no hay audio.
+  final String? rutaAudio;
+
   Hallazgo({
     this.id,
     required this.fechaMs,
@@ -193,6 +198,7 @@ class Hallazgo {
     this.confianzaIdentificacion,
     this.identificacionValidada = EstadoIdentificacion.sinRevisar,
     this.especieCorregida = '',
+    this.rutaAudio,
   });
 
   bool get esAnimal => categoria == 'animal';
@@ -243,6 +249,9 @@ class Hallazgo {
       'identificacion_validada': identificacionValidada,
       'especie_corregida':
           especieCorregida.isEmpty ? null : especieCorregida,
+      // Solo si hay audio: así el mapa sigue valiendo para una BD v3 (los
+      // tests de migración insertan con toMap sobre esquemas viejos).
+      if (rutaAudio != null) 'ruta_audio': rutaAudio,
     };
   }
 
@@ -300,6 +309,7 @@ class Hallazgo {
           (mapa['identificacion_validada'] as int?) ??
               EstadoIdentificacion.sinRevisar,
       especieCorregida: (mapa['especie_corregida'] as String?) ?? '',
+      rutaAudio: mapa['ruta_audio'] as String?,
     );
   }
 
@@ -321,6 +331,8 @@ class Hallazgo {
     bool limpiarConfianza = false,
     int? identificacionValidada,
     String? especieCorregida,
+    String? rutaAudio,
+    bool quitarAudio = false,
   }) =>
       Hallazgo(
         id: id,
@@ -346,5 +358,6 @@ class Hallazgo {
         identificacionValidada:
             identificacionValidada ?? this.identificacionValidada,
         especieCorregida: especieCorregida ?? this.especieCorregida,
+        rutaAudio: quitarAudio ? null : (rutaAudio ?? this.rutaAudio),
       );
 }
