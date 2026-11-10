@@ -10,6 +10,7 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
+import '../utiles/enlaces_app.dart';
 
 class CacheTeselasDisco {
   static Directory? _directorioCache;
@@ -202,7 +203,8 @@ class _ImagenDesdeCacheOWeb extends ImageProvider<_ImagenDesdeCacheOWeb> {
 
 class TileProviderConCache extends TileProvider {
   final String userAgent;
-  TileProviderConCache({this.userAgent = 'fosiles_flutter'});
+  // Los servidores de teselas (OSM) piden identificar la app.
+  TileProviderConCache({this.userAgent = agenteUsuarioNaturaleza});
 
   @override
   ImageProvider<Object> getImage(TileCoordinates coordinates, TileLayer options) {
