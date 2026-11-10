@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:record/record.dart';
 
+import '../sonido/bufer_ultimos_segundos.dart';
 import '../sonido/ventanas_audio.dart';
 import 'clasificador_fauna.dart';
 
@@ -43,7 +44,13 @@ class EscuchaMicrofonoFauna {
   final void Function(TrozoAnalizado trozo) alAnalizarTrozo;
   final void Function(String mensaje) alFallarAnalisis;
 
+  /// Cada bloque del micrófono, en bruto (aviso de calidad y barrido de
+  /// rumbo). Se llama en el hilo principal: debe ser barato.
+  final void Function(Float32List muestras, int frecuenciaHz)? alRecibirAudio;
+
   AudioRecorder? _grabadora;
+  BuferCircularAudio? _buferUltimoOido;
+  final RegistroTramosAnalizados _registroTramos = RegistroTramosAnalizados();
   StreamSubscription<Uint8List>? _suscripcion;
   RecolectorVentanasAudio? _recolector;
   int _frecuenciaMicrofonoHz = 0;
@@ -56,6 +63,7 @@ class EscuchaMicrofonoFauna {
     required this.clasificador,
     required this.alAnalizarTrozo,
     required this.alFallarAnalisis,
+    this.alRecibirAudio,
   });
 
   bool get escuchando => !_detenida;
@@ -91,6 +99,8 @@ class EscuchaMicrofonoFauna {
         final segundosVentana =
             clasificador.manifiesto.muestrasVentana / clasificador.manifiesto.frecuenciaMuestreoHz;
         _recolector = RecolectorVentanasAudio((segundosVentana * frecuenciaHz).round());
+        _buferUltimoOido = BuferCircularAudio((segundosBuferUltimoOido * frecuenciaHz).round());
+        _registroTramos.vaciar();
         _suscripcion = flujo.listen(_recibirBloque, onError: (Object error) {
           alFallarAnalisis(error.toString());
         });
@@ -122,7 +132,10 @@ class EscuchaMicrofonoFauna {
       _byteSobrante = bytes.last;
       bytes = Uint8List.sublistView(bytes, 0, bytes.length - 1);
     }
-    recolector.anadirMuestras(pcm16ABloqueFlotante(bytes));
+    final muestras = pcm16ABloqueFlotante(bytes);
+    recolector.anadirMuestras(muestras);
+    _buferUltimoOido?.anadir(muestras);
+    alRecibirAudio?.call(muestras, _frecuenciaMicrofonoHz);
     if (_analizando) return;
     final saltoSegundos = elegirSaltoSegundos(_milisegundosUltimoAnalisis);
     final trozo = recolector.tomarVentanaSiLista((saltoSegundos * _frecuenciaMicrofonoHz).round());
@@ -153,6 +166,35 @@ class EscuchaMicrofonoFauna {
     }
   }
 
+  /// Apunta si un trozo analizado tenía voz humana: del búfer de lo último
+  /// oído solo sale audio analizado y limpio.
+  void registrarTrozoAnalizado(TrozoAnalizado trozo, {required bool conVozHumana}) {
+    final recolector = _recolector;
+    final bufer = _buferUltimoOido;
+    if (recolector == null || bufer == null) return;
+    _registroTramos.registrar(
+      trozo.muestraFinalMicrofono - recolector.muestrasPorVentana,
+      trozo.muestraFinalMicrofono,
+      conVozHumana: conVozHumana,
+    );
+    _registroTramos.olvidarAnterioresA(bufer.primeraMuestraDisponible);
+  }
+
+  /// Lo último oído (hasta 10 s) que ya se ha analizado sin voz humana, a la
+  /// frecuencia del micrófono; null si no hay.
+  ({Float32List muestras, int frecuenciaHz})? ultimoOidoLimpio() {
+    final bufer = _buferUltimoOido;
+    if (bufer == null || _frecuenciaMicrofonoHz <= 0) return null;
+    final tramo = _registroTramos.ultimoTramoLimpio(
+      maximoMuestras: bufer.capacidadMuestras,
+      primeraDisponible: bufer.primeraMuestraDisponible,
+    );
+    if (tramo == null) return null;
+    final muestras = bufer.extraer(tramo.inicio, tramo.fin);
+    if (muestras == null) return null;
+    return (muestras: muestras, frecuenciaHz: _frecuenciaMicrofonoHz);
+  }
+
   /// Cierra el micrófono. Se puede llamar varias veces.
   Future<void> detener() async {
     _detenida = true;
@@ -161,6 +203,8 @@ class EscuchaMicrofonoFauna {
     _suscripcion = null;
     _grabadora = null;
     _recolector = null;
+    _buferUltimoOido = null;
+    _registroTramos.vaciar();
     _byteSobrante = null;
     await suscripcion?.cancel();
     if (grabadora != null) {

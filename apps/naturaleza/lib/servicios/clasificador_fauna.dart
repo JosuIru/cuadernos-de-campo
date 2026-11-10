@@ -24,6 +24,9 @@ class TrozoClasificado {
 
   /// El trozo ya remuestreado a la frecuencia del modelo (para el clip).
   final Float32List trozoModelo;
+
+  /// Embedding de Perch 2.0 (1536 valores), para «Tus sonidos».
+  final Float32List embedding;
   final int milisegundosRemuestreo;
   final int milisegundosModelo;
 
@@ -33,6 +36,7 @@ class TrozoClasificado {
     required this.tramasEspectrograma,
     required this.bandasEspectrograma,
     required this.trozoModelo,
+    required this.embedding,
     required this.milisegundosRemuestreo,
     required this.milisegundosModelo,
   });
@@ -116,6 +120,7 @@ class ClasificadorFauna {
       muestrasModelo: manifiesto.muestrasVentana,
       indiceLogits: _indicesSalida.logits,
       indiceEspectrograma: _indicesSalida.espectrograma,
+      indiceEmbedding: _indicesSalida.embedding,
     ));
     final respuesta = await completer.future as _RespuestaClasificacion;
     return TrozoClasificado(
@@ -124,6 +129,7 @@ class ClasificadorFauna {
       tramasEspectrograma: respuesta.tramasEspectrograma,
       bandasEspectrograma: respuesta.bandasEspectrograma,
       trozoModelo: respuesta.trozoModelo!.materialize().asFloat32List(),
+      embedding: respuesta.embedding?.materialize().asFloat32List() ?? Float32List(0),
       milisegundosRemuestreo: respuesta.milisegundosRemuestreo,
       milisegundosModelo: respuesta.milisegundosModelo,
     );
@@ -164,6 +170,7 @@ class _PeticionClasificacion {
   final int muestrasModelo;
   final int indiceLogits;
   final int indiceEspectrograma;
+  final int indiceEmbedding;
   const _PeticionClasificacion({
     required this.idPeticion,
     required this.trozo,
@@ -172,6 +179,7 @@ class _PeticionClasificacion {
     required this.muestrasModelo,
     required this.indiceLogits,
     required this.indiceEspectrograma,
+    required this.indiceEmbedding,
   });
 }
 
@@ -182,6 +190,7 @@ class _RespuestaClasificacion {
   final int tramasEspectrograma;
   final int bandasEspectrograma;
   final TransferableTypedData? trozoModelo;
+  final TransferableTypedData? embedding;
   final int milisegundosRemuestreo;
   final int milisegundosModelo;
   final String? error;
@@ -192,6 +201,7 @@ class _RespuestaClasificacion {
     this.tramasEspectrograma = 0,
     this.bandasEspectrograma = 0,
     this.trozoModelo,
+    this.embedding,
     this.milisegundosRemuestreo = 0,
     this.milisegundosModelo = 0,
     this.error,
@@ -250,6 +260,7 @@ Future<void> _principalIsolate(SendPort puertoPrincipal) async {
         final formaEspectrograma =
             tensorEspectrograma.shape.where((dimension) => dimension != 1).toList();
         final espectrograma = _copiarSalidaFlotante(tensorEspectrograma);
+        final embedding = _copiarSalidaFlotante(interpreteCargado.getOutputTensor(mensaje.indiceEmbedding));
         puertoPrincipal.send(_RespuestaClasificacion(
           idPeticion: mensaje.idPeticion,
           logits: TransferableTypedData.fromList([logits]),
@@ -257,6 +268,7 @@ Future<void> _principalIsolate(SendPort puertoPrincipal) async {
           tramasEspectrograma: formaEspectrograma.isNotEmpty ? formaEspectrograma[0] : 0,
           bandasEspectrograma: formaEspectrograma.length > 1 ? formaEspectrograma[1] : 0,
           trozoModelo: TransferableTypedData.fromList([trozoModelo]),
+          embedding: TransferableTypedData.fromList([embedding]),
           milisegundosRemuestreo: milisegundosRemuestreo,
           milisegundosModelo: milisegundosModelo,
         ));
