@@ -11,20 +11,28 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import '../datos/datos_guia.dart';
 import '../modelos/resultado_escucha.dart';
 import '../servicios/almacen_modelo_fauna.dart';
 import '../servicios/clasificador_fauna.dart';
+import '../servicios/controlador_donde_esta.dart';
+import '../servicios/controlador_sonidos_propios.dart';
 import '../servicios/escucha_microfono.dart';
+import '../sonido/calidad_audio.dart';
 import '../sonido/clasificacion_sonido.dart';
 import '../sonido/clip_audio.dart';
 import '../sonido/espectrograma_mel.dart';
 import '../sonido/filtro_ocurrencia.dart';
 import '../sonido/manifiesto_modelo_fauna.dart';
 import '../sonido/sesion_escucha.dart';
+import '../sonido/sonidos_propios.dart';
 import '../utiles/permisos_gps.dart';
 import 'pantalla_nuevo.dart';
+import 'widgets/indicador_calidad_audio.dart';
+import 'widgets/tarjeta_donde_esta.dart';
+import 'widgets/tarjeta_tus_sonidos.dart';
 
 /// «¿Quién canta?»: identifica aves, anfibios, insectos y mamíferos por el
 /// sonido con Perch 2.0 (Google) en el propio móvil, sin conexión una vez
@@ -47,6 +55,10 @@ enum _EstadoOcurrencia { sinModelo, cargando, lista, noDisponible }
 
 const _clavePreferenciaFiltro = 'nat.quien_canta.filtro_zona';
 const _clavePreferenciaSoloZona = 'nat.quien_canta.solo_mi_zona';
+const _clavePreferenciaPantallaEncendida = 'nat.quien_canta.pantalla_encendida';
+
+/// El aviso de calidad se recalcula cada 5 tramas (0,5 s).
+const int _tramasEntreEvaluacionesCalidad = 5;
 
 /// Por debajo de este nivel se avisa de que el micrófono apenas capta nada.
 const double _nivelSilencioDecibelios = -70;
@@ -100,11 +112,24 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
   bool _mostrarDudosas = false;
   bool _guardandoEleccion = false;
 
+  // ¿Dónde está?, aviso de calidad, tus sonidos y pantalla encendida
+  final ControladorDondeEsta _dondeEsta = ControladorDondeEsta();
+  ControladorSonidosPropios? _sonidosPropios;
+  ResultadoSonidosPropios _coincidenciasPropias = ResultadoSonidosPropios.vacio;
+
+  /// Embedding del último trozo sin voz humana (para «Tus sonidos»).
+  Float32List? _embeddingUltimoTrozoLimpio;
+  AnalizadorCalidadAudio? _analizadorCalidad;
+  EvaluacionCalidad _evaluacionCalidad = EvaluacionCalidad.sinDatos;
+  int _tramasDesdeEvaluacionCalidad = 0;
+  bool _mantenerPantallaEncendida = true;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _cargarPreferencias();
+    _dondeEsta.cargarPreferencias();
     _comprobarModelo();
   }
 
@@ -117,6 +142,9 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
     _clasificador?.liberar();
     _clasificador = null;
     _imagenEspectrograma?.dispose();
+    _dondeEsta.dispose();
+    _sonidosPropios?.dispose();
+    _ajustarPantallaEncendida(false);
     super.dispose();
   }
 
@@ -131,7 +159,20 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
         _detenerEscucha();
         if (mounted) setState(() => _detenidaPorSegundoPlano = true);
       }
+      // La brújula tampoco sigue en segundo plano (las tomas se conservan).
+      if (_dondeEsta.activo) unawaited(_dondeEsta.desactivar());
     }
+  }
+
+  /// Pantalla encendida mientras se escucha, si la persona no lo ha quitado.
+  void _ajustarPantallaEncendida(bool encender) {
+    unawaited(() async {
+      try {
+        await WakelockPlus.toggle(enable: encender);
+      } catch (_) {
+        // Sin soporte en la plataforma: no pasa nada.
+      }
+    }());
   }
 
   Future<void> _cargarPreferencias() async {
@@ -141,6 +182,7 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
       setState(() {
         _filtroActivo = preferencias.getBool(_clavePreferenciaFiltro) ?? true;
         _soloMiZona = preferencias.getBool(_clavePreferenciaSoloZona) ?? true;
+        _mantenerPantallaEncendida = preferencias.getBool(_clavePreferenciaPantallaEncendida) ?? true;
       });
     } catch (_) {}
   }
@@ -164,7 +206,16 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
     if (modelo != null) {
       _cargarClasificador(modelo);
       _prepararOcurrencia(modelo.manifiesto);
+      _prepararSonidosPropios(modelo.manifiesto.versionModelo);
     }
+  }
+
+  void _prepararSonidosPropios(String versionModelo) {
+    if (_sonidosPropios?.versionModelo == versionModelo) return;
+    _sonidosPropios?.dispose();
+    final controlador = ControladorSonidosPropios(versionModelo: versionModelo);
+    _sonidosPropios = controlador;
+    unawaited(controlador.cargar());
   }
 
   Future<void> _cargarClasificador(ModeloFaunaInstalado modelo) async {
@@ -274,6 +325,7 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
       });
       _cargarClasificador(modelo);
       _prepararOcurrencia(modelo.manifiesto);
+      _prepararSonidosPropios(modelo.manifiesto.versionModelo);
     } on DescargaCancelada {
       if (mounted) {
         setState(() {
@@ -456,7 +508,12 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
         alFallarAnalisis: (mensaje) {
           if (mounted) setState(() => _errorEscucha = mensaje);
         },
+        alRecibirAudio: _alRecibirAudio,
       );
+      _analizadorCalidad = null;
+      _evaluacionCalidad = EvaluacionCalidad.sinDatos;
+      _embeddingUltimoTrozoLimpio = null;
+      _coincidenciasPropias = ResultadoSonidosPropios.vacio;
       _trozoAnteriorLimpio = null;
       _muestraFinalAnterior = null;
       await escucha.empezar();
@@ -465,6 +522,7 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
         return;
       }
       setState(() => _escucha = escucha);
+      if (_mantenerPantallaEncendida) _ajustarPantallaEncendida(true);
     } catch (error) {
       if (mounted) setState(() => _errorEscucha = error.toString());
     } finally {
@@ -475,8 +533,36 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
   Future<void> _detenerEscucha() async {
     final escucha = _escucha;
     _escucha = null;
+    _analizadorCalidad = null;
+    if (_dondeEsta.barriendo) _dondeEsta.cancelarBarrido();
+    _ajustarPantallaEncendida(false);
     if (mounted) setState(() {});
     await escucha?.detener();
+  }
+
+  /// Cada bloque del micrófono: aviso de calidad y, si hay barrido, nivel
+  /// frente a rumbo. No se guarda nada.
+  void _alRecibirAudio(Float32List muestras, int frecuenciaHz) {
+    var analizador = _analizadorCalidad;
+    if (analizador == null || analizador.frecuenciaMuestreoHz != frecuenciaHz) {
+      analizador = AnalizadorCalidadAudio(frecuenciaHz.toDouble(), alCerrarTrama: _alCerrarTramaCalidad);
+      _analizadorCalidad = analizador;
+    }
+    analizador.procesar(muestras);
+  }
+
+  void _alCerrarTramaCalidad(TramaCalidad trama) {
+    _dondeEsta.alCerrarTramaAudio(trama.nivelBandaCantoDecibelios);
+    _tramasDesdeEvaluacionCalidad++;
+    if (_tramasDesdeEvaluacionCalidad < _tramasEntreEvaluacionesCalidad) return;
+    _tramasDesdeEvaluacionCalidad = 0;
+    final evaluacion = _analizadorCalidad?.evaluar();
+    if (evaluacion == null || !mounted) return;
+    final cambiaron = evaluacion.avisos.length != _evaluacionCalidad.avisos.length ||
+        !evaluacion.avisos.containsAll(_evaluacionCalidad.avisos) ||
+        identical(_evaluacionCalidad, EvaluacionCalidad.sinDatos);
+    _evaluacionCalidad = evaluacion;
+    if (cambiaron) setState(() {});
   }
 
   void _alAnalizarTrozo(TrozoAnalizado trozo) {
@@ -490,6 +576,9 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
       // Privacidad: de un trozo con voz humana no se guarda nada, ni se
       // junta con el siguiente para hacer el clip.
       _sesion.registrarTrozoConVozHumana();
+      _escucha?.registrarTrozoAnalizado(trozo, conVozHumana: true);
+      _embeddingUltimoTrozoLimpio = null;
+      _coincidenciasPropias = ResultadoSonidosPropios.vacio;
       _trozoAnteriorLimpio = null;
       _muestraFinalAnterior = null;
       _imagenEspectrograma?.dispose();
@@ -502,6 +591,10 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
       });
       return;
     }
+    _escucha?.registrarTrozoAnalizado(trozo, conVozHumana: false);
+    final embedding = trozo.clasificado.embedding;
+    _embeddingUltimoTrozoLimpio = embedding.isEmpty ? null : embedding;
+    _coincidenciasPropias = _sonidosPropios?.comparar(embedding) ?? ResultadoSonidosPropios.vacio;
     final frecuenciaModelo = modelo.manifiesto.frecuenciaMuestreoHz;
     final trozoPcm = flotanteAPcm16(trozo.clasificado.trozoModelo);
     final muestraFinalAnterior = _muestraFinalAnterior;
@@ -562,64 +655,96 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
     if (modelo == null) return;
     final clase = modelo.manifiesto.clases[indiceClase];
     final especieGuia = especieGuiaPorNombreCientifico(clase.etiqueta);
-    final anotar = await showModalBottomSheet<bool>(
+    final frecuenciaModelo = modelo.manifiesto.frecuenciaMuestreoHz;
+    final segundosClip = clip == null ? 0.0 : duracionSegundos(clip.length, frecuenciaModelo);
+    // Lo último oído (búfer de 10 s, solo lo analizado sin voz): se ofrece si
+    // es más largo que el clip del trozo.
+    final ultimoOido = _escucha?.ultimoOidoLimpio();
+    final segundosUltimoOido =
+        ultimoOido == null ? 0.0 : duracionSegundos(ultimoOido.muestras.length, ultimoOido.frecuenciaHz);
+    final ofrecerUltimoOido = segundosUltimoOido >= segundosClip + 0.5;
+    final zona = _dondeEsta.zona;
+    var usarUltimoOido = false;
+    final eleccion = await showModalBottomSheet<bool>(
       context: context,
       showDragHandle: true,
-      builder: (contextoHoja) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(nombreVisiblePara(clase, SoleraL10n.idioma),
-                  style: Theme.of(contextoHoja).textTheme.titleLarge),
-              Text(clase.etiqueta, style: const TextStyle(fontStyle: FontStyle.italic)),
-              const SizedBox(height: 8),
-              _FilaConfianza(puntuacion: puntuacion, puntuacionModelo: puntuacionModelo,
-                  plausibilidad: plausibilidad),
-              const SizedBox(height: 12),
-              Text(
-                SoleraL10n.tf('nat.son_detalle_orientativo',
-                    {'aciertos': _aciertosValidacion, 'total': _grabacionesValidacion}),
-                style: Theme.of(contextoHoja).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                clip == null
-                    ? SoleraL10n.t('nat.son_detalle_sin_clip')
-                    : SoleraL10n.tf('nat.son_detalle_con_clip', {
-                        'segundos': duracionSegundos(clip.length, modelo.manifiesto.frecuenciaMuestreoHz)
-                            .toStringAsFixed(1),
-                      }),
-                style: Theme.of(contextoHoja).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 16),
-              if (especieGuia != null) ...[
-                OutlinedButton.icon(
-                  icon: const Icon(Icons.menu_book_outlined),
-                  label: Text(SoleraL10n.t('nat.son_ver_en_guia')),
-                  onPressed: () => abrirDetalleEspecieGuia(contextoHoja, especieGuia.id),
+      isScrollControlled: true,
+      builder: (contextoHoja) => StatefulBuilder(
+        builder: (contextoHoja, refrescarHoja) => SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(nombreVisiblePara(clase, SoleraL10n.idioma),
+                    style: Theme.of(contextoHoja).textTheme.titleLarge),
+                Text(clase.etiqueta, style: const TextStyle(fontStyle: FontStyle.italic)),
+                const SizedBox(height: 8),
+                _FilaConfianza(puntuacion: puntuacion, puntuacionModelo: puntuacionModelo,
+                    plausibilidad: plausibilidad),
+                const SizedBox(height: 12),
+                Text(
+                  SoleraL10n.tf('nat.son_detalle_orientativo',
+                      {'aciertos': _aciertosValidacion, 'total': _grabacionesValidacion}),
+                  style: Theme.of(contextoHoja).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 8),
+                Text(
+                  usarUltimoOido
+                      ? SoleraL10n.tf('nat.son_detalle_con_ultimo_oido',
+                          {'segundos': segundosUltimoOido.toStringAsFixed(1)})
+                      : clip == null
+                          ? SoleraL10n.t('nat.son_detalle_sin_clip')
+                          : SoleraL10n.tf('nat.son_detalle_con_clip', {
+                              'segundos': segundosClip.toStringAsFixed(1),
+                            }),
+                  style: Theme.of(contextoHoja).textTheme.bodySmall,
+                ),
+                if (ofrecerUltimoOido)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(SoleraL10n.tf('nat.son_usar_ultimo_oido',
+                        {'segundos': segundosUltimoOido.toStringAsFixed(0)})),
+                    subtitle: Text(SoleraL10n.t('nat.son_usar_ultimo_oido_ayuda')),
+                    value: usarUltimoOido,
+                    onChanged: (valor) => refrescarHoja(() => usarUltimoOido = valor),
+                  ),
+                if (zona.hayZona)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(SoleraL10n.tf('nat.son_detalle_con_zona', {'tomas': zona.numeroTomas}),
+                        style: Theme.of(contextoHoja).textTheme.bodySmall),
+                  ),
+                const SizedBox(height: 16),
+                if (especieGuia != null) ...[
+                  OutlinedButton.icon(
+                    icon: const Icon(Icons.menu_book_outlined),
+                    label: Text(SoleraL10n.t('nat.son_ver_en_guia')),
+                    onPressed: () => abrirDetalleEspecieGuia(contextoHoja, especieGuia.id),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                FilledButton.icon(
+                  icon: const Icon(Icons.add_location_alt_outlined),
+                  label: Text(SoleraL10n.t('nat.son_anotar_hallazgo')),
+                  onPressed: () => Navigator.pop(contextoHoja, true),
+                ),
               ],
-              FilledButton.icon(
-                icon: const Icon(Icons.add_location_alt_outlined),
-                label: Text(SoleraL10n.t('nat.son_anotar_hallazgo')),
-                onPressed: () => Navigator.pop(contextoHoja, true),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
-    if (anotar != true || !mounted) return;
+    if (eleccion != true || !mounted) return;
     await _elegirEspecie(
       clase: clase,
       puntuacion: puntuacion,
       puntuacionModelo: puntuacionModelo,
       momento: momento,
       clip: clip,
+      // Al pulsar, lo último oído se vuelve a leer (ha seguido sonando).
+      ultimoOido: usarUltimoOido ? (_escucha?.ultimoOidoLimpio() ?? ultimoOido) : null,
     );
   }
 
@@ -629,21 +754,25 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
     required double puntuacionModelo,
     required DateTime momento,
     required Int16List? clip,
+    ({Float32List muestras, int frecuenciaHz})? ultimoOido,
   }) async {
     final modelo = _modelo;
     if (modelo == null || _guardandoEleccion) return;
     setState(() => _guardandoEleccion = true);
     await _detenerEscucha();
     final frecuenciaModelo = modelo.manifiesto.frecuenciaMuestreoHz;
+    // El clip: lo último oído (a la frecuencia del micrófono) o el del trozo.
+    final muestrasClip = ultimoOido != null ? flotanteAPcm16(ultimoOido.muestras) : clip;
+    final frecuenciaClip = ultimoOido?.frecuenciaHz ?? frecuenciaModelo;
     String? rutaAudio;
-    if (clip != null) {
+    if (muestrasClip != null) {
       try {
         final documentos = await getApplicationDocumentsDirectory();
         final carpetaAudios = Directory(path_lib.join(documentos.path, 'audios'));
         await carpetaAudios.create(recursive: true);
         final fichero = File(path_lib.join(
             carpetaAudios.path, 'sonido_${DateTime.now().millisecondsSinceEpoch}.wav'));
-        await fichero.writeAsBytes(codificarWavMono16(clip, frecuenciaModelo), flush: true);
+        await fichero.writeAsBytes(codificarWavMono16(muestrasClip, frecuenciaClip), flush: true);
         rutaAudio = fichero.path;
       } catch (error) {
         if (mounted) {
@@ -663,11 +792,14 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
       categoria: especieGuia?.categoriaId ?? clase.grupo?.categoriaNaturaleza ?? 'animal',
       momento: momento,
       rutaAudio: rutaAudio,
-      duracionAudioSegundos: clip == null ? 0 : duracionSegundos(clip.length, frecuenciaModelo),
+      duracionAudioSegundos:
+          muestrasClip == null ? 0 : duracionSegundos(muestrasClip.length, frecuenciaClip),
       puntuacion: puntuacion,
       puntuacionModelo: puntuacionModelo,
       versionModelo: modelo.manifiesto.versionModelo,
       conFiltroDeZona: _penalizaciones != null && _filtroActivo,
+      clipDeLoUltimoOido: ultimoOido != null && rutaAudio != null,
+      zonaAnimal: _dondeEsta.zonaParaHallazgo(),
     );
     if (!mounted) return;
     setState(() => _guardandoEleccion = false);
@@ -795,7 +927,16 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
             const SizedBox(height: 12),
             _tarjetaResultados(),
             const SizedBox(height: 12),
+            TarjetaDondeEsta(controlador: _dondeEsta, escuchando: _escucha != null),
+            const SizedBox(height: 12),
             _tarjetaSesion(),
+            if (_sonidosPropios != null) ...[
+              const SizedBox(height: 12),
+              TarjetaTusSonidos(
+                controlador: _sonidosPropios!,
+                embeddingUltimoTrozo: _embeddingUltimoTrozoLimpio,
+              ),
+            ],
           ],
         ],
       ),
@@ -966,6 +1107,12 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
         ));
       }
     }
+    if (escuchando && !identical(_evaluacionCalidad, EvaluacionCalidad.sinDatos)) {
+      lineasEstado.add(Padding(
+        padding: const EdgeInsets.only(top: 4),
+        child: IndicadorCalidadAudio(evaluacion: _evaluacionCalidad),
+      ));
+    }
     if (_errorEscucha != null) {
       lineasEstado.add(Text(SoleraL10n.tf('nat.son_error_analisis', {'mensaje': _errorEscucha}),
           style: tema.bodySmall?.copyWith(color: Theme.of(context).colorScheme.error)));
@@ -986,6 +1133,17 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
             ),
             const SizedBox(height: 8),
             ...lineasEstado,
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: Text(SoleraL10n.t('nat.son_pantalla_encendida')),
+              value: _mantenerPantallaEncendida,
+              onChanged: (valor) {
+                setState(() => _mantenerPantallaEncendida = valor);
+                _guardarPreferencia(_clavePreferenciaPantallaEncendida, valor);
+                if (_escucha != null) _ajustarPantallaEncendida(valor);
+              },
+            ),
           ],
         ),
       ),
@@ -1099,6 +1257,31 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
     } else if (_ultimoTrozoConVoz) {
       hijos.add(Text(SoleraL10n.t('nat.son_voz_humana')));
     } else {
+      for (final coincidencia in _coincidenciasPropias.coincidencias) {
+        hijos.add(Container(
+          margin: const EdgeInsets.only(bottom: 8),
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.tertiaryContainer,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.bookmark_outline, color: Theme.of(context).colorScheme.onTertiaryContainer),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  SoleraL10n.tf('nat.son_coincide_tuyo', {
+                    'nombre': coincidencia.nombre,
+                    'similitud': textoSimilitud(coincidencia.similitud),
+                  }),
+                  style: TextStyle(color: Theme.of(context).colorScheme.onTertiaryContainer),
+                ),
+              ),
+            ],
+          ),
+        ));
+      }
       if (_imagenEspectrograma != null) {
         hijos.add(Semantics(
           label: SoleraL10n.t('nat.son_espectrograma_accesible'),

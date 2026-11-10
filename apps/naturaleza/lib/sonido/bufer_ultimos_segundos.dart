@@ -12,8 +12,18 @@ import 'dart:typed_data';
 /// apunta qué tramos se analizaron y cuáles tenían voz; el clip es el último
 /// tramo continuo limpio (y lo que aún no se ha analizado no entra).
 
-/// Duración del búfer.
+/// Duración máxima del clip de lo último oído.
 const double segundosBuferUltimoOido = 10;
+
+/// Lo que se guarda además en el búfer: lo más reciente (hasta una ventana
+/// de 5 s y su análisis) aún no está analizado y no puede entrar en el clip.
+const double segundosMargenSinAnalizar = 5;
+
+/// Hueco sin analizar que se tolera entre dos trozos limpios para darlos por
+/// continuos. Sin solape, cada trozo se toma cuando llega el bloque del
+/// micrófono que completa el salto, así que entre uno y otro quedan unas
+/// decenas de milisegundos sin analizar: ahí no cabe una frase.
+const double segundosHuecoToleradoEntreTrozos = 0.1;
 
 /// Búfer circular de muestras con posiciones absolutas (contadas desde que
 /// se abrió el micrófono), para casarlas con los trozos analizados.
@@ -94,12 +104,13 @@ class RegistroTramosAnalizados {
     _conVoz.clear();
   }
 
-  /// Unión de tramos, ordenada y sin solapes (los contiguos se juntan).
-  static List<TramoMuestras> _unir(List<TramoMuestras> tramos) {
+  /// Unión de tramos, ordenada y sin solapes (los contiguos, o separados por
+  /// [huecoTolerado] muestras o menos, se juntan).
+  static List<TramoMuestras> _unir(List<TramoMuestras> tramos, {int huecoTolerado = 0}) {
     final ordenados = List<TramoMuestras>.of(tramos)..sort((a, b) => a.inicio.compareTo(b.inicio));
     final unidos = <TramoMuestras>[];
     for (final tramo in ordenados) {
-      if (unidos.isNotEmpty && tramo.inicio <= unidos.last.fin) {
+      if (unidos.isNotEmpty && tramo.inicio <= unidos.last.fin + huecoTolerado) {
         final ultimo = unidos.removeLast();
         unidos.add((inicio: ultimo.inicio, fin: math.max(ultimo.fin, tramo.fin)));
       } else {
@@ -109,12 +120,13 @@ class RegistroTramosAnalizados {
     return unidos;
   }
 
-  /// Tramos analizados sin voz humana: los limpios menos todo lo que toque
-  /// un trozo con voz.
-  List<TramoMuestras> tramosLimpios() {
+  /// Tramos analizados sin voz humana: los limpios (juntando los separados
+  /// por [huecoTolerado] muestras o menos) menos todo lo que toque un trozo
+  /// con voz.
+  List<TramoMuestras> tramosLimpios({int huecoTolerado = 0}) {
     final voz = _unir(_conVoz);
     final resultado = <TramoMuestras>[];
-    for (final limpio in _unir(_limpios)) {
+    for (final limpio in _unir(_limpios, huecoTolerado: huecoTolerado)) {
       var inicio = limpio.inicio;
       for (final tramoVoz in voz) {
         if (tramoVoz.fin <= inicio || tramoVoz.inicio >= limpio.fin) continue;
@@ -128,8 +140,12 @@ class RegistroTramosAnalizados {
 
   /// El último tramo continuo limpio, recortado a [maximoMuestras] (se
   /// queda con el final) y a lo que aún está en el búfer. Null si no hay.
-  TramoMuestras? ultimoTramoLimpio({required int maximoMuestras, required int primeraDisponible}) {
-    final limpios = tramosLimpios();
+  TramoMuestras? ultimoTramoLimpio({
+    required int maximoMuestras,
+    required int primeraDisponible,
+    int huecoTolerado = 0,
+  }) {
+    final limpios = tramosLimpios(huecoTolerado: huecoTolerado);
     for (var indice = limpios.length - 1; indice >= 0; indice--) {
       final tramo = limpios[indice];
       final inicio = math.max(tramo.inicio, math.max(primeraDisponible, tramo.fin - maximoMuestras));

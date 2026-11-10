@@ -99,7 +99,11 @@ class EscuchaMicrofonoFauna {
         final segundosVentana =
             clasificador.manifiesto.muestrasVentana / clasificador.manifiesto.frecuenciaMuestreoHz;
         _recolector = RecolectorVentanasAudio((segundosVentana * frecuenciaHz).round());
-        _buferUltimoOido = BuferCircularAudio((segundosBuferUltimoOido * frecuenciaHz).round());
+        // Se guardan 5 s más que el clip: lo más nuevo aún no se ha analizado
+        // y no puede entrar, así que sin ese margen el clip limpio no
+        // llegaría a los 10 s.
+        _buferUltimoOido = BuferCircularAudio(
+            ((segundosBuferUltimoOido + segundosMargenSinAnalizar) * frecuenciaHz).round());
         _registroTramos.vaciar();
         _suscripcion = flujo.listen(_recibirBloque, onError: (Object error) {
           alFallarAnalisis(error.toString());
@@ -186,8 +190,9 @@ class EscuchaMicrofonoFauna {
     final bufer = _buferUltimoOido;
     if (bufer == null || _frecuenciaMicrofonoHz <= 0) return null;
     final tramo = _registroTramos.ultimoTramoLimpio(
-      maximoMuestras: bufer.capacidadMuestras,
+      maximoMuestras: (segundosBuferUltimoOido * _frecuenciaMicrofonoHz).round(),
       primeraDisponible: bufer.primeraMuestraDisponible,
+      huecoTolerado: (segundosHuecoToleradoEntreTrozos * _frecuenciaMicrofonoHz).round(),
     );
     if (tramo == null) return null;
     final muestras = bufer.extraer(tramo.inicio, tramo.fin);

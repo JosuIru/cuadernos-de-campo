@@ -88,6 +88,21 @@ void main() {
       expect(registro.ultimoTramoLimpio(maximoMuestras: 1000, primeraDisponible: 0), (inicio: 150, fin: 250));
     });
 
+    test('sin solape, un hueco de unas muestras entre trozos se tolera si se pide', () {
+      // Lo medido en el emulador: trozos de 240000 muestras cada 242688.
+      final registro = RegistroTramosAnalizados()
+        ..registrar(0, 240000, conVozHumana: false)
+        ..registrar(242688, 482688, conVozHumana: false);
+      expect(registro.ultimoTramoLimpio(maximoMuestras: 480000, primeraDisponible: 0),
+          (inicio: 242688, fin: 482688));
+      expect(registro.ultimoTramoLimpio(maximoMuestras: 480000, primeraDisponible: 0, huecoTolerado: 4800),
+          (inicio: 2688, fin: 482688));
+      // Un trozo con voz en el hueco sigue cortando.
+      registro.registrar(240000, 242688, conVozHumana: true);
+      expect(registro.ultimoTramoLimpio(maximoMuestras: 480000, primeraDisponible: 0, huecoTolerado: 4800),
+          (inicio: 242688, fin: 482688));
+    });
+
     test('se recorta a lo que queda en el búfer', () {
       final registro = RegistroTramosAnalizados()..registrar(0, 100, conVozHumana: false);
       expect(registro.ultimoTramoLimpio(maximoMuestras: 1000, primeraDisponible: 60), (inicio: 60, fin: 100));
