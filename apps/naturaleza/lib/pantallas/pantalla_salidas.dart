@@ -83,7 +83,7 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
                   ),
                   textCapitalization: TextCapitalization.sentences,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: separacionCamposSolera),
                 TextField(
                   controller: controladorZona,
                   decoration: InputDecoration(
@@ -92,7 +92,7 @@ class _PantallaSalidasState extends State<PantallaSalidas> {
                   ),
                   textCapitalization: TextCapitalization.sentences,
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: separacionCamposSolera),
                 TextField(
                   controller: controladorHipotesis,
                   decoration: InputDecoration(

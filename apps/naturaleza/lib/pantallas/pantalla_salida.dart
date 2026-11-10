@@ -85,20 +85,20 @@ class _PantallaSalidaState extends State<PantallaSalida> {
                 decoration: InputDecoration(labelText: SoleraL10n.t('nat.mapa_titulo')),
                 textCapitalization: TextCapitalization.sentences,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: separacionCamposSolera),
               TextField(
                 controller: controladorZona,
                 decoration: InputDecoration(labelText: SoleraL10n.t('nat.mapa_zona')),
                 textCapitalization: TextCapitalization.sentences,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: separacionCamposSolera),
               TextField(
                 controller: controladorMeteo,
                 decoration:
                     InputDecoration(labelText: SoleraL10n.t('nat.mapa_meteo_resumen')),
                 textCapitalization: TextCapitalization.sentences,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: separacionCamposSolera),
               Row(
                 children: [
                   Expanded(
@@ -121,7 +121,7 @@ class _PantallaSalidaState extends State<PantallaSalida> {
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: separacionCamposSolera),
               TextField(
                 controller: controladorHipotesis,
                 decoration: InputDecoration(
@@ -129,7 +129,7 @@ class _PantallaSalidaState extends State<PantallaSalida> {
                 textCapitalization: TextCapitalization.sentences,
                 maxLines: 2,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: separacionCamposSolera),
               TextField(
                 controller: controladorNotas,
                 decoration:

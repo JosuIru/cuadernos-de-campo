@@ -1214,22 +1214,22 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
               controller: _controladorNombreComun,
               decoration: InputDecoration(labelText: SoleraL10n.t('agro.nombre_comun'), border: OutlineInputBorder()),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: separacionCamposSolera),
             TextField(
               controller: _controladorEspecie,
               decoration: InputDecoration(labelText: SoleraL10n.t('nat.hall_nombre_cientifico_binomial'), border: OutlineInputBorder()),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: separacionCamposSolera),
             TextField(
               controller: _controladorTaxonomia,
               decoration: InputDecoration(labelText: SoleraL10n.t('nat.hall_taxonomia'), border: OutlineInputBorder()),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: separacionCamposSolera),
             TextField(
               controller: _controladorHabitat,
               decoration: InputDecoration(labelText: SoleraL10n.t('nat.hall_habitat'), border: OutlineInputBorder()),
             ),
-            SizedBox(height: 8),
+            const SizedBox(height: separacionCamposSolera),
             TextField(
               controller: _controladorNotas,
               decoration: InputDecoration(labelText: SoleraL10n.t('fos.hall_notas'), border: OutlineInputBorder()),
@@ -1274,13 +1274,13 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             clave: 'fenologia',
             opciones: const ['vegetativa', 'flor', 'fruto', 'semilla', 'senescente'],
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: separacionCamposSolera),
           _menuDesplegable(
             etiqueta: SoleraL10n.t('nat.hall_porte'),
             clave: 'porte',
             opciones: const ['árbol', 'arbusto', 'mata', 'herbácea', 'trepadora', 'suculenta'],
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: separacionCamposSolera),
           _campoNumero(etiqueta: SoleraL10n.t('nat.hall_altura_aprox_cm'), clave: 'altura_estimada_cm'),
         ];
       case 'insecto':
@@ -1290,9 +1290,9 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             clave: 'estadio',
             opciones: const ['huevo', 'larva', 'ninfa', 'pupa', 'adulto'],
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: separacionCamposSolera),
           _campoTexto(etiqueta: SoleraL10n.t('nat.hall_planta_hospedadora'), clave: 'planta_hospedadora'),
-          SizedBox(height: 8),
+          const SizedBox(height: separacionCamposSolera),
           _campoNumero(etiqueta: SoleraL10n.t('nat.hall_numero_individuos'), clave: 'numero_individuos'),
         ];
       case 'animal':
@@ -1306,9 +1306,9 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             clave: 'evidencia',
             opciones: const ['avistamiento', 'huella', 'excremento', 'pluma o pelo', 'vocalización', 'nido o madriguera', 'otro'],
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: separacionCamposSolera),
           _campoNumero(etiqueta: SoleraL10n.t('nat.hall_numero_individuos'), clave: 'numero_individuos'),
-          SizedBox(height: 8),
+          const SizedBox(height: separacionCamposSolera),
           _campoTexto(etiqueta: SoleraL10n.t('nat.hall_comportamiento'), clave: 'comportamiento'),
         ];
       case 'seta':
@@ -1326,7 +1326,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
               'otro',
             ],
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: separacionCamposSolera),
           _menuDesplegable(
             etiqueta: SoleraL10n.t('nat.hall_color_sombrero'),
             clave: 'color_sombrero',
@@ -1342,9 +1342,9 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
               'otro',
             ],
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: separacionCamposSolera),
           _campoNumero(etiqueta: SoleraL10n.t('nat.hall_diametro_sombrero_cm'), clave: 'sombrero_diametro_cm'),
-          SizedBox(height: 8),
+          const SizedBox(height: separacionCamposSolera),
           _campoNumero(etiqueta: SoleraL10n.t('nat.hall_numero_ejemplares'), clave: 'numero_individuos'),
         ];
     }
