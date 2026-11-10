@@ -150,7 +150,7 @@ class _DialogoCompartirComunidadState extends State<DialogoCompartirComunidad> {
                 border: const OutlineInputBorder(),
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: separacionCamposSolera),
             TextField(
               controller: _controladorNombre,
               decoration: InputDecoration(

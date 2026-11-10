@@ -35,7 +35,7 @@ Future<bool> mostrarDialogoAnadirTrazabilidad(
                     .toList(),
                 onChanged: (v) => setStateDialog(() => tipoSeleccionado = v!),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: separacionCamposSolera),
               TextField(
                 controller: controladorDesc,
                 decoration: InputDecoration(
@@ -45,7 +45,7 @@ Future<bool> mostrarDialogoAnadirTrazabilidad(
                 ),
                 maxLines: 2,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: separacionCamposSolera),
               TextField(
                 controller: controladorAutor,
                 decoration: InputDecoration(

@@ -51,6 +51,7 @@ lib/
 - **No reescribir la voz** ni la UX para que parezca app Kids. Esta app habla a adultos.
 - **Nombres descriptivos en castellano** (regla de monorepo) en código nuevo.
 - Tests existentes son mínimos. No exigir cobertura como en Kids — código preexistente del operador.
+- **Barra de Android y campos (pantallas nuevas)**: con targetSdk ≥ 35 (Android 15+, edge-to-edge) la barra de navegación tapa lo último. Todo `padding:` de un scroll que llegue al borde inferior de una pantalla empujada (sin `NavigationBar`) pasa por `rellenoInferiorSeguro(context, …)`; toda hoja inferior, por `mostrarHojaSolera` o `margenHojaSegura(contextoHoja, …)` (`useSafeArea: true` no protege el borde de abajo); nada de `SafeArea` doble. Entre dos campos de formulario seguidos, `separacionCamposSolera` (12) o `separarCampoSolera(campo)`, todo del core. Test: `test/pantallas/hueco_barra_y_campos_test.dart` (barra de 48 px).
 
 ## Comandos habituales
 

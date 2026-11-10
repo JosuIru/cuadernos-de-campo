@@ -80,7 +80,7 @@ class _PantallaPerfilIdentidadState extends State<PantallaPerfilIdentidad> {
               hintText: SoleraL10n.t('fos.iden_nombre_ejemplo'),
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: separacionCamposSolera),
           TextField(
             controller: _controladorEmail,
             keyboardType: TextInputType.emailAddress,
@@ -90,7 +90,7 @@ class _PantallaPerfilIdentidadState extends State<PantallaPerfilIdentidad> {
               hintText: SoleraL10n.t('fos.iden_email_ejemplo'),
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: separacionCamposSolera),
           TextField(
             controller: _controladorOrganizacion,
             decoration: InputDecoration(

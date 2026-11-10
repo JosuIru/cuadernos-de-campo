@@ -157,7 +157,7 @@ class _PantallaCertificarState extends State<PantallaCertificar> {
               border: const OutlineInputBorder(),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: separacionCamposSolera),
           TextField(
             controller: _edad,
             decoration: InputDecoration(
@@ -165,7 +165,7 @@ class _PantallaCertificarState extends State<PantallaCertificar> {
               border: const OutlineInputBorder(),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: separacionCamposSolera),
           TextField(
             controller: _formacion,
             decoration: InputDecoration(
@@ -173,7 +173,7 @@ class _PantallaCertificarState extends State<PantallaCertificar> {
               border: const OutlineInputBorder(),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: separacionCamposSolera),
           TextField(
             controller: _comentarios,
             maxLines: 5,
