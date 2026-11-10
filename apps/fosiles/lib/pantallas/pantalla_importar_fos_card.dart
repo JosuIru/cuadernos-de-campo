@@ -165,7 +165,7 @@ class _PantallaImportarFosCardState extends State<PantallaImportarFosCard> {
     }
     final h = p.hallazgo;
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
       children: [
         _bloqueFirma(p),
         const SizedBox(height: 16),

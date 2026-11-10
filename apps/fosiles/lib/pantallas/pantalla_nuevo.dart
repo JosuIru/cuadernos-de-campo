@@ -198,7 +198,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         minChildSize: 0.4,
         builder: (_, scrollController) => SingleChildScrollView(
           controller: scrollController,
-          padding: const EdgeInsets.all(16),
+          padding: margenHojaSegura(sheetContext, const EdgeInsets.all(16)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -432,7 +432,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
         children: [
           SegmentedButton<String>(
             segments: [

@@ -178,7 +178,7 @@ class _PantallaQuizState extends State<PantallaQuiz> {
           SizedBox(height: 16),
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: rellenoInferiorSeguro(context, const EdgeInsets.symmetric(horizontal: 16)),
               itemCount: _opciones.length,
               itemBuilder: (_, i) {
                 final item = _opciones[i];

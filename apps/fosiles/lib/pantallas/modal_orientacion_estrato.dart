@@ -87,7 +87,7 @@ class _ModalOrientacionState extends State<_ModalOrientacion> {
     final tiltCasiVertical = medida.dip > 80;
     final tiltCasiHorizontal = medida.dip < 3;
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: margenHojaSegura(context, const EdgeInsets.all(16)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,

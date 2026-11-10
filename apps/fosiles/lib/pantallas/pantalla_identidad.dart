@@ -106,7 +106,7 @@ class _PantallaIdentidadState extends State<PantallaIdentidad> {
       body: _cargando
           ? const Center(child: CircularProgressIndicator())
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
               children: [
                 _seccion(
                   titulo: SoleraL10n.t('fos.iden_datos_declarados'),

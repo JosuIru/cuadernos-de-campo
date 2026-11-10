@@ -63,7 +63,7 @@ class _PantallaFotosComunidadState extends State<PantallaFotosComunidad> {
               ),
               Expanded(
                 child: GridView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  padding: rellenoInferiorSeguro(context, const EdgeInsets.symmetric(horizontal: 8)),
                   gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                     crossAxisCount: 2,
                     mainAxisSpacing: 8,
@@ -213,7 +213,7 @@ class _VisorFotoComunidad extends StatelessWidget {
           if (foto.edadCurada.isNotEmpty || foto.comentariosCurador.isNotEmpty)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(16),
+              padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
               color: Colors.black87,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

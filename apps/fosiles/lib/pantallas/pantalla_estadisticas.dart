@@ -110,7 +110,7 @@ class _PantallaEstadisticasState extends State<PantallaEstadisticas> {
     return Scaffold(
       appBar: AppBar(title: Text(SoleraL10n.t('fos.hall_estadisticas'))),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
         children: [
           _filaTotales([
             (SoleraL10n.t('fos.hall_titulo'), _hallazgos.length.toString()),

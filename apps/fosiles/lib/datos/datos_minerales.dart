@@ -1029,14 +1029,14 @@ void _mostrarFichaMineral(BuildContext context, MineralGuia mineral) {
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => DraggableScrollableSheet(
+    builder: (contextoHoja) => DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.85,
       maxChildSize: 0.95,
       minChildSize: 0.4,
       builder: (_, scrollController) => SingleChildScrollView(
         controller: scrollController,
-        padding: const EdgeInsets.all(16),
+        padding: margenHojaSegura(contextoHoja, const EdgeInsets.all(16)),
         child: _contenidoMineral(context, mineral, clase),
       ),
     ),
@@ -1073,7 +1073,7 @@ void _abrirFichaMineralNavegable(BuildContext context, List<MineralGuia> lista, 
                   final c = buscarClaseMineral(m.claseStrunzId);
                   return SingleChildScrollView(
                     controller: scrollController,
-                    padding: const EdgeInsets.all(16),
+                    padding: margenHojaSegura(sheetContext, const EdgeInsets.all(16)),
                     child: _contenidoMineral(context, m, c),
                   );
                 },

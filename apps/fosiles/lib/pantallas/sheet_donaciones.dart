@@ -47,7 +47,7 @@ class _ContenidoSheet extends StatelessWidget {
       expand: false,
       builder: (ctx, controlador) => ListView(
         controller: controlador,
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+        padding: margenHojaSegura(ctx, const EdgeInsets.fromLTRB(20, 0, 20, 32)),
         children: [
           Text(
             SoleraL10n.t('fos.ajus_apoyar'),

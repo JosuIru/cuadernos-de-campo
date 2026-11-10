@@ -12,7 +12,7 @@ class PantallaLineaTiempo extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(SoleraL10n.t('fos.hall_linea_tiempo'))),
       body: ListView.builder(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: rellenoInferiorSeguro(context, const EdgeInsets.symmetric(vertical: 8)),
         itemCount: periodos.length,
         itemBuilder: (_, i) => _bloquePeriodo(context, periodos[i]),
       ),

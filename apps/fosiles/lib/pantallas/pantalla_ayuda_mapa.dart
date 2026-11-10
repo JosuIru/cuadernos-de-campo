@@ -15,7 +15,7 @@ class PantallaAyudaMapa extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(title: Text(SoleraL10n.t('fos.mapa_como_leer_mapa'))),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
         children: [
           Text(SoleraL10n.t('fos.mapa_ayuda_capas_titulo'), style: estiloTitulo),
           const SizedBox(height: 6),

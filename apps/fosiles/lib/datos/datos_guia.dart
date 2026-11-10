@@ -1443,14 +1443,14 @@ void _mostrarFichaFosil(BuildContext context, FosilGuia fosil) {
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => DraggableScrollableSheet(
+    builder: (contextoHoja) => DraggableScrollableSheet(
       expand: false,
       initialChildSize: 0.85,
       maxChildSize: 0.95,
       minChildSize: 0.4,
       builder: (_, scrollController) => SingleChildScrollView(
         controller: scrollController,
-        padding: const EdgeInsets.all(16),
+        padding: margenHojaSegura(contextoHoja, const EdgeInsets.all(16)),
         child: _contenidoFosil(context, fosil, periodo),
       ),
     ),
@@ -1487,7 +1487,7 @@ void _abrirFichaFosilNavegable(BuildContext context, List<FosilGuia> lista, int 
                   final p = buscarPeriodo(f.periodoId);
                   return SingleChildScrollView(
                     controller: scrollController,
-                    padding: const EdgeInsets.all(16),
+                    padding: margenHojaSegura(sheetContext, const EdgeInsets.all(16)),
                     child: _contenidoFosil(context, f, p),
                   );
                 },

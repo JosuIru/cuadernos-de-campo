@@ -195,7 +195,7 @@ class _PantallaMeteoState extends State<PantallaMeteo> {
         .toList();
 
     return ListView(
-      padding: const EdgeInsets.all(12),
+      padding: rellenoInferiorSeguro(context, const EdgeInsets.all(12)),
       children: [
         // ─── Cabecera del día actual ──────────────────────
         Container(

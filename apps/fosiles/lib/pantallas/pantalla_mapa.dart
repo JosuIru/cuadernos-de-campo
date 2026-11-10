@@ -333,8 +333,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
         : '${formatearNumero(distancia / 1000, decimales: 2)} km';
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(20),
+      builder: (contextoHoja) => Padding(
+        padding: margenHojaSegura(contextoHoja, const EdgeInsets.all(20)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -650,7 +650,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
         minChildSize: 0.3,
         builder: (_, scrollController) => ListView(
           controller: scrollController,
-          padding: const EdgeInsets.all(16),
+          padding: margenHojaSegura(sheetCtx, const EdgeInsets.all(16)),
           children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(y.emoji, style: TextStyle(fontSize: 32)),
@@ -702,8 +702,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
   void _mostrarPopupMonumento(MonumentoArqueologico m) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(16),
+      builder: (contextoHoja) => Padding(
+        padding: margenHojaSegura(contextoHoja, const EdgeInsets.all(16)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -819,7 +819,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
                     final h = lista[i];
                   return SingleChildScrollView(
                     controller: scrollController,
-                    padding: const EdgeInsets.all(16),
+                    padding: margenHojaSegura(sheetContext, const EdgeInsets.all(16)),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1182,8 +1182,8 @@ class _PantallaMapaState extends State<PantallaMapa> {
   void _mostrarPopupCueva(CuevaOSM cueva) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (_) => Padding(
-        padding: const EdgeInsets.all(16),
+      builder: (contextoHoja) => Padding(
+        padding: margenHojaSegura(contextoHoja, const EdgeInsets.all(16)),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1386,7 +1386,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
               if (contexto == null && contextoSug == null && ligs.isEmpty) {
                 return ListView(
                   controller: scrollController,
-                  padding: const EdgeInsets.all(16),
+                  padding: margenHojaSegura(sheetContext, const EdgeInsets.all(16)),
                   children: [
                     Text(SoleraL10n.t('fos.mapa_sin_datos'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                     const SizedBox(height: 8),
@@ -1423,7 +1423,7 @@ class _PantallaMapaState extends State<PantallaMapa> {
               );
               return ListView(
                 controller: scrollController,
-                padding: const EdgeInsets.all(16),
+                padding: margenHojaSegura(sheetContext, const EdgeInsets.all(16)),
                 children: [
                   Text(SoleraL10n.t('fos.mapa_geologia_en_punto'), style: Theme.of(context).textTheme.titleLarge),
                   SizedBox(height: 12),
@@ -1563,14 +1563,14 @@ class _PantallaMapaState extends State<PantallaMapa> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (_) => DraggableScrollableSheet(
+      builder: (contextoHoja) => DraggableScrollableSheet(
         expand: false,
         initialChildSize: 0.55,
         maxChildSize: 0.9,
         minChildSize: 0.3,
         builder: (__, scrollController) => ListView(
           controller: scrollController,
-          padding: const EdgeInsets.all(16),
+          padding: margenHojaSegura(contextoHoja, const EdgeInsets.all(16)),
           children: [
             Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('⭐', style: TextStyle(fontSize: 28)),

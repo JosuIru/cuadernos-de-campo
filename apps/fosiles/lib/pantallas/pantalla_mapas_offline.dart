@@ -139,7 +139,7 @@ class _PantallaMapasOfflineState extends State<PantallaMapasOffline> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.all(16),
+              padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
               children: [
                 Text(SoleraL10n.t('fos.mapa_centra_zona'), style: TextStyle(fontSize: 13, color: Colors.grey)),
                 SizedBox(height: 16),

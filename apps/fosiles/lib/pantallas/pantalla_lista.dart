@@ -106,7 +106,7 @@ class _PantallaListaState extends State<PantallaLista> {
           controller: controladorFichas,
           itemCount: listaVisible.length,
           itemBuilder: (_, indice) => SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: margenHojaSegura(sheetContext, const EdgeInsets.all(16)),
             child: _contenidoFichaHallazgo(
               sheetContext: sheetContext,
               hallazgo: listaVisible[indice],

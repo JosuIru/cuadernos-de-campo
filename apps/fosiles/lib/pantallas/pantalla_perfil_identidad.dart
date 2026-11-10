@@ -63,7 +63,7 @@ class _PantallaPerfilIdentidadState extends State<PantallaPerfilIdentidad> {
     return Scaffold(
       appBar: AppBar(title: Text(SoleraL10n.t('fos.iden_perfil_e_identidad'))),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: rellenoInferiorSeguro(context, const EdgeInsets.all(16)),
         children: [
           Text(SoleraL10n.t('fos.iden_perfil_descubridor'), style: Theme.of(context).textTheme.titleLarge),
           SizedBox(height: 8),
