@@ -10,7 +10,7 @@ petición cada 1,1 s) y escribe:
 Solo hace falta volver a lanzarlo cuando cambian las especies de la guía.
 Con `--solo-dart` regenera el .dart desde el CSV sin red.
 """
-import csv, json, pathlib, re, sys, time, urllib.parse, urllib.request
+import csv, json, pathlib, re, sys, time, urllib.error, urllib.parse, urllib.request
 
 raiz = pathlib.Path(__file__).resolve().parent.parent
 ruta_csv = raiz / 'datos_fuente/claves_gbif.csv'
