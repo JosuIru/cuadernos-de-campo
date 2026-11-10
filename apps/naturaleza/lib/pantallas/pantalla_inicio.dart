@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'pantalla_chat.dart';
 import 'pantalla_meteo.dart';
+import 'pantalla_quien_canta.dart';
 import 'pantalla_salida.dart';
 import 'pantalla_salidas.dart';
 import '../datos/base_datos.dart';
@@ -184,6 +185,17 @@ class _PantallaInicioState extends State<PantallaInicio> {
                           builder: (_) => const PantallaSalidas()),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  _tarjetaAccion(
+                    context,
+                    icono: Icons.graphic_eq,
+                    titulo: SoleraL10n.t('nat.son_titulo'),
+                    subtitulo: SoleraL10n.t('nat.son_atajo_sub'),
+                    onTap: () => Navigator.of(context)
+                        .push(MaterialPageRoute(
+                            builder: (_) => const PantallaQuienCanta()))
+                        .then((_) => _cargarCifras()),
+                  ),
                   TituloBloqueSolera(SoleraL10n.t('nat.ajus_etica_titulo')),
                   Card(
                     child: Padding(
@@ -235,6 +247,8 @@ class _PantallaInicioState extends State<PantallaInicio> {
                             SoleraL10n.t('nat.ajus_paso4_texto')),
                         _paso(context, 5, SoleraL10n.t('nat.ajus_paso5_titulo'),
                             SoleraL10n.t('nat.ajus_paso5_texto')),
+                        _paso(context, 6, SoleraL10n.t('nat.son_paso_titulo'),
+                            SoleraL10n.t('nat.son_paso_texto')),
                       ]),
                     ),
                   ),

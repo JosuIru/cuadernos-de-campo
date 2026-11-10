@@ -11,6 +11,7 @@ import '../datos/configuracion.dart';
 import '../datos/datos_guia.dart';
 import '../modelos/atribucion_foto.dart';
 import '../modelos/hallazgo.dart';
+import '../modelos/resultado_escucha.dart';
 import '../modelos/salida.dart';
 import '../servicios/estado_salida_en_curso.dart';
 import '../servicios/identificador_claude.dart';
@@ -19,16 +20,23 @@ import '../servicios/servicio_plantnet.dart';
 import '../utiles/permisos_gps.dart';
 import 'pantalla_anotar_foto.dart';
 import 'pantalla_buscar_foto_archivo.dart';
+import 'pantalla_quien_canta.dart';
+import 'widgets/reproductor_clip.dart';
 
 class PantallaNuevoHallazgo extends StatefulWidget {
   final double? latitudPredefinida;
   final double? longitudPredefinida;
   final Hallazgo? hallazgoExistente;
+
+  /// Especie elegida en «¿Quién canta?» (cuando se entra desde allí): se
+  /// rellena el alta con ella, la hora y el clip.
+  final ResultadoEscucha? resultadoEscucha;
   PantallaNuevoHallazgo({
     super.key,
     this.latitudPredefinida,
     this.longitudPredefinida,
     this.hallazgoExistente,
+    this.resultadoEscucha,
   });
 
   bool get esEdicion => hallazgoExistente != null;
@@ -77,6 +85,18 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
   Salida? _salidaAsociarAuto;
   bool _asociarASalida = true;
 
+  /// Clip de audio del hallazgo (de «¿Quién canta?»).
+  String? _rutaAudio;
+
+  /// Clip recién grabado que aún no está en la BD: si se sale sin guardar,
+  /// se borra para no dejar ficheros sueltos.
+  String? _rutaAudioSinGuardar;
+  bool _guardado = false;
+
+  /// Hora en que se oyó la especie (si viene de «¿Quién canta?»); el
+  /// hallazgo nuevo se fecha con ella en vez de con la hora de guardar.
+  int? _fechaMsEscucha;
+
   @override
   void initState() {
     super.initState();
@@ -107,6 +127,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       _latitud = hallazgo.latitud;
       _longitud = hallazgo.longitud;
       _precision = hallazgo.precision;
+      _rutaAudio = hallazgo.rutaAudio;
     } else {
       _latitud = widget.latitudPredefinida;
       _longitud = widget.longitudPredefinida;
@@ -115,6 +136,57 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
       }
     }
     _cargarClavePlantNet();
+    final resultadoEscucha = widget.resultadoEscucha;
+    if (resultadoEscucha != null) _aplicarResultadoEscucha(resultadoEscucha);
+  }
+
+  /// Rellena el formulario con la especie elegida en «¿Quién canta?».
+  void _aplicarResultadoEscucha(ResultadoEscucha resultado) {
+    _descartarAudioSinGuardar();
+    _categoria = resultado.categoria;
+    _tipoEvidencia = TipoEvidencia.sonido;
+    _controladorEspecie.text = resultado.nombreCientifico;
+    if (resultado.nombreComun.isNotEmpty) _controladorNombreComun.text = resultado.nombreComun;
+    _rutaAudio = resultado.rutaAudio;
+    _rutaAudioSinGuardar = resultado.rutaAudio;
+    if (widget.hallazgoExistente == null) {
+      _fechaMsEscucha = resultado.momento.millisecondsSinceEpoch;
+    }
+    _atributos['identificacion_sonido'] = resultado.aAtributo();
+    // Cómo se registró, en el campo propio de cada categoría.
+    if (_categoria == 'ave') {
+      _atributos['tipo_observacion'] = 'escuchada';
+    } else if (_clavesAtributosCategoria(_categoria).contains('evidencia')) {
+      _atributos['evidencia'] = 'vocalización';
+      _controladoresAtributos.remove('evidencia')?.dispose();
+    }
+  }
+
+  Future<void> _escucharQuienCanta() async {
+    final resultado = await Navigator.of(context).push<ResultadoEscucha>(
+      MaterialPageRoute(builder: (_) => const PantallaQuienCanta(devolverResultado: true)),
+    );
+    if (resultado == null || !mounted) return;
+    setState(() => _aplicarResultadoEscucha(resultado));
+  }
+
+  void _quitarAudio() {
+    setState(() {
+      _descartarAudioSinGuardar();
+      _rutaAudio = null;
+      _atributos.remove('identificacion_sonido');
+    });
+  }
+
+  /// Borra el clip recién grabado si todavía no se ha guardado.
+  void _descartarAudioSinGuardar() {
+    final ruta = _rutaAudioSinGuardar;
+    _rutaAudioSinGuardar = null;
+    if (ruta == null) return;
+    try {
+      final fichero = File(ruta);
+      if (fichero.existsSync()) fichero.deleteSync();
+    } catch (_) {}
   }
 
   Future<void> _cargarClavePlantNet() async {
@@ -125,6 +197,7 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
 
   @override
   void dispose() {
+    if (!_guardado) _descartarAudioSinGuardar();
     _controladorNombreComun.dispose();
     _controladorEspecie.dispose();
     _controladorTaxonomia.dispose();
@@ -470,6 +543,8 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           hipotesis: _controladorHipotesis.text.trim(),
           confianzaIdentificacion: _confianza,
           limpiarConfianza: _confianza == null,
+          rutaAudio: _rutaAudio,
+          quitarAudio: _rutaAudio == null,
         );
         final idHallazgo = hallazgoExistente.id;
         if (idHallazgo == null) {
@@ -493,11 +568,12 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
             'tipo_evidencia': mapa['tipo_evidencia'],
             'hipotesis': mapa['hipotesis'],
             'confianza_identificacion': mapa['confianza_identificacion'],
+            'ruta_audio': hallazgoActualizado.rutaAudio,
           },
         );
       } else {
         final hallazgo = Hallazgo(
-          fechaMs: DateTime.now().millisecondsSinceEpoch,
+          fechaMs: _fechaMsEscucha ?? DateTime.now().millisecondsSinceEpoch,
           latitud: _latitud!,
           longitud: _longitud!,
           precision: _precision,
@@ -514,9 +590,11 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
           tipoEvidencia: _tipoEvidencia,
           hipotesis: _controladorHipotesis.text.trim(),
           confianzaIdentificacion: _confianza,
+          rutaAudio: _rutaAudio,
         );
         await BaseDatosNaturaleza.instancia.guardarHallazgo(hallazgo);
       }
+      _guardado = true;
     } catch (e) {
       // Si SQLite (u otra capa) lanza, no perdemos el formulario:
       // mostramos el error y dejamos al usuario reintentar. Antes el
@@ -535,7 +613,10 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     final clavesPermitidas = _clavesAtributosCategoria(_categoria);
     final filtrado = <String, dynamic>{};
     for (final entrada in _atributos.entries) {
-      if (!clavesPermitidas.contains(entrada.key)) continue;
+      if (!clavesPermitidas.contains(entrada.key) &&
+          !_atributosDeCualquierCategoria.contains(entrada.key)) {
+        continue;
+      }
       final valor = entrada.value;
       if (valor == null) continue;
       if (valor is String && valor.trim().isEmpty) continue;
@@ -569,6 +650,10 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
     // hospedante asociado en especies micorrícicas.
     'seta': ['sustrato', 'color_sombrero', 'sombrero_diametro_cm', 'numero_individuos'],
   };
+
+  /// Atributos que no dependen de la categoría: de dónde salió la
+  /// identificación por sonido (modelo, puntuación…).
+  static const Set<String> _atributosDeCualquierCategoria = {'identificacion_sonido'};
 
   static List<String> _clavesAtributosCategoria(String categoria) =>
       _atributosPorCategoria[categoria] ?? const [];
@@ -1299,6 +1384,16 @@ class _PantallaNuevoHallazgoState extends State<PantallaNuevoHallazgo> {
               onPressed: _identificando ? null : _identificarConIa,
               label: Text(SoleraL10n.t('fos.hall_identificar_claude')),
             ),
+            SizedBox(height: 8),
+            OutlinedButton.icon(
+              icon: Icon(Icons.graphic_eq),
+              onPressed: _escucharQuienCanta,
+              label: Text(SoleraL10n.t('nat.son_boton_identificar')),
+            ),
+            if (_rutaAudio != null) ...[
+              SizedBox(height: 8),
+              ReproductorClip(key: ValueKey(_rutaAudio), rutaAudio: _rutaAudio!, alQuitar: _quitarAudio),
+            ],
             if (_claveApiKeyPlantNetCacheada != null) ...[
               SizedBox(height: 8),
               OutlinedButton.icon(

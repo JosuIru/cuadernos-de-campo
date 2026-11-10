@@ -2843,6 +2843,18 @@ EspecieGuia? especiePorId(String id) {
   return null;
 }
 
+/// Especie de la guía con ese nombre científico (sin distinguir mayúsculas
+/// ni espacios de más), o null. Sirve para enlazar a su ficha un hallazgo
+/// identificado por otra vía (por ejemplo, por el sonido).
+EspecieGuia? especieGuiaPorNombreCientifico(String nombreCientifico) {
+  final buscado = nombreCientifico.trim().toLowerCase().replaceAll(RegExp(r'\s+'), ' ');
+  if (buscado.isEmpty) return null;
+  for (final especie in especiesGuia) {
+    if (especie.nombreCientifico.trim().toLowerCase() == buscado) return especie;
+  }
+  return null;
+}
+
 void abrirDetalleEspecieGuia(BuildContext context, String idEspecie,
     {List<EspecieGuia>? lista, int? indiceInicial}) {
   if (lista != null && lista.isNotEmpty && indiceInicial != null) {

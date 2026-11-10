@@ -13,6 +13,7 @@ import '../servicios/tarjeta_imagen.dart';
 import 'pantalla_estadisticas.dart';
 import 'pantalla_nuevo.dart';
 import 'widgets/barra_filtro_categoria.dart';
+import 'widgets/reproductor_clip.dart';
 
 class PantallaLista extends StatefulWidget {
   PantallaLista({super.key});
@@ -139,10 +140,26 @@ class _PantallaListaState extends State<PantallaLista> {
                   ),
                 ),
               SizedBox(height: 12),
+              if (hallazgo.rutaAudio != null) ...[
+                ReproductorClip(rutaAudio: hallazgo.rutaAudio!),
+                const SizedBox(height: 8),
+              ],
               _badgesEvidencia(hallazgo),
+              if (hallazgo.atributos['identificacion_sonido'] is Map)
+                _lineaIdentificacionSonido(
+                    (hallazgo.atributos['identificacion_sonido'] as Map).cast<String, dynamic>()),
               _filaDetalle(SoleraL10n.t('nat.hall_categoria'), _etiquetaCategoria(hallazgo.categoria)),
               _filaDetalle(SoleraL10n.t('agro.nombre_comun'), hallazgo.nombreComun.isEmpty ? '—' : hallazgo.nombreComun),
               _filaDetalle(SoleraL10n.t('fos.hall_especie'), hallazgo.especie.isEmpty ? '—' : hallazgo.especie),
+              if (especieGuiaPorNombreCientifico(hallazgo.especie) case final especieGuia?)
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton.icon(
+                    icon: const Icon(Icons.menu_book_outlined, size: 18),
+                    label: Text(SoleraL10n.t('nat.son_ver_en_guia')),
+                    onPressed: () => abrirDetalleEspecieGuia(innerContext, especieGuia.id),
+                  ),
+                ),
               if (hallazgo.especieCorregida.isNotEmpty)
                 _filaDetalle(SoleraL10n.t('nat.hall_corregida_a'), hallazgo.especieCorregida),
               _filaDetalle(SoleraL10n.t('nat.hall_taxonomia'), hallazgo.taxonomia.isEmpty ? '—' : hallazgo.taxonomia),
@@ -230,6 +247,26 @@ class _PantallaListaState extends State<PantallaLista> {
   }
 
   // ─── Bloques de la ficha (v3) ─────────────────────────────────────
+
+  /// De dónde salió una identificación por el sonido («¿Quién canta?»).
+  Widget _lineaIdentificacionSonido(Map<String, dynamic> identificacion) {
+    final nivel = switch (identificacion['nivel']) {
+      'probable' => SoleraL10n.t('nat.son_nivel_probable'),
+      'posible' => SoleraL10n.t('nat.son_nivel_posible'),
+      _ => SoleraL10n.t('nat.son_nivel_dudoso'),
+    };
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Text(
+        SoleraL10n.tf('nat.son_identificado_por_sonido', {
+          'modelo': identificacion['modelo'] ?? 'Perch 2.0',
+          'puntuacion': identificacion['puntuacion'] ?? '—',
+          'nivel': nivel,
+        }),
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    );
+  }
 
   Widget _badgesEvidencia(Hallazgo hallazgo) {
     final badges = <Widget>[];
