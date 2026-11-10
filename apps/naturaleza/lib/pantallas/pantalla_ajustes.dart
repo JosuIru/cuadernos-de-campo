@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:share_plus/share_plus.dart';
 import '../servicios/cache_teselas.dart';
@@ -260,6 +261,25 @@ class _PantallaAjustesState extends State<PantallaAjustes> {
             Text(
               '${SoleraL10n.t('nat.ajus_sobre_app_texto')}\n\n${SoleraL10n.t('nat.ajus_sobre_app_fuentes')}',
               style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              SoleraL10n.t('nat.fuen_creditos'),
+              style: const TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            Wrap(
+              spacing: 4,
+              children: [
+                for (final (nombre, enlace) in const [
+                  ('iNaturalist', 'https://www.inaturalist.org'),
+                  ('GBIF.org', 'https://www.gbif.org'),
+                  ('Creative Commons', 'https://creativecommons.org/licenses/'),
+                ])
+                  TextButton(
+                    onPressed: () => launchUrl(Uri.parse(enlace), mode: LaunchMode.externalApplication),
+                    child: Text(nombre),
+                  ),
+              ],
             ),
           ]),
         ],

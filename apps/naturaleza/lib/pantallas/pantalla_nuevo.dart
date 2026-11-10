@@ -1608,7 +1608,9 @@ class _BuscadorInaturalistState extends State<_BuscadorInaturalist> {
                             : taxon.nombreCientifico;
                         return ListTile(
                           leading: taxon.urlFoto != null
-                              ? ClipRRect(
+                              ? Tooltip(
+                                message: taxon.atribucionFoto ?? 'iNaturalist',
+                                child: ClipRRect(
                                   borderRadius: BorderRadius.circular(4),
                                   child: CachedNetworkImage(
                                     imageUrl: taxon.urlFoto!,
@@ -1622,7 +1624,8 @@ class _BuscadorInaturalistState extends State<_BuscadorInaturalist> {
                                       child: Icon(Icons.image_not_supported),
                                     ),
                                   ),
-                                )
+                                ),
+                              )
                               : SizedBox(width: 48, height: 48, child: Icon(Icons.eco_outlined)),
                           title: Text(nombrePrincipal),
                           subtitle: Text(
@@ -1648,11 +1651,12 @@ class _FotoReferenciaInat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<String?>(
-      future: miniaturaPorNombreCientifico(nombreCientifico),
+    return FutureBuilder<ResultadoTaxonInaturalist?>(
+      future: taxonDeReferencia(nombreCientifico),
       builder: (context, snapshot) {
-        final url = snapshot.data;
+        final url = snapshot.data?.urlFoto;
         if (url == null) return const SizedBox.shrink();
+        final atribucion = snapshot.data?.atribucionFoto;
         return Padding(
           padding: const EdgeInsets.symmetric(vertical: 4),
           child: Row(
@@ -1672,7 +1676,9 @@ class _FotoReferenciaInat extends StatelessWidget {
               SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  SoleraL10n.t('nat.hall_foto_referencia_inaturalist'),
+                  atribucion == null
+                      ? SoleraL10n.t('nat.hall_foto_referencia_inaturalist')
+                      : '${SoleraL10n.t('nat.hall_foto_referencia_inaturalist')}\n$atribucion',
                   style: TextStyle(fontSize: 11, color: Colors.grey),
                 ),
               ),
@@ -1703,10 +1709,10 @@ class _AlternativasConFoto extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                FutureBuilder<String?>(
-                  future: miniaturaPorNombreCientifico(nombre),
+                FutureBuilder<ResultadoTaxonInaturalist?>(
+                  future: taxonDeReferencia(nombre),
                   builder: (_, snapshot) {
-                    final url = snapshot.data;
+                    final url = snapshot.data?.urlFoto;
                     if (url == null) {
                       return Container(
                         width: 100,
@@ -1718,14 +1724,18 @@ class _AlternativasConFoto extends StatelessWidget {
                         child: Icon(Icons.image_not_supported, color: Colors.grey),
                       );
                     }
-                    return ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: CachedNetworkImage(
-                        imageUrl: url,
-                        width: 100,
-                        height: 80,
-                        fit: BoxFit.cover,
-                        memCacheWidth: 300,
+                    return Tooltip(
+                      message: snapshot.data?.atribucionFoto ?? 'iNaturalist',
+                      triggerMode: TooltipTriggerMode.longPress,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: CachedNetworkImage(
+                          imageUrl: url,
+                          width: 100,
+                          height: 80,
+                          fit: BoxFit.cover,
+                          memCacheWidth: 300,
+                        ),
                       ),
                     );
                   },

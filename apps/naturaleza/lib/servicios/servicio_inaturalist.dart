@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:nuevo_ser_core/nuevo_ser_core.dart' show SoleraL10n;
 
+import '../fuentes_abiertas/licencias_abiertas.dart';
+
 const _baseInaturalist = 'https://api.inaturalist.org/v1';
 const _cabecerasInaturalist = {
   'User-Agent': 'naturaleza-flutter/1.0 (https://github.com/josu/naturaleza-flutter)',
@@ -13,7 +15,12 @@ class ResultadoTaxonInaturalist {
   final String nombreCientifico;
   final String? nombreComun;
   final String? rangoTaxonomico;
+  /// Foto por defecto del taxón, solo si su licencia es CC0, CC BY o
+  /// CC BY-SA (ver [fotoPorDefectoAbierta]).
   final String? urlFoto;
+
+  /// «© autor · licencia» de [urlFoto].
+  final String? atribucionFoto;
   final String? reino;
 
   /// Valor crudo de `iconic_taxon_name` que devuelve iNaturalist
@@ -30,6 +37,7 @@ class ResultadoTaxonInaturalist {
     this.nombreComun,
     this.rangoTaxonomico,
     this.urlFoto,
+    this.atribucionFoto,
     this.reino,
     this.iconicoTaxon,
     this.ancestros = const [],
@@ -119,12 +127,31 @@ Future<List<ResultadoTaxonInaturalist>> buscarTaxones(
       nombreCientifico: (mapa['name'] as String?) ?? '',
       nombreComun: mapa['preferred_common_name'] as String?,
       rangoTaxonomico: mapa['rank'] as String?,
-      urlFoto: fotoDefecto?['medium_url'] as String? ?? fotoDefecto?['square_url'] as String?,
+      urlFoto: fotoPorDefectoAbierta(fotoDefecto)?.url,
+      atribucionFoto: fotoPorDefectoAbierta(fotoDefecto)?.atribucion,
       reino: _inferirReinoDesdeAncestros(mapa) ?? mapa['iconic_taxon_name'] as String?,
       iconicoTaxon: mapa['iconic_taxon_name'] as String?,
       ancestros: ancestros,
     );
   }).toList();
+}
+
+/// URL (talla media) y atribución de la `default_photo` de un taxón, o
+/// null si su licencia no es CC0, CC BY ni CC BY-SA (NC, ND o «todos los
+/// derechos reservados» no se enseñan nunca).
+({String url, String atribucion})? fotoPorDefectoAbierta(Map<String, dynamic>? foto) {
+  if (foto == null) return null;
+  final licencia = licenciaAbiertaDesdeCodigo(foto['license_code'] as String?);
+  if (licencia == null) return null;
+  final url = foto['medium_url'] as String? ?? foto['square_url'] as String?;
+  if (url == null) return null;
+  final autor = (foto['attribution_name'] as String?)?.trim();
+  final atribucion = autor == null || autor.isEmpty
+      ? (foto['attribution'] as String?) ?? 'iNaturalist · ${nombreLicencia(licencia)}'
+      : licencia == LicenciaAbierta.cc0
+          ? '$autor · ${nombreLicencia(licencia)}'
+          : '© $autor · ${nombreLicencia(licencia)}';
+  return (url: url, atribucion: atribucion);
 }
 
 String? _inferirReinoDesdeAncestros(Map<String, dynamic> mapa) {
@@ -138,24 +165,28 @@ String? _inferirReinoDesdeAncestros(Map<String, dynamic> mapa) {
   };
 }
 
-/// Caché en memoria para miniaturas por nombre científico.
-final Map<String, Future<String?>> _cacheMiniaturasPorNombre = {};
+/// Caché en memoria de la foto de referencia por nombre científico.
+final Map<String, Future<ResultadoTaxonInaturalist?>> _cacheReferenciaPorNombre = {};
 
-/// Devuelve la URL de la miniatura más representativa para [nombreCientifico].
-/// Cachea los resultados (incluyendo nulls) para no martillear iNaturalist.
-Future<String?> miniaturaPorNombreCientifico(String nombreCientifico) {
+/// Taxón más representativo para [nombreCientifico], con su foto por defecto
+/// solo si es de licencia abierta (y su atribución). Cachea los resultados
+/// (también los nulos) para no martillear iNaturalist.
+Future<ResultadoTaxonInaturalist?> taxonDeReferencia(String nombreCientifico) {
   final clave = nombreCientifico.trim().toLowerCase();
   if (clave.isEmpty) return Future.value(null);
-  return _cacheMiniaturasPorNombre.putIfAbsent(clave, () async {
+  return _cacheReferenciaPorNombre.putIfAbsent(clave, () async {
     try {
       final resultados = await buscarTaxones(nombreCientifico, limite: 1);
-      if (resultados.isEmpty) return null;
-      return resultados.first.urlFoto;
+      return resultados.isEmpty ? null : resultados.first;
     } catch (_) {
       return null;
     }
   });
 }
+
+/// URL de la miniatura de licencia abierta para [nombreCientifico], o null.
+Future<String?> miniaturaPorNombreCientifico(String nombreCientifico) async =>
+    (await taxonDeReferencia(nombreCientifico))?.urlFoto;
 
 /// Detalle de un taxon por id (devuelve la cadena ancestral completa).
 Future<ResultadoTaxonInaturalist?> obtenerTaxon(int id, {String locale = 'es'}) async {
@@ -178,7 +209,8 @@ Future<ResultadoTaxonInaturalist?> obtenerTaxon(int id, {String locale = 'es'}) 
     nombreCientifico: (mapa['name'] as String?) ?? '',
     nombreComun: mapa['preferred_common_name'] as String?,
     rangoTaxonomico: mapa['rank'] as String?,
-    urlFoto: fotoDefecto?['medium_url'] as String?,
+    urlFoto: fotoPorDefectoAbierta(fotoDefecto)?.url,
+    atribucionFoto: fotoPorDefectoAbierta(fotoDefecto)?.atribucion,
     reino: _inferirReinoDesdeAncestros(mapa),
     iconicoTaxon: mapa['iconic_taxon_name'] as String?,
     ancestros: ancestros,
