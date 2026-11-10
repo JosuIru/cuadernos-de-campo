@@ -139,7 +139,12 @@ class ControladorSesionSonora extends ChangeNotifier {
     Int16List? clip,
   }) {
     final sesionId = _sesionId;
-    if (sesionId == null || _pausada || _terminada || especiesMostradas.isEmpty) return;
+    if (sesionId == null || _pausada || _terminada) return;
+    if (especiesMostradas.isEmpty) {
+      // Sin especies no se apunta nada, pero el tiempo de la sesión avanza.
+      notifyListeners();
+      return;
+    }
     _mejoresClips.registrarTrozo(especiesMostradas: especiesMostradas, momento: momento, clip: clip);
     final momentoMs = momento.millisecondsSinceEpoch;
     final indicePunto = indicePuntoTrazaPara(_traza, momentoMs);
@@ -229,6 +234,11 @@ class ControladorSesionSonora extends ChangeNotifier {
       // Sin clips la sesión sigue valiendo (las detecciones ya están).
     }
     _mejoresClips.vaciar();
+    // Las detecciones de antes del primer punto GPS (hasta 2 min) se
+    // colocan en él ahora que ya existe.
+    try {
+      await BaseDatosNaturaleza.instancia.completarPosicionesDeSesion(sesionId, _traza);
+    } catch (_) {}
     await BaseDatosNaturaleza.instancia
         .actualizarSesionSonora(sesionId, finMs: DateTime.now().millisecondsSinceEpoch, traza: _traza);
     notifyListeners();

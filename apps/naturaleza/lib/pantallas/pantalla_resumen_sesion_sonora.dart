@@ -72,7 +72,8 @@ class _PantallaResumenSesionSonoraState extends State<PantallaResumenSesionSonor
   String _duracion(Duration duracion) {
     final horas = duracion.inHours;
     final minutos = duracion.inMinutes % 60;
-    return horas > 0 ? '$horas h ${minutos.toString().padLeft(2, '0')} min' : '$minutos min';
+    if (horas == 0) return '$minutos min';
+    return minutos == 0 ? '$horas h' : '$horas h ${minutos.toString().padLeft(2, '0')} min';
   }
 
   String _nombre(ResumenEspecieSesion especie) =>

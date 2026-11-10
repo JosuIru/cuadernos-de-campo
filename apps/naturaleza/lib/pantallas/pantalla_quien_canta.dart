@@ -1425,7 +1425,8 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
   String _formatearDuracion(Duration duracion) {
     final horas = duracion.inHours;
     final minutos = duracion.inMinutes % 60;
-    return horas > 0 ? '$horas h ${minutos.toString().padLeft(2, '0')} min' : '$minutos min';
+    if (horas == 0) return '$minutos min';
+    return minutos == 0 ? '$horas h' : '$horas h ${minutos.toString().padLeft(2, '0')} min';
   }
 
   Widget _bloqueInicioProgramado() {
@@ -1525,16 +1526,13 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
               segments: [
                 ButtonSegment(
                     value: _ModoEscucha.libre,
-                    icon: const Icon(Icons.hearing),
-                    label: Text(SoleraL10n.t('nat.ses_modo_libre'))),
+                    label: Text(SoleraL10n.t('nat.ses_segmento_libre'))),
                 ButtonSegment(
                     value: _ModoEscucha.recorrido,
-                    icon: const Icon(Icons.directions_walk),
-                    label: Text(SoleraL10n.t('nat.ses_modo_recorrido'))),
+                    label: Text(SoleraL10n.t('nat.ses_segmento_recorrido'))),
                 ButtonSegment(
                     value: _ModoEscucha.coro,
-                    icon: const Icon(Icons.wb_twilight),
-                    label: Text(SoleraL10n.t('nat.ses_modo_coro'))),
+                    label: Text(SoleraL10n.t('nat.ses_segmento_coro'))),
               ],
               selected: {_modo},
               onSelectionChanged: bloqueado ? null : (seleccion) => setState(() => _modo = seleccion.first),

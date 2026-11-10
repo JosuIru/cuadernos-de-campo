@@ -549,6 +549,28 @@ class BaseDatosNaturaleza {
     return filas.map(DeteccionSonora.desdeMapa).toList();
   }
 
+  /// Pone posición a las detecciones que no la tenían y caen en la traza
+  /// (las de antes del primer punto GPS, dentro de la tolerancia).
+  Future<void> completarPosicionesDeSesion(int sesionId, List<PuntoTrazaSonora> traza) async {
+    if (traza.isEmpty) return;
+    final db = await basedatos;
+    final sinPosicion = await db.query('detecciones_sonoras',
+        columns: ['id', 'momento_ms'], where: 'sesion_id = ? AND latitud IS NULL', whereArgs: [sesionId]);
+    if (sinPosicion.isEmpty) return;
+    final lote = db.batch();
+    for (final fila in sinPosicion) {
+      final indice = indicePuntoTrazaPara(traza, (fila['momento_ms'] as num).toInt());
+      if (indice == null) continue;
+      lote.update(
+        'detecciones_sonoras',
+        {'latitud': traza[indice].latitud, 'longitud': traza[indice].longitud, 'indice_punto': indice},
+        where: 'id = ?',
+        whereArgs: [fila['id']],
+      );
+    }
+    await lote.commit(noResult: true);
+  }
+
   /// Borra la sesión, sus detecciones y sus clips (los hallazgos guardados
   /// desde ella tienen su propia copia del clip y no se tocan).
   Future<void> borrarSesionSonora(int id) async {
