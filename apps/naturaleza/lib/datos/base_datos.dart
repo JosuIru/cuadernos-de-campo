@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:path/path.dart' as path_lib;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
@@ -8,6 +9,10 @@ import '../modelos/hallazgo.dart';
 import '../modelos/track.dart';
 import '../modelos/salida.dart';
 import '../modelos/anotacion_diferida.dart';
+import '../sonido/sonidos_propios.dart';
+
+/// Versión del esquema. v5 (2026-11-10): «Tus sonidos».
+const int versionEsquemaNaturaleza = 5;
 
 class BaseDatosNaturaleza {
   static final BaseDatosNaturaleza instancia = BaseDatosNaturaleza._interno();
@@ -26,7 +31,7 @@ class BaseDatosNaturaleza {
       final ruta = path_lib.join(directorio.path, 'naturaleza.db');
       _basedatos = await openDatabase(
         ruta,
-        version: 4,
+        version: versionEsquemaNaturaleza,
         onCreate: (db, version) async {
           await crearEsquemaInicial(db);
           await aplicarMigraciones(db, desde: 1, hasta: version);
@@ -326,6 +331,91 @@ class BaseDatosNaturaleza {
     _inicializando = null;
   }
 
+  // ─── Tus sonidos (v5) ─────────────────────────────────────────────
+
+  Future<List<SonidoPropio>> listarSonidosPropios() async {
+    final db = await basedatos;
+    final filas = await db.query('sonidos_propios', orderBy: 'id');
+    return [
+      for (final fila in filas)
+        SonidoPropio(
+          id: fila['id'] as int,
+          nombre: fila['nombre'] as String,
+          esFondo: (fila['es_fondo'] as int) == 1,
+          creado: DateTime.fromMillisecondsSinceEpoch(fila['creado_ms'] as int),
+        ),
+    ];
+  }
+
+  Future<List<EjemploSonidoPropio>> listarEjemplosSonidosPropios() async {
+    final db = await basedatos;
+    final filas = await db.query('ejemplos_sonido_propio', orderBy: 'sonido_id, id');
+    return [
+      for (final fila in filas)
+        EjemploSonidoPropio(
+          id: fila['id'] as int,
+          idSonido: fila['sonido_id'] as int,
+          creado: DateTime.fromMillisecondsSinceEpoch(fila['creado_ms'] as int),
+          versionModelo: fila['version_modelo'] as String,
+          embedding: bytesAEmbedding(fila['embedding'] as Uint8List),
+        ),
+    ];
+  }
+
+  Future<int> crearSonidoPropio(String nombre, {bool esFondo = false}) async {
+    final db = await basedatos;
+    return db.insert('sonidos_propios', {
+      'nombre': nombre,
+      'es_fondo': esFondo ? 1 : 0,
+      'creado_ms': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  /// El sonido de fondo (solo hay uno); se crea si no existe.
+  Future<int> idSonidoFondo(String nombre) async {
+    final db = await basedatos;
+    final filas = await db.query('sonidos_propios', columns: ['id'], where: 'es_fondo = 1', limit: 1);
+    if (filas.isNotEmpty) return filas.first['id'] as int;
+    return crearSonidoPropio(nombre, esFondo: true);
+  }
+
+  Future<void> renombrarSonidoPropio(int idSonido, String nombre) async {
+    final db = await basedatos;
+    await db.update('sonidos_propios', {'nombre': nombre}, where: 'id = ?', whereArgs: [idSonido]);
+  }
+
+  /// Borra el sonido y sus ejemplos.
+  Future<void> borrarSonidoPropio(int idSonido) async {
+    final db = await basedatos;
+    await db.transaction((txn) async {
+      await txn.delete('ejemplos_sonido_propio', where: 'sonido_id = ?', whereArgs: [idSonido]);
+      await txn.delete('sonidos_propios', where: 'id = ?', whereArgs: [idSonido]);
+    });
+  }
+
+  Future<int> anadirEjemploSonidoPropio({
+    required int idSonido,
+    required String versionModelo,
+    required List<double> embedding,
+  }) async {
+    final db = await basedatos;
+    return db.insert('ejemplos_sonido_propio', {
+      'sonido_id': idSonido,
+      'creado_ms': DateTime.now().millisecondsSinceEpoch,
+      'version_modelo': versionModelo,
+      'embedding': embeddingABytes(embedding),
+    });
+  }
+
+  Future<void> borrarUltimoEjemploSonidoPropio(int idSonido) async {
+    final db = await basedatos;
+    await db.rawDelete(
+      'DELETE FROM ejemplos_sonido_propio WHERE id = '
+      '(SELECT MAX(id) FROM ejemplos_sonido_propio WHERE sonido_id = ?)',
+      [idSonido],
+    );
+  }
+
   // ─── Buffer de grabación incremental de tracks (v2) ─────────────
 
   /// Persiste un punto GPS del track actual al buffer de la BD para
@@ -552,6 +642,31 @@ Future<void> aplicarMigraciones(Database db,
         // identificados por el sonido en «¿Quién canta?». Columna
         // nullable: los hallazgos anteriores quedan sin audio.
         await db.execute('ALTER TABLE hallazgos ADD COLUMN ruta_audio TEXT');
+        break;
+      case 5:
+        // v5 (2026-11-10): «Tus sonidos» de «¿Quién canta?». Sonidos con
+        // nombre propio y sus ejemplos: solo el embedding de Perch 2.0
+        // (1536 float32), nunca el audio. Tablas nuevas: no toca nada.
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS sonidos_propios (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nombre TEXT NOT NULL,
+            es_fondo INTEGER NOT NULL DEFAULT 0,
+            creado_ms INTEGER NOT NULL
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE IF NOT EXISTS ejemplos_sonido_propio (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            sonido_id INTEGER NOT NULL,
+            creado_ms INTEGER NOT NULL,
+            version_modelo TEXT NOT NULL,
+            embedding BLOB NOT NULL
+          )
+        ''');
+        await db.execute(
+          'CREATE INDEX IF NOT EXISTS idx_ejemplos_sonido ON ejemplos_sonido_propio (sonido_id, id)',
+        );
         break;
     }
   }
