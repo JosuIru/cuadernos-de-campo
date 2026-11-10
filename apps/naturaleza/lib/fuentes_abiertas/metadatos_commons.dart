@@ -75,10 +75,11 @@ class MetadatosFotoCommons {
 }
 
 final RegExp _rutaCommons = RegExp(
-    r'^https?://upload\.wikimedia\.org/wikipedia/commons/(?:thumb/)?[0-9a-f]/[0-9a-f]{2}/([^/?#]+)');
+    r'^https?://(?:upload|thumb)\.wikimedia\.org/wikipedia/commons/(?:thumb/)?[0-9a-f]/[0-9a-f]{2}/([^/?#]+)');
 
 /// Nombre del fichero de Commons (con espacios) de una URL de
-/// `upload.wikimedia.org/wikipedia/commons/…`, original o miniatura. Null si
+/// `upload.wikimedia.org` o `thumb.wikimedia.org` (`/wikipedia/commons/…`),
+/// original o miniatura, con o sin parámetros `?utm_…`. Null si
 /// la imagen no es de Commons (las subidas locales de una Wikipedia suelen
 /// ser no libres: no se enseñan).
 String? archivoCommonsDesdeUrl(String url) {

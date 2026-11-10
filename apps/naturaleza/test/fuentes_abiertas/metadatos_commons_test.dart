@@ -35,6 +35,12 @@ void main() {
         archivoCommonsDesdeUrl('//upload.wikimedia.org/wikipedia/commons/a/ab/Pica_pica_%28Mallorca%29.jpg'),
         'Pica pica (Mallorca).jpg',
       );
+      // Las galerías de Wikipedia ya sirven las miniaturas desde thumb.wikimedia.org.
+      expect(
+        archivoCommonsDesdeUrl(
+            '//thumb.wikimedia.org/wikipedia/commons/thumb/c/c2/Vulpes_vulpes_2.jpg/500px-Vulpes_vulpes_2.jpg?utm_source=es.wikipedia.org&utm_campaign=parser'),
+        'Vulpes vulpes 2.jpg',
+      );
     });
 
     test('las subidas locales de una Wikipedia no cuentan', () {
