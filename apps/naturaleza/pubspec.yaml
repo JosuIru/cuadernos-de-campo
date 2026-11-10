@@ -37,6 +37,8 @@ dependencies:
 
   # Compartir y exportar
   share_plus: ^10.0.2
+  # Versión instalada, para enlazar su release al compartir la app.
+  package_info_plus: ^8.0.0
   archive: ^3.6.1
 
   # Utilidades

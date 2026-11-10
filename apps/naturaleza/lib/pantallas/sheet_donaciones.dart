@@ -3,6 +3,7 @@ import 'package:nuevo_ser_core/nuevo_ser_core.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../utiles/enlaces_app.dart' show urlReleaseNaturaleza;
 
 /// Sheet modal con las opciones de donación / apoyo.
 ///
@@ -33,8 +34,11 @@ class _ContenidoSheet extends StatelessWidget {
   static const String _btcTaproot =
       'bc1p29l9vjelerljlwhg6dhr0uldldus4zgn8vjaecer0spj7273d7rss4gnyk';
   static const String _urlEcosistema = 'https://coleccion-nuevo-ser.gailu.net/';
-  static String get _mensajeCompartir =>
-      SoleraL10n.tf('nat.ajus_mensaje_compartir', {'url': _urlEcosistema});
+
+  /// Mensaje para compartir la app: enlaza la página de SU release en el
+  /// repositorio (en él conviven las de Naturaleza y Fósiles).
+  static Future<String> _mensajeCompartir() async =>
+      SoleraL10n.tf('nat.ajus_mensaje_compartir', {'url': await urlReleaseNaturaleza()});
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +95,7 @@ class _ContenidoSheet extends StatelessWidget {
             colorFondo: Color(0xFFA07818),
           ),
           SizedBox(height: 24),
-          _SeccionCompartir(mensaje: _mensajeCompartir),
+          _SeccionCompartir(construirMensaje: _mensajeCompartir),
           SizedBox(height: 20),
           _OtrasFormas(),
           SizedBox(height: 16),
@@ -287,8 +291,8 @@ class _TarjetaBitcoin extends StatelessWidget {
 }
 
 class _SeccionCompartir extends StatelessWidget {
-  _SeccionCompartir({required this.mensaje});
-  final String mensaje;
+  _SeccionCompartir({required this.construirMensaje});
+  final Future<String> Function() construirMensaje;
 
   @override
   Widget build(BuildContext context) {
@@ -314,7 +318,7 @@ class _SeccionCompartir extends StatelessWidget {
           child: FilledButton.icon(
             icon: Icon(Icons.share),
             label: Text(SoleraL10n.t('compartir')),
-            onPressed: () => Share.share(mensaje),
+            onPressed: () async => Share.share(await construirMensaje()),
           ),
         ),
       ],
