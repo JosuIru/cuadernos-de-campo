@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../fuentes_abiertas/metadatos_commons.dart';
 import '../fuentes_abiertas/servicio_metadatos_commons.dart';
 import '../pantallas/widgets/fuentes_abiertas_ficha.dart';
+import '../pantallas/widgets/temporada_sonido_ficha.dart';
 import '../servicios/servicio_wikipedia.dart';
 import '../utiles/primeras_veces.dart' show normalizarNombreComun;
 import 'claves_gbif.dart';
@@ -3065,6 +3066,7 @@ Widget _contenidoEspecie(BuildContext context, EspecieGuia especie, CategoriaGui
         claveGbif: clavesGbifPorEspecie[especie.id],
         sensible: esEspecieSensible(especie),
       ),
+      if (!llevaAvisoConsumo(especie)) TemporadaSonidoFichaGuia(nombreCientifico: especie.nombreCientifico),
       const SizedBox(height: 16),
       if (especie.tituloWikipedia.isNotEmpty)
         FilledButton.tonalIcon(

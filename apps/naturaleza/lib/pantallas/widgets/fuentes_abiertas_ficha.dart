@@ -362,10 +362,13 @@ class _SeccionPresenciaGbifState extends State<SeccionPresenciaGbif> {
 /// lleva su valor en un tooltip (pulsación larga o ratón) y la lectura
 /// completa va en la etiqueta de accesibilidad.
 class GraficoRegistrosPorMes extends StatelessWidget {
-  const GraficoRegistrosPorMes({super.key, required this.porMes, this.altura = 72});
+  const GraficoRegistrosPorMes({super.key, required this.porMes, this.altura = 72, this.textoValor});
 
   final List<int> porMes;
   final double altura;
+
+  /// Texto del tooltip y de la lectura de cada mes; por defecto, «N registros».
+  final String Function(String mes, int valor)? textoValor;
 
   @override
   Widget build(BuildContext context) {
@@ -375,7 +378,8 @@ class GraficoRegistrosPorMes extends StatelessWidget {
     final colorBarra = tema.colorScheme.primary;
     final colorFondo = tema.colorScheme.surfaceContainerHighest;
     final lectura = [
-      for (var indice = 0; indice < 12; indice++) '${nombres[indice]} ${porMes[indice]}',
+      for (var indice = 0; indice < 12; indice++)
+        textoValor?.call(nombres[indice], porMes[indice]) ?? '${nombres[indice]} ${porMes[indice]}',
     ].join(', ');
     return Semantics(
       label: lectura,
@@ -386,10 +390,11 @@ class GraficoRegistrosPorMes extends StatelessWidget {
           for (var indice = 0; indice < 12; indice++)
             Expanded(
               child: Tooltip(
-                message: SoleraL10n.tf('nat.fuen_registros_mes', {
-                  'mes': nombres[indice],
-                  'numero': '${porMes[indice]}',
-                }),
+                message: textoValor?.call(nombres[indice], porMes[indice]) ??
+                    SoleraL10n.tf('nat.fuen_registros_mes', {
+                      'mes': nombres[indice],
+                      'numero': '${porMes[indice]}',
+                    }),
                 triggerMode: TooltipTriggerMode.tap,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 1),

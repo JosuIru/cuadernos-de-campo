@@ -22,6 +22,7 @@ import '../servicios/controlador_donde_esta.dart';
 import '../servicios/controlador_sesion_sonora.dart';
 import '../servicios/controlador_sonidos_propios.dart';
 import '../servicios/escucha_microfono.dart';
+import '../servicios/ocurrencia_fauna_instalada.dart';
 import '../sonido/calidad_audio.dart';
 import '../sonido/clasificacion_sonido.dart';
 import '../sonido/clip_audio.dart';
@@ -37,9 +38,11 @@ import 'pantalla_especies_vigiladas.dart';
 import 'pantalla_nuevo.dart';
 import 'pantalla_resumen_sesion_sonora.dart';
 import 'pantalla_sesiones_sonoras.dart';
+import 'widgets/etica_campo.dart';
 import 'widgets/indicador_calidad_audio.dart';
 import 'widgets/tarjeta_donde_esta.dart';
 import 'widgets/tarjeta_tus_sonidos.dart';
+import 'widgets/temporada_sonido_ficha.dart';
 
 /// «¿Quién canta?»: identifica aves, anfibios, insectos y mamíferos por el
 /// sonido con Perch 2.0 (Google) en el propio móvil, sin conexión una vez
@@ -161,6 +164,10 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
     _cargarEspeciesVigiladas();
     _dondeEsta.cargarPreferencias();
     _comprobarModelo();
+    // La primera vez: la app nunca reproduce cantos para atraer animales.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) avisarEticaCampoLaPrimeraVez(context);
+    });
   }
 
   @override
@@ -294,6 +301,7 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
         datos = null;
       }
     }
+    OcurrenciaFaunaInstalada.fijar(datos);
     if (!mounted) return;
     setState(() {
       _ocurrencia = datos;
@@ -416,6 +424,7 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
     await _terminarSesionLarga(abrirResumen: false);
     _clasificador?.liberar();
     await borrarModeloFaunaInstalado();
+    OcurrenciaFaunaInstalada.olvidar();
     if (!mounted) return;
     setState(() {
       _clasificador = null;
@@ -943,6 +952,16 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
                     child: Text(SoleraL10n.tf('nat.son_detalle_con_zona', {'tomas': zona.numeroTomas}),
                         style: Theme.of(contextoHoja).textTheme.bodySmall),
                   ),
+                if (_ocurrencia case final datosOcurrencia? when clase.esEspecie)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: TarjetaTemporadaSonido(
+                      datos: datosOcurrencia,
+                      etiquetaEspecie: clase.etiqueta,
+                      latitud: _ubicacionAproximada?.latitud,
+                      longitud: _ubicacionAproximada?.longitud,
+                    ),
+                  ),
                 const SizedBox(height: 16),
                 if (especieGuia != null) ...[
                   OutlinedButton.icon(
@@ -1058,6 +1077,12 @@ class _PantallaQuienCantaState extends State<PantallaQuienCanta> with WidgetsBin
           children: [
             Text(SoleraL10n.t('nat.son_ayuda_titulo'),
                 style: Theme.of(contextoHoja).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              icon: const Icon(Icons.volume_off_outlined),
+              label: Text(SoleraL10n.t('nat.etica_titulo')),
+              onPressed: () => mostrarEticaCampo(contextoHoja),
+            ),
             const SizedBox(height: 8),
             Text(SoleraL10n.t('nat.son_ayuda_como_funciona')),
             const SizedBox(height: 12),
